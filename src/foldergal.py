@@ -2,6 +2,7 @@ import asyncio
 
 CONFIG = {}
 
+
 def configure(config):
     global CONFIG
     CONFIG['FOLDER_ROOT'] = config['FOLDER_ROOT']
@@ -12,5 +13,5 @@ async def refresh():
     if not CONFIG:
         raise UnboundLocalError("Call foldergal.configure")
     while True:
-        print ('Refreshing')
+        print('Refreshing')
         await asyncio.sleep(CONFIG['RESCAN_SECONDS'])

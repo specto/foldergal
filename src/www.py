@@ -1,5 +1,5 @@
+import asyncio
 import os
-import logging
 import foldergal
 from sanic import Sanic, response
 from sanic.log import logger
@@ -10,8 +10,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 app = Sanic(__name__)
 app.config.from_pyfile(
     os.path.join(os.path.dirname(__file__),
-    "../foldergal.cfg")
-)
+                 "../foldergal.cfg"))
 
 # Setup template engine
 jinja_env = Environment(
@@ -22,18 +21,26 @@ jinja_env = Environment(
 # Have static files served from folder
 app.static('/static', './src/static')
 
-# Add our core module
+# Initialize our core module and start periodic refresh
 foldergal.configure(app.config)
-app.add_task(foldergal.refresh())
+refresh_task = foldergal.refresh()
+app.add_task(refresh_task)
+
 
 def render(template, **kwargs):
-    ''' Jinja render helper '''
+    """ Jinja render helper """
     template = jinja_env.get_template(template)
     return template.render(url_for=app.url_for, **kwargs)
+
 
 @app.route("/")
 async def index(req):
     return response.html(render('list.html', message="Welcome"))
+
+
+@app.listener('before_server_stop')
+async def notify_server_stopping(application, loop):
+    logger.info(f'Stopping server v{application.config["VERSION"]}')
 
 
 if __name__ == "__main__":
