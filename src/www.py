@@ -1,32 +1,47 @@
-from flask import Flask, escape, request
-from flask import send_from_directory, render_template
-from pathlib import Path
-from logging.config import dictConfig
-from flask.logging import default_handler
+import os
+import logging
+import foldergal
+from sanic import Sanic, response
+from sanic.log import logger
+
+from jinja2 import Environment, PackageLoader, select_autoescape
+
+# Initialize framework for our app and load config from file
+app = Sanic(__name__)
+app.config.from_pyfile(
+    os.path.join(os.path.dirname(__file__),
+    "../foldergal.cfg")
+)
+
+# Setup template engine
+jinja_env = Environment(
+    loader=PackageLoader('www', 'templates'),
+    autoescape=select_autoescape(['html'])
+)
+
+# Have static files served from folder
+app.static('/static', './src/static')
+
+# Add our core module
+foldergal.configure(app.config)
+app.add_task(foldergal.refresh())
+
+def render(template, **kwargs):
+    ''' Jinja render helper '''
+    template = jinja_env.get_template(template)
+    return template.render(url_for=app.url_for, **kwargs)
+
+@app.route("/")
+async def index(req):
+    return response.html(render('list.html', message="Welcome"))
 
 
-dictConfig({
-    'version': 1,
-    'formatters': {'default': {
-        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-    }},
-    'handlers': {'wsgi': {
-        'class': 'logging.StreamHandler',
-        'stream': 'ext://flask.logging.wsgi_errors_stream',
-        'formatter': 'default'
-    }},
-    'root': {
-        'level': 'INFO',
-        'handlers': ['wsgi']
-    }
-})
-
-app = Flask(__name__)
-app.logger.removeHandler(default_handler)
-
-@app.route('/')
-def hello():
-    name = request.args.get("name", "World")
-    return render_template("list.html", message=f'Hello, {escape(name)}!');
-
-app.logger.info('Server started')
+if __name__ == "__main__":
+    logger.info(f'Starting server v{app.config["VERSION"]}')
+    app.run(
+        host=app.config["HOST"],
+        port=app.config["PORT"],
+        debug=app.config["DEBUG"],
+        access_log=app.config["DEBUG"],
+        workers=app.config["WORKERS"],
+    )
