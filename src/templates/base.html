@@ -7,7 +7,7 @@
 </head>
 <body>
     <nav>
-      <h1>Foldergal</h1>
+      <h1>{% block heading %}{% if heading %}{{ heading }}{% else %}Foldergal{% endif %}{% endblock %}</h1>
     </nav>
     <section class="content">
       <header>

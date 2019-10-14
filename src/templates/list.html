@@ -5,7 +5,10 @@
 {% endblock %}
 
 {% block content %}
-    <div>
-        {{ message }}
-    </div>
+    <ul>
+        <li><a href="../">..</a></li>
+    {% for folder in folders %}
+        <li><a href="{{ folder }}">{{ folder }}</a></li>
+    {% endfor %}
+    </ul>
 {% endblock %}
