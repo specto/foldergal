@@ -15,3 +15,8 @@ async def refresh():
     while True:
         print('Refreshing')
         await asyncio.sleep(CONFIG['RESCAN_SECONDS'])
+
+
+async def get_file_by_id(id):
+    if not CONFIG:
+        raise UnboundLocalError("Call foldergal.configure")

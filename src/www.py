@@ -23,12 +23,11 @@ app.static('/static', './src/static')
 
 # Initialize our core module and start periodic refresh
 foldergal.configure(app.config)
-refresh_task = foldergal.refresh()
-app.add_task(refresh_task)
+app.add_task(foldergal.refresh())
 
 
 def render(template, **kwargs):
-    """ Jinja render helper """
+    """ Template render helper """
     template = jinja_env.get_template(template)
     return template.render(url_for=app.url_for, **kwargs)
 
@@ -37,10 +36,20 @@ def render(template, **kwargs):
 async def index(req):
     return response.html(render('list.html', message="Welcome"))
 
+@app.route("/view/<file>")
+async def index(req, file):
+    return response.html(render('view.html', file=file))
 
-@app.listener('before_server_stop')
-async def notify_server_stopping(application, loop):
-    logger.info(f'Stopping server v{application.config["VERSION"]}')
+@app.route("/get/<file>")
+async def index(req, file):
+    file_data = await foldergal.get_file_by_id(file)
+    if not file_data:
+        return response.html(
+            render('error.html', message=f'File "{file}" was not found'),
+            status=404
+        )
+    else:
+        return await response.file_stream(file_data)
 
 
 if __name__ == "__main__":
