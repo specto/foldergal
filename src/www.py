@@ -41,15 +41,10 @@ async def view_slash(_):
     return response.html(render('view.html', body="test wazaaaaa"))
 
 
-@app.route("/get/<file>")
-async def get(req, file):
-    file_data = await foldergal.get_file_by_id(file)
-    if file_data:
-        return await response.file_stream(file_data)
-    return response.html(
-        render('error.html', message=f'File "{file}" was not found'),
-        status=404
-    )
+@app.route("/rss")
+@app.route("/atom")
+async def rss(_):
+    return response.text('waaaaa')
 
 # This must be the last route
 @app.route("/")
