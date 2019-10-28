@@ -106,7 +106,7 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 type='folder',
                 name=child.name,
                 parent=path,
-                author=child.owner(),
+                author=stat.st_uid,
                 cdate=datetime.fromtimestamp(stat.st_ctime),
                 mdate=datetime.fromtimestamp(stat.st_mtime),
             ))
@@ -116,7 +116,7 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 type='image',
                 name=child.name,
                 parent=path,
-                author=child.owner(),
+                author=stat.st_uid,
                 cdate=datetime.fromtimestamp(stat.st_ctime),
                 mdate=datetime.fromtimestamp(stat.st_mtime),
                 thumb=thumb,
