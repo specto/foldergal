@@ -48,6 +48,7 @@ def render(template, **kwargs):
 async def rss(_):
     return response.text('waaaaa')
 
+
 # This must be the last route
 @app.route("/gallery")
 @app.route("/gallery/<path:path>")
@@ -90,6 +91,7 @@ async def server_error_handler(_, exception):
                message="Check the logs for clues how to fix it."),
         status=500
     )
+
 app.error_handler.add(Exception, server_error_handler)
 
 if __name__ == "__main__":
@@ -101,8 +103,4 @@ if __name__ == "__main__":
         access_log=app.config["DEBUG"],
         workers=app.config["WORKERS"],
         auto_reload=False,
-        log_config=logging.basicConfig(
-            filename=app.config["FOLDER_LOG"] + '/foldergal.log',
-            level=logging.DEBUG if app.config['DEBUG'] else logging.INFO
-        ),
     )
