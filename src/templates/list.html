@@ -17,7 +17,7 @@
     <ul>
         {% if parent %}
         <li>
-            <a href="/{{ parent }}" tabindex='0'>
+            <a href="{{www_prefix}}/{{ parent }}" tabindex='0'>
             <span>
             <img valign="middle" src="{{ url_for('static', filename='up.svg') }}" />
             </span>
@@ -26,7 +26,7 @@
         {% endif %}
     {% for item in items %}
         <li>
-        <a href="/{{ item.path }}" tabindex='0'>
+        <a href="{{www_prefix}}/{{ item.path }}" tabindex='0'>
 
         <span>
         {% if item.type == 'folder' %}

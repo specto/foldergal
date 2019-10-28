@@ -20,11 +20,13 @@ jinja_env = Environment(
 )
 
 # Have static files served from folder
-app.static('/static', './src/static', name='static')
-app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
+app.static('/gallery/static', './src/static', name='static')
+# app.static('/static', './src/static', name='static')
+app.static('/gallery/favicon.ico', './src/static/favicon.ico', name='favicon')
+# app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
 
 # Have thumbnails served from folder
-app.static('/thumbs', app.config['FOLDER_CACHE'], name='thumbnails')
+app.static('/gallery/thumbs', app.config['FOLDER_CACHE'], name='thumbnails')
 
 # Initialize our core module and start periodic refresh
 foldergal.configure(app.config)
@@ -34,7 +36,8 @@ app.add_task(foldergal.refresh())
 def render(template, **kwargs):
     """ Template render helper """
     template = jinja_env.get_template(template)
-    return template.render(url_for=app.url_for, **kwargs)
+    return template.render(url_for=app.url_for,
+        www_prefix=app.config['WWW_PREFIX'], **kwargs)
 
 
 
