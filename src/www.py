@@ -1,4 +1,3 @@
-import asyncio
 import os
 import foldergal
 from sanic import Sanic, response
@@ -38,7 +37,7 @@ def render(template, **kwargs):
 
 
 @app.route('/test')
-async def view_slash(req):
+async def view_slash(_):
     return response.html(render('view.html', body="test wazaaaaa"))
 
 
@@ -73,7 +72,7 @@ async def index(req, path=''):
 
 
 # Display some error message when things break
-async def server_error_handler(request, exception):
+async def server_error_handler(_, exception):
     if isinstance(exception, NotFound):
         return response.html(render('error.html', title="Not found",
                                     message=exception), status=404)
