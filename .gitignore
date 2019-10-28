@@ -1,3 +1,5 @@
 /_env
 __pycache__
 /.idea
+/cache/*
+!/cache/broken.svg
