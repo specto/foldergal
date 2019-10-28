@@ -36,9 +36,11 @@ app.add_task(foldergal.refresh())
 def render(template, **kwargs):
     """ Template render helper """
     template = jinja_env.get_template(template)
-    return template.render(url_for=app.url_for,
-        www_prefix=app.config['WWW_PREFIX'], **kwargs)
-
+    return template.render(
+        url_for=app.url_for,
+        www_prefix=app.config['WWW_PREFIX'],
+        **kwargs
+    )
 
 
 @app.route("/gallery/rss")
