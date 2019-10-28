@@ -37,19 +37,15 @@ def render(template, **kwargs):
     return template.render(url_for=app.url_for, **kwargs)
 
 
-@app.route('/test')
-async def view_slash(_):
-    return response.html(render('view.html', body="test wazaaaaa"))
 
-
-@app.route("/rss")
-@app.route("/atom")
+@app.route("/gallery/rss")
+@app.route("/gallery/atom")
 async def rss(_):
     return response.text('waaaaa')
 
 # This must be the last route
-@app.route("/")
-@app.route("/<path:path>")
+@app.route("/gallery")
+@app.route("/gallery/<path:path>")
 async def index(req, path=''):
     path = './' + path
     order_by = req.args.get('order_by')
