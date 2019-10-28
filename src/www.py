@@ -1,3 +1,4 @@
+import logging
 import os
 import foldergal
 from sanic import Sanic, response
@@ -69,6 +70,12 @@ async def index(req, path=''):
     ))
 
 
+@app.listener("before_server_stop")
+async def on_shutdown(app, loop):
+    print('shutting down...')
+    logging.shutdown()
+
+
 # Display some error message when things break
 async def server_error_handler(_, exception):
     if isinstance(exception, NotFound):
@@ -93,4 +100,8 @@ if __name__ == "__main__":
         access_log=app.config["DEBUG"],
         workers=app.config["WORKERS"],
         auto_reload=False,
+        log_config=logging.basicConfig(
+            filename=app.config["FOLDER_LOG"] + '/foldergal.log',
+            level=logging.DEBUG if app.config['DEBUG'] else logging.INFO
+        ),
     )

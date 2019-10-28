@@ -3,3 +3,5 @@ __pycache__
 /.idea
 /cache/*
 !/cache/broken.svg
+/log/*
+!/log/README
