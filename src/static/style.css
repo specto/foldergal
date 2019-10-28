@@ -1,1 +1,64 @@
 body { font-family: sans-serif; }
+
+a
+{
+	text-decoration: none;
+	border-radius: 1em;
+}
+
+a:hover { background-color: #F8F5D6; }
+
+a:active
+{
+	background-color: #EAEAEA;
+	color: darkred;
+}
+
+.content ul
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	flex-direction: row;
+	padding: 0;
+	margin: 0;
+}
+
+.content li
+{
+	display: flex;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.content a
+{
+	width: 8em;
+	display: flex;
+	padding: 0.5em;
+	text-align: center;
+	flex-direction: column;
+}
+
+.content a span
+{
+	overflow-wrap: break-word;
+	word-break: break-all;
+}
+
+.content a img
+{
+	width: auto;
+	height: auto;
+	max-height: 7em;
+	max-width: 8em;
+}
+
+.big .content a { width: 16em; }
+
+.big .content a img
+{
+	max-height: 14em;
+	max-width: 16em;
+}

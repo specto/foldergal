@@ -1,14 +1,58 @@
 {% extends 'base.html' %}
 
 {% block header %}
-    <h1>{% block title %}List{% endblock %}</h1>
+    <!-- nav>
+    {% if crumbs %}
+        <ul>
+        {% for crumb in crumbs %}
+        <li>{{ crumb }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    Order by: date, alphabetical, natural
+    </nav-->
 {% endblock %}
 
 {% block content %}
     <ul>
-        <li><a href="../">..</a></li>
-    {% for folder in folders %}
-        <li><a href="{{ folder }}">{{ folder }}</a></li>
+        {% if parent %}
+        <li>
+            <a href="/{{ parent }}" tabindex='0'>
+            <span>
+            <img valign="middle" src="{{ url_for('static', filename='up.svg') }}" />
+            </span>
+            <span>..</span></a>
+        </li>
+        {% endif %}
+    {% for item in items %}
+        <li>
+        <a href="/{{ item.path }}" tabindex='0'>
+
+        <span>
+        {% if item.type == 'folder' %}
+            <img valign="middle" src="{{ url_for('static', filename='folder.svg') }}" />
+        {% endif %}
+        {% if item.thumb %}
+            <img src="{{ url_for('static', name='thumbnails', filename=item.thumb) }}" />
+        {% endif %}
+        </span>
+
+        <span>{{ item.name }}</span>
+
+        {% if item.author %}
+            <span>[{{ item.author }}]</span>
+        {% endif %}
+
+        <span>
+        {%- if item.mdate -%}
+        {{ item.mdate.strftime("%Y-%m-%d") }}
+        {%- endif -%}
+        {%- if item.cdate != item.mdate -%}
+        *
+        {%- endif -%}
+        </span>
+        </a>
+        </li>
     {% endfor %}
     </ul>
 {% endblock %}

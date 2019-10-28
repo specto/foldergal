@@ -56,19 +56,22 @@ async def get(req, file):
 @app.route("/<path:path>")
 async def index(req, path=''):
     path = './' + path
-    logger.debug(path)
+    order_by = req.args.get('order_by')
+    desc = req.args.get('desc', '0') in ['1', 'true', 'yes']
     try:
-        ftype, content = (await foldergal.get_folder_contents(path))
-    except Exception as e:
-        logger.debug(e)
-        return response.html(
-            render('error.html', message=f'"{path}" was not found'),
-            status=404
-        )
-    if ftype == 'image':
-        # this is path to file
-        return await response.file_stream(app.config['FOLDER_ROOT'] + content)
-    return response.html(render('list.html', folders=[c[1:] for c in content]))
+        items = await foldergal.get_folder_items(path, order_by, desc)
+    except ValueError:
+        # this is path to a file
+        return await response.file_stream(await foldergal.get_file(path))
+    # we are looking at a folder
+    return response.html(render(
+        'list.html',
+        items=items,
+        parent=await foldergal.get_parent(path),
+        heading=path,
+        crumbs=foldergal.get_breadcrumbs(path),
+        order_by=order_by
+    ))
 
 
 # Display some error message when things break
