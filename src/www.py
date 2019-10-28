@@ -20,7 +20,11 @@ jinja_env = Environment(
 )
 
 # Have static files served from folder
-app.static('/static', './src/static')
+app.static('/static', './src/static', name='static')
+app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
+
+# Have thumbnails served from folder
+app.static('/thumbs', app.config['FOLDER_CACHE'], name='thumbnails')
 
 # Initialize our core module and start periodic refresh
 foldergal.configure(app.config)

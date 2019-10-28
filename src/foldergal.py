@@ -1,19 +1,43 @@
 import asyncio
+from datetime import datetime
+from typing import NamedTuple, Sequence
+
 from sanic.exceptions import ServerError
 from sanic.log import logger
 from pathlib import Path
+from PIL import Image
 
 CONFIG = {}
 files = {}
+
 
 def configure(config):
     global CONFIG
     CONFIG['FOLDER_ROOT'] = config['FOLDER_ROOT']
     CONFIG['RESCAN_SECONDS'] = config['RESCAN_SECONDS']
     CONFIG['TARGET_EXT'] = config['TARGET_EXT']
+    CONFIG['FOLDER_CACHE'] = config['FOLDER_CACHE']
+
 
 def normalize_path(p):
     return './' + p.relative_to(CONFIG['FOLDER_ROOT']).as_posix()
+
+
+class FolderItem(NamedTuple):
+    name: str = ''
+    type: str = ''
+    author: str = ''
+    thumb: str = ''
+    parent: str = ''
+    cdate: datetime = datetime.now()
+    mdate: datetime = datetime.now()
+
+    @property
+    def path(self) -> str:
+        return Path(self.parent).joinpath(self.name)
+
+    def __repr__(self) -> str:
+        return f'<{self.type.upper()} {self.parent}/{self.name}>'
 
 
 async def scan(folder):
@@ -33,7 +57,6 @@ async def scan(folder):
     return contents
 
 
-
 async def refresh():
     global files
     if not CONFIG:
@@ -44,21 +67,102 @@ async def refresh():
         await asyncio.sleep(CONFIG['RESCAN_SECONDS'])
 
 
-async def get_file_by_id(id):
+THUMB_SIZE = (512, 512)
+
+
+def path_to_id(path):
+    return str(path).replace('/', '_')
+
+
+def generate_thumb(path, mtime):
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
+    filename = path_to_id(path)
+    thumb_file = Path(CONFIG['FOLDER_CACHE']).joinpath(filename).resolve()
+    # Check for fresh thumb
+    if not thumb_file.exists() or thumb_file.stat().st_mtime < mtime:
+        try:
+            logger.debug(f'generating thumb for {filename}')
+            im = Image.open(path)
+            im.thumbnail(THUMB_SIZE)
+            im.save(thumb_file)
+        except Exception as e:
+            logger.error(e)
+            return 'broken.svg'
+    return filename
 
 
-async def get_folder_contents(target=None, sub_items = None):
+async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderItem]:
+    folder = Path(CONFIG['FOLDER_ROOT']).joinpath(path)
+    if not folder.exists():
+        raise LookupError(f'{path} not found')
+    if not folder.is_dir():
+        raise ValueError(f'{path} is not a folder')
+    result = []
+    for child in folder.iterdir():
+        stat = child.stat()
+        if child.is_dir():
+            result.append(FolderItem(
+                type='folder',
+                name=child.name,
+                parent=path,
+                author=child.owner(),
+                cdate=datetime.fromtimestamp(stat.st_ctime),
+                mdate=datetime.fromtimestamp(stat.st_mtime),
+            ))
+        elif child.suffix.lower() in CONFIG['TARGET_EXT']:
+            thumb = generate_thumb(child, stat.st_mtime)
+            result.append(FolderItem(
+                type='image',
+                name=child.name,
+                parent=path,
+                author=child.owner(),
+                cdate=datetime.fromtimestamp(stat.st_ctime),
+                mdate=datetime.fromtimestamp(stat.st_mtime),
+                thumb=thumb,
+            ))
+
+    if order_by == 'cdate':
+        def sorter(i):
+            return i.cdate
+    elif order_by == 'mdate':
+        def sorter(i):
+            return i.mdate
+    else:  # default sort by name
+        def sorter(i):
+            return i.name.lower()
+    if desc:
+        return list(reversed(sorted(result, key=sorter)))
+    return sorted(result, key=sorter)
+
+
+async def get_file(path):
+    return Path(CONFIG['FOLDER_ROOT']).joinpath(path)
+
+
+async def get_parent(path='./'):
+    return Path(path).parent if path != './' else ''
+
+
+def get_breadcrumbs(path):
+    current = Path(path)
+    if current.parent == current.root:
+        return None
+    return [('/', '/')] + [(str(p[0]) + '/' + p[1], p[1])
+                           for p in zip(reversed(current.parent.parents),
+                                        current.parent.parts)]
+
+
+async def get_folder_tree(target=None, sub_items=None):
     if target == './':
         return 'folder', files.keys()
     current_folder = sub_items if sub_items else files
     for name, item in current_folder.items():
-        if name == target:
+        if target and name == target:
             if isinstance(item, dict):
                 return 'folder', item
             return 'image', name
         elif isinstance(item, dict):
-            sub_item = await get_folder_contents(target, item)
-            if sub_item:
-                return sub_item
+            deep_item = await get_folder_tree(target, item)
+            if deep_item:
+                return deep_item
