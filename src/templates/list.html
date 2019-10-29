@@ -17,16 +17,19 @@
     <ul>
         {% if parent %}
         <li>
-            <a href="{{ url_for('index', path=parent) }}" title="&lt; {{ parent }}">
-            <span>
-            <img src="{{ url_for('static', filename='up.svg') }}" />
-            </span>
-            <span>..</span></a>
+            <a class="title-container" href="{{ url_for('index', path=parent) }}" title="&lt; {{ parent }}">
+            <span><img src="{{ url_for('static', filename='up.svg') }}" /></span>
+            <span class="title clear">..</span>
+            </a>
         </li>
         {% endif %}
     {% for item in items %}
         <li>
-        <a href="{{ url_for('index', path=item.path) }}" title="
+        <a class="author-container title-container {% if item.type == 'image' -%}
+            media
+        {%- endif %}"
+            href="{{ url_for('index', path=item.path) }}"
+            title="
         {{- item.name -}}
         {%- if item.mdate %} [{{ item.mdate.strftime("%Y-%m-%d %H:%M:%S") }}]
         {%- endif -%}
@@ -35,21 +38,26 @@
         {%- endif -%}
         ">
 
-        <span class="author-container">
+        <span>
         {% if item.author %}
-        <span class="author">
-            {{- item.author.name if item.author.name else item.author.uid -}}
-        </span>
+            {% set author = item.author.name if item.author.name else item.author.uid %}
+            <span class="author" title="by {{ author}}">
+                {{- author -}}
+            </span>
+        {% else %}
+            <span class="author">&nbsp;</span>
         {% endif %}
         {% if item.type == 'folder' %}
             <img src="{{ url_for('static', filename='folder.svg') }}" />
+            <span class="title clear" title="{{ item.name }}">{{ item.name }}</span>
         {% endif %}
         {% if item.thumb %}
             <img src="{{ url_for('static', name='thumbs', filename=item.thumb) }}" />
+            <span class="title" title="{{ item.name }}">{{ item.name }}</span>
         {% endif %}
         </span>
 
-        <span>{{ item.name }}</span>
+
 
 
 
