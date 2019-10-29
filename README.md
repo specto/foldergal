@@ -22,7 +22,7 @@ TODO
 + [ ] Notify discord (webhook?, direct to bot?)
 + [ ] Show author, dates for each item
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
-+ [ ] Security: don't go above configured folder
++ [x] Security: don't go above configured folder
 + [ ] Choose appropriate license
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name

@@ -82,7 +82,13 @@ def generate_thumb(path, mtime):
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
     filename = path_to_id(path)
-    thumb_file = Path(CONFIG['FOLDER_CACHE']).joinpath(filename).resolve()
+    cache_path = Path(CONFIG['FOLDER_CACHE']).resolve()
+    thumb_file = cache_path.joinpath(filename).resolve()
+    try:  # Security check
+        thumb_file.relative_to(cache_path)
+    except ValueError as e:
+        logger.error(e)
+        return 'broken.svg'
     # Check for fresh thumb
     if not thumb_file.exists() or thumb_file.stat().st_mtime < mtime:
         try:
@@ -111,11 +117,17 @@ def generate_thumb(path, mtime):
 
 
 async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderItem]:
-    folder = Path(CONFIG['FOLDER_ROOT']).joinpath(path)
+    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
+    folder = root_path.joinpath(path).resolve()
     if not folder.exists():
         raise LookupError(f'{path} not found')
     if not folder.is_dir():
         raise ValueError(f'{path} is not a folder')
+    try:  # Security check
+        folder.relative_to(root_path)
+    except ValueError as e:
+        logger.error(e)
+        return []
     result = []
     for child in folder.iterdir():
         stat = child.stat()
@@ -154,7 +166,14 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
 
 
 async def get_file(path):
-    return Path(CONFIG['FOLDER_ROOT']).joinpath(path)
+    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
+    file = root_path.joinpath(path).resolve()
+    try:  # Security check
+        file.relative_to(root_path)
+    except ValueError as e:
+        logger.error(e)
+        return ''
+    return file
 
 
 async def get_parent(path='./'):
