@@ -35,7 +35,12 @@
         {%- endif -%}
         ">
 
-        <span>
+        <span class="author-container">
+        {% if item.author %}
+        <span class="author">
+            {{- item.author.name if item.author.name else item.author.uid -}}
+        </span>
+        {% endif %}
         {% if item.type == 'folder' %}
             <img src="{{ url_for('static', filename='folder.svg') }}" />
         {% endif %}
@@ -45,9 +50,6 @@
         </span>
 
         <span>{{ item.name }}</span>
-        <span class="author">{% if item.author -%}
-            {{ item.author.name if item.author.name else item.author.uid }}
-        {%- endif %}</span>
 
 
 

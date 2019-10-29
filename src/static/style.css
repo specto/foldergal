@@ -48,7 +48,6 @@ a:active
 	justify-content: center;
 	align-items: center;
 	color: black;
-	position: relative;
 }
 
 .content a span
@@ -72,12 +71,22 @@ a:active
 	display: inline-block;
 }
 
+.content .author-container {
+    position: relative;
+}
+
 .content .author {
 	position: absolute;
-	right: 10px;
-	bottom: 10px;
+	right: 0;
+	bottom: 1.5em;
 	display: inline-block;
-	background: hsl(123,34%,34%);
+	background: #4E5363;
+	color: white;
+	padding: 0.25em 0.5em;
+	border-radius: 0.5em 0 0 0.5em;
+	border: solid 1px #7B839C;
+	border-right-style: none;
+	font-size: 0.9em;
 }
 
 .content .big a
