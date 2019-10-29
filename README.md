@@ -10,7 +10,22 @@ Features
 * Periodic file listing refresh
 * Use file system owners as authors
 * Read and use image metadata
-* Provide search and filering
+* Provide search and filtering
+
+TODO
+---
+
++ [x] Generate thumbnails and display them
++ [x] Cache thumbnails to disk in app folder
++ [x] Fix thumbnail rotation according to exif tag
++ [ ] Provide RSS/atom feed
++ [ ] Notify discord (webhook?, direct to bot?)
++ [ ] Show author, dates for each item
++ [ ] Attempt to redirect to 'archive' folder for non-existing items
++ [ ] Security: don't go above configured folder
++ [ ] Choose appropriate license
++ [ ] Expose filter by author
++ [ ] Expose sort by date, name
 
 Deployment
 ---
