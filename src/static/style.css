@@ -35,41 +35,44 @@ a:active
 
 .content a
 {
-    display: flex;
-	width: 11em;
-	height: 10em;
+	width: 10em;
+	min-height: 9em;
 	display: flex;
 	padding: 0.5em;
 	flex-direction: column;
-    justify-content: center;
-    align-items: center;
+	justify-content: center;
+	align-items: center;
 	color: black;
 }
 
 .content a span
 {
-    display: flex;
-    flex-grow: 1;
+	display: flex;
+	flex-grow: 1;
 	overflow-wrap: break-word;
 	word-break: break-all;
 	font-size: 0.8em;
 	text-align: center;
 	align-items: center;
-    justify-content: center;
+	justify-content: center;
 }
 
 .content a img
 {
 	width: auto;
 	height: auto;
-	max-height: 9em;
-	max-width: 11em;
+	max-height: 8em;
+	max-width: 10em;
 	display: inline-block;
 }
 
-.big .content a { width: 16em; }
+.content .big a
+{
+	width: 18em;
+	min-height: 14em;
+}
 
-.big .content a img
+.content .big a img
 {
 	max-height: 14em;
 	max-width: 16em;
