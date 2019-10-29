@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block header %}
-    <!-- nav>
+{# % block header %}
+    <nav>
     {% if crumbs %}
         <ul>
         {% for crumb in crumbs %}
@@ -10,14 +10,14 @@
         </ul>
     {% endif %}
     Order by: date, alphabetical, natural
-    </nav-->
-{% endblock %}
+    </nav>
+{% endblock % #}
 
 {% block content %}
     <ul>
         {% if parent %}
         <li>
-            <a href="{{www_prefix}}/{{ parent }}" title="&lt; {{ parent }}">
+            <a href="{{ url_for('index', path=parent) }}" title="&lt; {{ parent }}">
             <span>
             <img src="{{ url_for('static', filename='up.svg') }}" />
             </span>
@@ -26,7 +26,7 @@
         {% endif %}
     {% for item in items %}
         <li>
-        <a href="{{www_prefix}}/{{ item.path }}" title="
+        <a href="{{ url_for('index', path=item.path) }}" title="
         {{- item.name -}}
         {%- if item.mdate %} [{{ item.mdate.strftime("%Y-%m-%d %H:%M:%S") }}]
         {%- endif -%}
@@ -40,7 +40,7 @@
             <img src="{{ url_for('static', filename='folder.svg') }}" />
         {% endif %}
         {% if item.thumb %}
-            <img src="{{ url_for('static', name='thumbnails', filename=item.thumb) }}" />
+            <img src="{{ url_for('static', name='thumbs', filename=item.thumb) }}" />
         {% endif %}
         </span>
 

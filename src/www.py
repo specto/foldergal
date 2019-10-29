@@ -4,7 +4,6 @@ import foldergal
 from sanic import Sanic, response
 from sanic.log import logger
 from sanic.exceptions import NotFound
-
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 # Initialize framework for our app and load config from file
@@ -20,38 +19,39 @@ jinja_env = Environment(
 )
 
 # Have static files served from folder
-app.static('/gallery/static', './src/static', name='static')
-# app.static('/static', './src/static', name='static')
-app.static('/gallery/favicon.ico', './src/static/favicon.ico', name='favicon')
-# app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
+app.static('/static', './src/static')
+app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
 
 # Have thumbnails served from folder
-app.static('/gallery/thumbs', app.config['FOLDER_CACHE'], name='thumbnails')
+app.static('/thumbs', app.config['FOLDER_CACHE'], name='thumbs')
 
 # Initialize our core module and start periodic refresh
 foldergal.configure(app.config)
 app.add_task(foldergal.refresh())
 
 
-def render(template, **kwargs):
+def render(template, *args, **kwargs):
     """ Template render helper """
+    def prefixed_url_for(*args, **kwargs):
+        url = app.url_for(*args, **kwargs)
+        prefix = app.config['WWW_PREFIX']
+        if prefix and url.startswith('/'):
+            return prefix + url
+        return url
+
     template = jinja_env.get_template(template)
-    return template.render(
-        url_for=app.url_for,
-        www_prefix=app.config['WWW_PREFIX'],
-        **kwargs
-    )
+    return template.render(*args, url_for=prefixed_url_for, **kwargs)
 
 
-@app.route("/gallery/rss")
-@app.route("/gallery/atom")
+@app.route("/rss")
+@app.route("/atom")
 async def rss(_):
     return response.text('waaaaa')
 
 
-# This must be the last route
-@app.route("/gallery")
-@app.route("/gallery/<path:path>")
+# These must be the last routes in this order
+@app.route("/<path:path>")
+@app.route("/")
 async def index(req, path=''):
     path = './' + path
     order_by = req.args.get('order_by')
