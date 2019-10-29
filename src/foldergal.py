@@ -72,7 +72,6 @@ async def refresh():
 
 
 THUMB_SIZE = (512, 512)
-EXIF_ORIENTATION = {v: k for k, v in ExifTags.TAGS.items()}.get('Orientation')
 
 
 def path_to_id(path):
@@ -90,17 +89,18 @@ def generate_thumb(path, mtime):
             logger.debug(f'generating thumb for {filename}')
             im = Image.open(path)
             im.thumbnail(THUMB_SIZE, resample=Image.BICUBIC)
-            orientation = im.getexif().get(EXIF_ORIENTATION, 1)
+            exif = {ExifTags.TAGS.get(id, id): tag for id, tag in im.getexif().items()}
+            orientation = exif.get('Orientation', 1)
             if orientation and orientation > 1:
-                # Orientation happens to map directly to transpose 'method' values
-                # 1 - NORMAL: -
-                # 2 - FLIP_HORIZONTAL: flip()
-                # 3 - ROTATE_180: rotate(180)
-                # 4 - FLIP_VERTICAL: rotate(180) flip()
-                # 5 - TRANSPOSE: rotate(90) flip()
-                # 6 - ROTATE_90: rotate(90)
-                # 7 - TRANSVERSE: rotate(-90) flip()
-                # 8 - ROTATE_270: rotate(-90)
+                # Orientation happens to map directly to pillow transpose 'method' values
+                # 1 - 000 NORMAL: -
+                # 2 - 001 FLIP_HORIZONTAL: flip()
+                # 3 - 010 ROTATE_180: rotate(180)
+                # 4 - 011 FLIP_VERTICAL: rotate(180) flip()
+                # 5 - 100 TRANSPOSE: rotate(90) flip()
+                # 6 - 101 ROTATE_90: rotate(90)
+                # 7 - 110 TRANSVERSE: rotate(-90) flip()
+                # 8 - 111 ROTATE_270: rotate(-90)
                 # also see: https://sirv.com/help/resources/rotate-photos-to-be-upright/
                 im = im.transpose(method=orientation - 1)
             im.save(thumb_file)
@@ -177,8 +177,8 @@ async def get_folder_tree(target=None, sub_items=None):
     for name, item in current_folder.items():
         if target and name == target:
             if isinstance(item, dict):
-                return 'folder', item
-            return 'image', name
+                return 'folder', item, {}
+            return 'image', name, {}
         elif isinstance(item, dict):
             deep_item = await get_folder_tree(target, item)
             if deep_item:
