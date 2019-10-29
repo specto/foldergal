@@ -29,14 +29,6 @@ app.static(app.config['WWW_PREFIX'] + '/favicon.ico', './src/static/favicon.ico'
 app.static(app.config['WWW_PREFIX'] + '/thumbs', app.config['FOLDER_CACHE'], name='thumbs')
 
 
-def prefixed_url_for(*args, **kwargs):
-    url = app.url_for(*args, **kwargs)
-    prefix = app.config['WWW_PREFIX']
-    if prefix and url.startswith('/'):
-        return prefix + url
-    return url
-
-
 def render(template, *args, **kwargs):
     """ Template render helper """
     template = jinja_env.get_template(template)
