@@ -22,11 +22,11 @@ jinja_env = Environment(
 )
 
 # Have static files served from folder
-app.static('/static', './src/static')
-app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
+app.static(app.config['WWW_PREFIX'] + '/static', './src/static')
+app.static(app.config['WWW_PREFIX'] + '/favicon.ico', './src/static/favicon.ico', name='favicon')
 
 # Have thumbnails served from folder
-app.static('/thumbs', app.config['FOLDER_CACHE'], name='thumbs')
+app.static(app.config['WWW_PREFIX'] + '/thumbs', app.config['FOLDER_CACHE'], name='thumbs')
 
 
 def prefixed_url_for(*args, **kwargs):
@@ -44,15 +44,15 @@ def render(template, *args, **kwargs):
     return template.render(*args, url_for=prefixed_url_for, **kwargs)
 
 
-@app.route("/rss")
-@app.route("/atom")
+@app.route(app.config['WWW_PREFIX'] + "/rss")
+@app.route(app.config['WWW_PREFIX'] + "/atom")
 async def rss(_):
     return response.text('waaaaa')
 
 
 # These must be the last routes in this order
-@app.route("/<path:path>")
-@app.route("/")
+@app.route(app.config['WWW_PREFIX'] + "/<path:path>")
+@app.route(app.config['WWW_PREFIX'] + "/")
 async def index(req, path=''):
     path = './' + path
     order_by = req.args.get('order_by')
