@@ -41,7 +41,7 @@ a:active
 .content a
 {
 	width: 10em;
-	min-height: 9em;
+	min-height: 7em;
 	display: flex;
 	padding: 0.5em;
 	flex-direction: column;
@@ -78,15 +78,16 @@ a:active
 .content .author {
 	position: absolute;
 	right: 0;
-	bottom: 1.5em;
+	bottom: 20%;
 	display: inline-block;
-	background: #4E5363;
+	background: rgba(78, 83, 99, 0.6);
 	color: white;
 	padding: 0.25em 0.5em;
 	border-radius: 0.5em 0 0 0.5em;
 	border: solid 1px #7B839C;
 	border-right-style: none;
 	font-size: 0.9em;
+	font-weight: bold;
 }
 
 .content .big a
