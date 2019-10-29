@@ -10,8 +10,8 @@ from PIL import Image, ExifTags
 CONFIG = {}
 files = {}
 authors = {
-    1001: {'name': 'vivo', 'uid': 1001},
-    1002: {'name': 'andrey', 'uid': 1002},
+    1001: {'name': 'vivok', 'uid': 1001},
+    1002: {'name': 'tihman', 'uid': 1002},
     1003: {'name': 'pes', 'uid': 1003},
 }
 
