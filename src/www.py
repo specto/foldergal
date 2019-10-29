@@ -1,6 +1,9 @@
-import logging
-import os
 import foldergal
+import os
+from signal import signal, SIGINT
+import logging
+import asyncio
+import uvloop
 from sanic import Sanic, response
 from sanic.log import logger
 from sanic.exceptions import NotFound
@@ -25,19 +28,17 @@ app.static('/favicon.ico', './src/static/favicon.ico', name='favicon')
 # Have thumbnails served from folder
 app.static('/thumbs', app.config['FOLDER_CACHE'], name='thumbs')
 
-# Initialize our core module and start periodic refresh
-foldergal.configure(app.config)
-app.add_task(foldergal.refresh())
+
+def prefixed_url_for(*args, **kwargs):
+    url = app.url_for(*args, **kwargs)
+    prefix = app.config['WWW_PREFIX']
+    if prefix and url.startswith('/'):
+        return prefix + url
+    return url
 
 
 def render(template, *args, **kwargs):
     """ Template render helper """
-    def prefixed_url_for(*args, **kwargs):
-        url = app.url_for(*args, **kwargs)
-        prefix = app.config['WWW_PREFIX']
-        if prefix and url.startswith('/'):
-            return prefix + url
-        return url
 
     template = jinja_env.get_template(template)
     return template.render(*args, url_for=prefixed_url_for, **kwargs)
@@ -73,8 +74,8 @@ async def index(req, path=''):
 
 
 @app.listener("before_server_stop")
-async def on_shutdown(app, loop):
-    print('shutting down...')
+async def on_shutdown(*_):
+    logger.info('Shutting down...')
     logging.shutdown()
 
 
@@ -96,11 +97,39 @@ app.error_handler.add(Exception, server_error_handler)
 
 if __name__ == "__main__":
     logger.info(f'Starting server v{app.config["VERSION"]}')
-    app.run(
+    asyncio.set_event_loop(uvloop.new_event_loop())
+    serv_coro = app.create_server(
         host=app.config["HOST"],
         port=app.config["PORT"],
         debug=app.config["DEBUG"],
         access_log=app.config["DEBUG"],
-        workers=app.config["WORKERS"],
-        auto_reload=False,
+        return_asyncio_server=True,
     )
+    loop = asyncio.get_event_loop()
+    serv_task = asyncio.ensure_future(serv_coro, loop=loop)
+    signal(SIGINT, lambda s, f: loop.stop())
+    server = loop.run_until_complete(serv_task)
+    server.after_start()
+
+    # Initialize our core module and start periodic refresh
+    foldergal.configure(app.config)
+    refresh_task = loop.create_task(foldergal.refresh())
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt as e:
+        loop.stop()
+    finally:
+        server.before_stop()
+
+        # Stop the periodic refresh
+        refresh_task.cancel()
+
+        # Wait for server to close
+        close_task = server.close()
+        loop.run_until_complete(close_task)
+
+        # Complete all tasks on the loop
+        for connection in server.connections:
+            connection.close_if_idle()
+        server.after_stop()
