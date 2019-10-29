@@ -44,11 +44,10 @@
         {% endif %}
         </span>
 
-        <span>{{ item.name }}
-        {% if item.author %}
-            [{{ item.author }}]
-        {% endif %}
-        </span>
+        <span>{{ item.name }}</span>
+        <span>{% if item.author -%}
+            [{{ item.author.name if item.author.name else item.author.uid }}]
+        {%- endif %}</span>
 
 
 

@@ -9,7 +9,11 @@ from PIL import Image, ExifTags
 
 CONFIG = {}
 files = {}
-
+authors = {
+    1001: {'name': 'vivo', 'uid': 1001},
+    1002: {'name': 'andrey', 'uid': 1002},
+    1003: {'name': 'pes', 'uid': 1003},
+}
 
 def configure(config):
     global CONFIG
@@ -120,7 +124,6 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 type='folder',
                 name=child.name,
                 parent=path,
-                author=stat.st_uid,
                 cdate=datetime.fromtimestamp(stat.st_ctime),
                 mdate=datetime.fromtimestamp(stat.st_mtime),
             ))
@@ -130,7 +133,7 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 type='image',
                 name=child.name,
                 parent=path,
-                author=stat.st_uid,
+                author=authors.get(stat.st_uid, {'uid': stat.st_uid}),
                 cdate=datetime.fromtimestamp(stat.st_ctime),
                 mdate=datetime.fromtimestamp(stat.st_mtime),
                 thumb=thumb,
