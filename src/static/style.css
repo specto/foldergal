@@ -48,6 +48,7 @@ a:active
 	justify-content: center;
 	align-items: center;
 	color: black;
+	position: relative;
 }
 
 .content a span
@@ -69,6 +70,14 @@ a:active
 	max-height: 8em;
 	max-width: 10em;
 	display: inline-block;
+}
+
+.content .author {
+	position: absolute;
+	right: 10px;
+	bottom: 10px;
+	display: inline-block;
+	background: hsl(123,34%,34%);
 }
 
 .content .big a
