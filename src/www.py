@@ -63,6 +63,11 @@ async def index(req, path=''):
         order_by=order_by
     ))
 
+if app.config['WWW_PREFIX'] and app.config['WWW_PREFIX'] != '':
+    @app.route('/')
+    async def gohome(req):
+        return response.redirect(app.config['WWW_PREFIX'])
+
 
 @app.listener("before_server_stop")
 async def on_shutdown(*_):
