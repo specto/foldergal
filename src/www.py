@@ -39,9 +39,8 @@ def prefixed_url_for(*args, **kwargs):
 
 def render(template, *args, **kwargs):
     """ Template render helper """
-
     template = jinja_env.get_template(template)
-    return template.render(*args, url_for=prefixed_url_for, **kwargs)
+    return template.render(*args, url_for=app.url_for, **kwargs)
 
 
 @app.route(app.config['WWW_PREFIX'] + "/rss")
