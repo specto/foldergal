@@ -3,7 +3,7 @@ body { font-family: sans-serif; }
 a
 {
 	text-decoration: none;
-	border-radius: 1em;
+	border-radius: 0.5em;
 }
 
 a:hover { background-color: #F8F5D6; }
@@ -30,29 +30,41 @@ a:active
 	padding: 0;
 	margin: 0;
 	list-style: none;
+	align-items: center;
 }
 
 .content a
 {
-	width: 8em;
+    display: flex;
+	width: 11em;
+	height: 10em;
 	display: flex;
 	padding: 0.5em;
-	text-align: center;
 	flex-direction: column;
+    justify-content: center;
+    align-items: center;
+	color: black;
 }
 
 .content a span
 {
+    display: flex;
+    flex-grow: 1;
 	overflow-wrap: break-word;
 	word-break: break-all;
+	font-size: 0.8em;
+	text-align: center;
+	align-items: center;
+    justify-content: center;
 }
 
 .content a img
 {
 	width: auto;
 	height: auto;
-	max-height: 7em;
-	max-width: 8em;
+	max-height: 9em;
+	max-width: 11em;
+	display: inline-block;
 }
 
 .big .content a { width: 16em; }

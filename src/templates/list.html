@@ -17,40 +17,41 @@
     <ul>
         {% if parent %}
         <li>
-            <a href="{{www_prefix}}/{{ parent }}" tabindex='0'>
+            <a href="{{www_prefix}}/{{ parent }}" title="&lt; {{ parent }}">
             <span>
-            <img valign="middle" src="{{ url_for('static', filename='up.svg') }}" />
+            <img src="{{ url_for('static', filename='up.svg') }}" />
             </span>
             <span>..</span></a>
         </li>
         {% endif %}
     {% for item in items %}
         <li>
-        <a href="{{www_prefix}}/{{ item.path }}" tabindex='0'>
+        <a href="{{www_prefix}}/{{ item.path }}" title="
+        {{- item.name -}}
+        {%- if item.mdate %} [{{ item.mdate.strftime("%Y-%m-%d %H:%M:%S") }}]
+        {%- endif -%}
+        {%- if item.cdate != item.mdate -%}
+        *
+        {%- endif -%}
+        ">
 
         <span>
         {% if item.type == 'folder' %}
-            <img valign="middle" src="{{ url_for('static', filename='folder.svg') }}" />
+            <img src="{{ url_for('static', filename='folder.svg') }}" />
         {% endif %}
         {% if item.thumb %}
             <img src="{{ url_for('static', name='thumbnails', filename=item.thumb) }}" />
         {% endif %}
         </span>
 
-        <span>{{ item.name }}</span>
-
+        <span>{{ item.name }}
         {% if item.author %}
-            <span>[{{ item.author }}]</span>
+            [{{ item.author }}]
         {% endif %}
-
-        <span>
-        {%- if item.mdate -%}
-        {{ item.mdate.strftime("%Y-%m-%d") }}
-        {%- endif -%}
-        {%- if item.cdate != item.mdate -%}
-        *
-        {%- endif -%}
         </span>
+
+
+
         </a>
         </li>
     {% endfor %}
