@@ -5,7 +5,7 @@ from typing import NamedTuple, Sequence
 from sanic.exceptions import ServerError
 from sanic.log import logger
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ExifTags
 
 CONFIG = {}
 files = {}
@@ -68,6 +68,7 @@ async def refresh():
 
 
 THUMB_SIZE = (512, 512)
+EXIF_ORIENTATION = {v: k for k, v in ExifTags.TAGS.items()}.get('Orientation')
 
 
 def path_to_id(path):
@@ -84,7 +85,20 @@ def generate_thumb(path, mtime):
         try:
             logger.debug(f'generating thumb for {filename}')
             im = Image.open(path)
-            im.thumbnail(THUMB_SIZE)
+            im.thumbnail(THUMB_SIZE, resample=Image.BICUBIC)
+            orientation = im.getexif().get(EXIF_ORIENTATION, 1)
+            if orientation and orientation > 1:
+                # Orientation happens to map directly to transpose 'method' values
+                # 1 - NORMAL: -
+                # 2 - FLIP_HORIZONTAL: flip()
+                # 3 - ROTATE_180: rotate(180)
+                # 4 - FLIP_VERTICAL: rotate(180) flip()
+                # 5 - TRANSPOSE: rotate(90) flip()
+                # 6 - ROTATE_90: rotate(90)
+                # 7 - TRANSVERSE: rotate(-90) flip()
+                # 8 - ROTATE_270: rotate(-90)
+                # also see: https://sirv.com/help/resources/rotate-photos-to-be-upright/
+                im = im.transpose(method=orientation - 1)
             im.save(thumb_file)
         except Exception as e:
             logger.error(e)
