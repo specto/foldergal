@@ -30,12 +30,15 @@ TODO
 Deployment
 ---
 
+1. Check config params in `foldergal.cfg`
+  * add www path prefix if needed
+  * set target folder root
 1. Run with internal server:
    `python src/www.py &> log/foldergal.log`
 1. [optional] Put behind nginx
    ```
-    location /gallery {
-      proxy_pass http://127.0.0.1:5000/gallery;
+    location /www-prefix/ {
+      proxy_pass http://127.0.0.1:5000/www-prefix/;
       proxy_set_header Host $host;
     }
    ```
