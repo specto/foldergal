@@ -32,7 +32,8 @@ app.static(app.config['WWW_PREFIX'] + '/thumbs', app.config['FOLDER_CACHE'], nam
 def render(template, *args, **kwargs):
     """ Template render helper """
     template = jinja_env.get_template(template)
-    return template.render(*args, url_for=app.url_for, **kwargs)
+    return template.render(
+        *args, url_for=app.url_for, version=app.config['VERSION'], **kwargs)
 
 
 @app.route(app.config['WWW_PREFIX'] + "/rss")

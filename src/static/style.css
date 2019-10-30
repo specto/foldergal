@@ -51,6 +51,19 @@ body > header a:first-child::after,
 body > header a:last-child::after { content: ''; }
 body > header a:only-child::after { padding: 0; }
 
+body > footer
+{
+    margin: 2em 1em;
+    padding-top: 0.5em;
+	color: gray;
+	font-size: 0.8em;
+	text-align: right;
+}
+body > footer::before {
+    content: '…(˶‾᷄ ⁻̫ ‾᷅˵)…';
+    display: block;
+}
+
 .content ul
 {
 	display: flex;
