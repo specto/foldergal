@@ -180,14 +180,16 @@ async def get_file(path):
 async def get_parent(path='./'):
     return Path(path).parent if path != './' else ''
 
+async def get_current(path='./'):
+    return Path(path).name if path != './' else '#:\>'
 
-def get_breadcrumbs(path):
-    current = Path(path)
-    if current.parent == current.root:
-        return None
-    return [('/', '/')] + [(str(p[0]) + '/' + p[1], p[1])
-                           for p in zip(reversed(current.parent.parents),
-                                        current.parent.parts)]
+async def get_breadcrumbs(path=None):
+    if not path or path == './':
+        return []
+    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
+    location = root_path.joinpath(path).resolve()
+    location = location.relative_to(root_path)
+    return list(reversed([l for l in location.parents if l.name])) + [location]
 
 
 async def get_folder_tree(target=None, sub_items=None):

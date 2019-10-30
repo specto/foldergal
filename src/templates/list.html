@@ -1,17 +1,14 @@
 {% extends 'base.html' %}
 
-{# % block header %}
-    <nav>
-    {% if crumbs %}
-        <ul>
-        {% for crumb in crumbs %}
-        <li>{{ crumb }}</li>
-        {% endfor %}
-        </ul>
-    {% endif %}
-    Order by: date, alphabetical, natural
-    </nav>
-{% endblock % #}
+{% block title %}{{ title }}{% endblock %}
+
+{% block heading -%}
+    <a href="{{ url_for('index', path='./') }}">#:\</a>
+    {%- for part in crumbs -%}
+    <a href="{{ url_for('index', path=part.as_posix()) }}">{{ part.name }}</a>
+    {%- endfor -%}
+     &gt;
+{%- endblock %}
 
 {% block content %}
     <ul>

@@ -11,6 +11,7 @@ Features
 * Use file system owners as authors
 * Read and use image metadata
 * Provide search and filtering
+* Subfolder path navigation
 
 TODO
 ---

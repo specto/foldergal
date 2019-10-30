@@ -3,18 +3,18 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}{% endblock %} - Foldergal</title>
+    <title>{% block title %}foldergal{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
     <link rel="shortcut icon" href="{{ url_for('static', name='favicon') }}" />
 </head>
 <body>
+    <header>
     <nav>
-      <h1>{% block heading %}{% if heading %}{{ heading }}{% else %}Foldergal{% endif %}{% endblock %}</h1>
+      <h1>{% block heading %}{% if heading %}{{ heading }}{% else %}foldergal{% endif %}{% endblock %}</h1>
     </nav>
-    <section class="content">
-      <header>
         {% block header %}{% endblock %}
-      </header>
+    </header>
+    <section class="content">
         {% block content %}{% endblock %}
     </section>
 </body>

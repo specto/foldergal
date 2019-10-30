@@ -58,9 +58,9 @@ async def index(req, path=''):
         'list.html',
         items=items,
         parent=await foldergal.get_parent(path),
-        heading=path,
-        crumbs=foldergal.get_breadcrumbs(path),
-        order_by=order_by
+        title=await foldergal.get_current(path),
+        crumbs=await foldergal.get_breadcrumbs(path),
+        order_by=order_by,
     ))
 
 if app.config['WWW_PREFIX'] and app.config['WWW_PREFIX'] != '':
