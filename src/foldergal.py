@@ -6,6 +6,7 @@ from sanic.exceptions import ServerError
 from sanic.log import logger
 from pathlib import Path
 from PIL import Image, ExifTags
+from natsort import natsorted
 
 CONFIG = {}
 files = {}
@@ -161,8 +162,8 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
         def sorter(i):
             return i.name.lower()
     if desc:
-        return list(reversed(sorted(result, key=sorter)))
-    return sorted(result, key=sorter)
+        return list(reversed(natsorted(result, key=sorter)))
+    return natsorted(result, key=sorter)
 
 
 async def get_file(path):

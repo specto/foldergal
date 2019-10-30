@@ -1,3 +1,4 @@
 sanic
 jinja2
 Pillow
+natsort

@@ -18,11 +18,12 @@ TODO
 + [x] Generate thumbnails and display them
 + [x] Cache thumbnails to disk in app folder
 + [x] Fix thumbnail rotation according to exif tag
++ [x] Security: don't go above configured folder
++ [x] Name sort with natural digit order
 + [ ] Provide RSS/atom feed
 + [ ] Notify discord (webhook?, direct to bot?)
 + [ ] Show author, dates for each item
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
-+ [x] Security: don't go above configured folder
 + [ ] Choose appropriate license
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
