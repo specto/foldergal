@@ -14,7 +14,7 @@
     <ul>
         {% if parent %}
         <li>
-            <a class="title-container" href="{{ url_for('index', path=parent) }}" title="&lt; {{ parent }}">
+            <a class="title-container folder" href="{{ url_for('index', path=parent) }}" title="&lt; {{ parent }}">
             <span><img src="{{ url_for('static', filename='up.svg') }}" /></span>
             <span class="title clear">..</span>
             </a>
@@ -22,9 +22,7 @@
         {% endif %}
     {% for item in items %}
         <li>
-        <a class="author-container title-container {% if item.type == 'image' -%}
-            media
-        {%- endif %}"
+        <a class="author-container title-container {{ 'media' if item.type == 'image' else 'folder' }}"
             href="{{ url_for('index', path=item.path) }}"
             title="
         {{- item.name -}}

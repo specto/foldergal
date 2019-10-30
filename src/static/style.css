@@ -53,15 +53,17 @@ body > header a:only-child::after { padding: 0; }
 
 body > footer
 {
-    margin: 2em 1em;
-    padding-top: 0.5em;
+	margin: 2em 1em;
+	padding-top: 0.5em;
 	color: gray;
 	font-size: 0.8em;
 	text-align: right;
 }
-body > footer::before {
-    content: '…(˶‾᷄ ⁻̫ ‾᷅˵)…';
-    display: block;
+
+body > footer::before
+{
+	content: '…(˶‾᷄ ⁻̫ ‾᷅˵)…';
+	display: block;
 }
 
 .content ul
@@ -115,6 +117,8 @@ body > footer::before {
 	display: inline-block;
 }
 
+/* A fix for firefox... */
+.content a img[src*=".svg"] { width: 8em; }
 .content .author-container, .content .title-container { position: relative; }
 
 .content .author,
