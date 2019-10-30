@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from typing import NamedTuple, Sequence
 
@@ -16,6 +15,7 @@ authors = {
     1003: {'name': 'pes', 'uid': 1003},
 }
 
+
 def configure(config):
     global CONFIG
     CONFIG['FOLDER_ROOT'] = config['FOLDER_ROOT']
@@ -31,7 +31,7 @@ def normalize_path(p):
 class FolderItem(NamedTuple):
     name: str = ''
     type: str = ''
-    author: str = ''
+    author: dict = {}
     thumb: str = ''
     parent: str = ''
     cdate: datetime = datetime.now()
@@ -62,14 +62,26 @@ async def scan(folder):
     return contents
 
 
-async def refresh():
+def find_first_new(dict_a: dict, dict_b: dict) -> str:
+    for k in dict_a.keys():
+        if k not in dict_b:
+            return k
+        elif isinstance(dict_a[k], dict) and isinstance(dict_b[k], dict):
+            subdiff = find_first_new(dict_a[k], dict_b[k])
+            if subdiff:
+                return subdiff
+
+
+async def scan_for_updates():
     global files
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
-    while True:
-        logger.debug('Refreshing...')
-        files = await scan(CONFIG['FOLDER_ROOT'])
-        await asyncio.sleep(CONFIG['RESCAN_SECONDS'])
+    logger.debug('Scanning for updated files...')
+    new_files = await scan(CONFIG['FOLDER_ROOT'])
+    diff = find_first_new(new_files, files)
+    result = diff if files and diff else ''
+    files = new_files
+    return result
 
 
 THUMB_SIZE = (512, 512)
@@ -96,7 +108,7 @@ def generate_thumb(path, mtime):
             logger.debug(f'generating thumb for {filename}')
             im = Image.open(path)
             im.thumbnail(THUMB_SIZE, resample=Image.BICUBIC)
-            exif = {ExifTags.TAGS.get(id, id): tag for id, tag in im.getexif().items()}
+            exif = {ExifTags.TAGS.get(i, i): tag for i, tag in im.getexif().items()}
             orientation = exif.get('Orientation', 1)
             if orientation and orientation > 1:
                 # Orientation happens to map directly to pillow transpose 'method' values
@@ -180,8 +192,10 @@ async def get_file(path):
 async def get_parent(path='./'):
     return Path(path).parent if path != './' else ''
 
+
 async def get_current(path='./'):
-    return Path(path).name if path != './' else '#:\>'
+    return Path(path).name if path != './' else '#:\\>'
+
 
 async def get_breadcrumbs(path=None):
     if not path or path == './':

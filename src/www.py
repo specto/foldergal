@@ -4,6 +4,8 @@ from signal import signal, SIGINT
 import logging
 import asyncio
 import uvloop
+import requests
+from urllib.parse import quote
 from sanic import Sanic, response
 from sanic.log import logger
 from sanic.exceptions import NotFound
@@ -66,7 +68,7 @@ async def index(req, path=''):
 
 if app.config['WWW_PREFIX'] and app.config['WWW_PREFIX'] != '':
     @app.route('/')
-    async def gohome(req):
+    async def gohome(_):
         return response.redirect(app.config['WWW_PREFIX'])
 
 
@@ -92,6 +94,33 @@ async def server_error_handler(_, exception):
 
 app.error_handler.add(Exception, server_error_handler)
 
+
+async def refresh():
+    while True:
+        discord_url = app.config.get('DISCORD_WEBHOOK')
+        updates = await foldergal.scan_for_updates()
+        if updates and discord_url:
+            try:
+                file = await foldergal.get_file(updates)
+                if not file.is_dir():
+                    file = await foldergal.get_parent(file)
+                url = app.url_for('index',
+                                  path=quote(foldergal.normalize_path(file)),
+                                  _external=True)
+                req = requests.post(
+                    discord_url,
+                    json={
+                        'content': 'New item posted at: ' + url,
+                        'username': 'gallery',
+                    }
+                )
+                req.raise_for_status()
+            except Exception as err:
+                logger.error(err)
+
+        await asyncio.sleep(app.config['RESCAN_SECONDS'])
+
+
 if __name__ == "__main__":
     logger.info(f'Starting server v{app.config["VERSION"]}')
     asyncio.set_event_loop(uvloop.new_event_loop())
@@ -110,7 +139,7 @@ if __name__ == "__main__":
 
     # Initialize our core module and start periodic refresh
     foldergal.configure(app.config)
-    refresh_task = loop.create_task(foldergal.refresh())
+    refresh_task = loop.create_task(refresh())
 
     try:
         loop.run_forever()

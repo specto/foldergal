@@ -21,8 +21,8 @@ TODO
 + [x] Fix thumbnail rotation according to exif tag
 + [x] Security: don't go above configured folder
 + [x] Name sort with natural digit order
++ [x] Notify discord (webhook!, direct to bot?)
 + [ ] Provide RSS/atom feed
-+ [ ] Notify discord (webhook?, direct to bot?)
 + [ ] Show author, dates for each item
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
 + [ ] Choose appropriate license
