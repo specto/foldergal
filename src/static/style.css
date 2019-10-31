@@ -146,21 +146,27 @@ body > footer::before
 .content .title
 {
 	left: 0;
-	width: 10.4em;
+	padding-right: 0.4em;
 	padding-left: 0.4em;
-	padding-right: 3em;
+	width: 13em;
 	background: rgba(0, 0, 0, 0.6);
 	border-radius: 0 0 0.5em 0.5em;
 	text-align: left;
 	z-index: 5;
 }
 
-.content .title.clear
+.content .author-container .title
+{
+	width: 10.4em;
+	padding-right: 3em;
+}
+
+.content .folder .title
 {
 	background: none;
 	color: black;
 	text-align: center;
-	padding: 0;
+	padding: 0.4em 0 0.4em 0;
 	width: 13.5em;
 }
 

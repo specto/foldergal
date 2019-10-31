@@ -8,7 +8,7 @@ Features
 
 * Cache file listing
 * Periodic file listing refresh
-* Use file system owners as authors
+* Use file system owners as authors, optional
 * Read and use image metadata
 * Provide search and filtering
 * Subfolder path navigation
@@ -22,8 +22,8 @@ TODO
 + [x] Security: don't go above configured folder
 + [x] Name sort with natural digit order
 + [x] Notify discord (webhook!, direct to bot?)
++ [x] Show author, dates for each item
 + [ ] Provide RSS/atom feed
-+ [ ] Show author, dates for each item
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
 + [ ] Choose appropriate license
 + [ ] Expose filter by author

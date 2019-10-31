@@ -59,6 +59,7 @@ async def index(req, path=''):
     # we are looking at a folder
     return response.html(render(
         'list.html',
+        show_authors=True if app.config.get('AUTHORS', {}) else False,
         items=items,
         parent=await foldergal.get_parent(path),
         title=await foldergal.get_current(path),
@@ -122,7 +123,8 @@ async def refresh():
 
 
 if __name__ == "__main__":
-    logger.info(f'Starting server v{app.config["VERSION"]}')
+    logger.info(f'Starting @ {app.config.get("SERVER_NAME", "UNSPECIFIED SERVER")} '
+                f'v{app.config["VERSION"]}')
     asyncio.set_event_loop(uvloop.new_event_loop())
     serv_coro = app.create_server(
         host=app.config["HOST"],

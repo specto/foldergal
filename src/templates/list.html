@@ -22,18 +22,20 @@
         {% endif %}
     {% for item in items %}
         <li>
-        <a class="author-container title-container {{ 'media' if item.type == 'image' else 'folder' }}"
+        <a class="title-container
+            {{- ' media' if item.type == 'image' else ' folder' -}}
+            {{- ' author-container' if show_authors else '' -}}"
             href="{{ url_for('index', path=item.path) }}"
             title="
-        {{- item.name -}}
-        {%- if item.mdate %} [{{ item.mdate.strftime("%Y-%m-%d %H:%M:%S") }}]
-        {%- endif -%}
-        {%- if item.cdate != item.mdate -%}
-        *
-        {%- endif -%}
-        ">
+            {{- item.name -}}
+            {%- if item.mdate %} [{{ item.mdate.strftime("%Y-%m-%d %H:%M:%S") }}]
+            {%- endif -%}
+            {%- if item.cdate != item.mdate -%}
+            *
+            {%- endif -%}">
 
         <span>
+        {% if show_authors %}
         {% if item.author %}
             {% set author = item.author.name if item.author.name else item.author.uid %}
             <span class="author" title="by {{ author}}">
@@ -42,13 +44,14 @@
         {% else %}
             <span class="author">&nbsp;</span>
         {% endif %}
+        {% endif %}
         {% if item.type == 'folder' %}
             <img src="{{ url_for('static', filename='folder.svg') }}" />
-            <span class="title clear" title="{{ item.name }}">{{ item.name }}</span>
+            <span class="title">{{ item.name }}</span>
         {% endif %}
         {% if item.thumb %}
             <img src="{{ url_for('static', name='thumbs', filename=item.thumb) }}" />
-            <span class="title" title="{{ item.name }}">{{ item.name }}</span>
+            <span class="title">{{ item.name }}</span>
         {% endif %}
         </span>
 

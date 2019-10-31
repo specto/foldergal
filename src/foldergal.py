@@ -8,20 +8,17 @@ from PIL import Image, ExifTags
 from natsort import natsorted
 
 CONFIG = {}
-files = {}
-authors = {
-    1001: {'name': 'vivok', 'uid': 1001},
-    1002: {'name': 'tihman', 'uid': 1002},
-    1003: {'name': 'pes', 'uid': 1003},
-}
+FILES = {}
+AUTHORS = {}
 
 
 def configure(config):
-    global CONFIG
+    global CONFIG, AUTHORS
     CONFIG['FOLDER_ROOT'] = config['FOLDER_ROOT']
     CONFIG['RESCAN_SECONDS'] = config['RESCAN_SECONDS']
     CONFIG['TARGET_EXT'] = config['TARGET_EXT']
     CONFIG['FOLDER_CACHE'] = config['FOLDER_CACHE']
+    AUTHORS = config.get('AUTHORS', {})
 
 
 def normalize_path(p):
@@ -73,14 +70,14 @@ def find_first_new(dict_a: dict, dict_b: dict) -> str:
 
 
 async def scan_for_updates():
-    global files
+    global FILES
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
     logger.debug('Scanning for updated files...')
     new_files = await scan(CONFIG['FOLDER_ROOT'])
-    diff = find_first_new(new_files, files)
-    result = diff if files and diff else ''
-    files = new_files
+    diff = find_first_new(new_files, FILES)
+    result = diff if FILES and diff else ''
+    FILES = new_files
     return result
 
 
@@ -158,7 +155,7 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 type='image',
                 name=child.name,
                 parent=path,
-                author=authors.get(stat.st_uid, {'uid': stat.st_uid}),
+                author=AUTHORS.get(stat.st_uid, {'uid': stat.st_uid}),
                 cdate=datetime.fromtimestamp(stat.st_ctime),
                 mdate=datetime.fromtimestamp(stat.st_mtime),
                 thumb=thumb,
@@ -208,8 +205,8 @@ async def get_breadcrumbs(path=None):
 
 async def get_folder_tree(target=None, sub_items=None):
     if target == './':
-        return 'folder', files.keys()
-    current_folder = sub_items if sub_items else files
+        return 'folder', FILES.keys()
+    current_folder = sub_items if sub_items else FILES
     for name, item in current_folder.items():
         if target and name == target:
             if isinstance(item, dict):
