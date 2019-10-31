@@ -25,7 +25,6 @@ TODO
 + [x] Show author, dates for each item
 + [ ] Provide RSS/atom feed
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
-+ [ ] Choose appropriate license
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
 
