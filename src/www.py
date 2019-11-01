@@ -5,6 +5,7 @@ import logging
 import asyncio
 import uvloop
 import requests
+import json
 from urllib.parse import quote
 from sanic import Sanic, response
 from sanic.log import logger
@@ -41,7 +42,9 @@ def render(template, *args, **kwargs):
 @app.route(app.config['WWW_PREFIX'] + "/rss")
 @app.route(app.config['WWW_PREFIX'] + "/atom")
 async def rss(_):
-    return response.text('waaaaa')
+    return response.text(json.dumps(
+        await foldergal.get_file_list(3),
+        sort_keys=True, indent=2, default=str))
 
 
 # These must be the last routes in this order

@@ -218,6 +218,31 @@ async def get_breadcrumbs(path=None):
     return list(reversed([l for l in location.parents if l.name])) + [location]
 
 
+async def get_file_tree() -> Sequence[Union[Mapping, Sequence]]:
+
+    def _dict_keys_to_list(d: Mapping):
+        return [_dict_keys_to_list(val)
+                if isinstance(val, Mapping) else val._asdict()
+                for key, val in d.items()]
+    return _dict_keys_to_list(FILES)
+
+
+async def get_file_list(limit=0) -> Sequence[Mapping]:
+    rez = []
+
+    def _flatten(seq):
+        nonlocal rez
+        for i in seq:
+            print(len(rez))
+            if isinstance(i, Mapping):
+                rez += [i]
+            else:
+                rez += _flatten(i)
+
+    _flatten(await get_file_tree())
+    return list(reversed(sorted(rez, key=lambda o: o['cdate'])))
+
+
 async def get_folder_tree(target=None, sub_items=None):
     if target == './':
         return 'folder', FILES.keys()
