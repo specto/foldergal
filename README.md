@@ -2,6 +2,9 @@ Web Gallery from Folders
 ===
 
 A web server that displays folders of images.
+Useful if you want to share for example a network folder 
+that you put media files to.
+
 
 Features
 ---

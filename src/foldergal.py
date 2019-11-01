@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Sequence, Mapping, Union, Iterator
 
 from sanic.exceptions import ServerError
 from sanic.log import logger
@@ -26,11 +26,13 @@ def normalize_path(p):
 
 
 class FolderItem(NamedTuple):
+    id: str = ''
     name: str = ''
     type: str = ''
     author: dict = {}
     thumb: str = ''
     parent: str = ''
+    full_path: str = ''
     cdate: datetime = datetime.now()
     mdate: datetime = datetime.now()
 
@@ -42,20 +44,29 @@ class FolderItem(NamedTuple):
         return f'<{self.type.upper()} {self.parent}/{self.name}>'
 
 
-async def scan(folder):
-    contents = {}
-    root = Path(folder)
-    if not root.exists():
-        logger.error(f'Folder not found "{root}"')
-        return contents
+def get_file_meta(fid: str, file: Path) -> FolderItem:
+    stat = file.stat()
+    return FolderItem(
+        id=fid,
+        type='image',
+        name=file.name,
+        full_path=file.resolve().as_posix(),
+        author=AUTHORS.get(stat.st_uid, {'uid': stat.st_uid}),
+        cdate=datetime.fromtimestamp(stat.st_ctime),
+        mdate=datetime.fromtimestamp(stat.st_mtime),
+    )
 
-    for child in root.iterdir():
+
+async def scan(folder: Path) -> dict:
+    contents = {}
+    for child in folder.iterdir():
+        path_key = normalize_path(child)
         if child.is_dir():
             sub_contents = await scan(child)
             if sub_contents:
-                contents[normalize_path(child)] = sub_contents
+                contents[path_key] = sub_contents
         elif child.suffix.lower() in CONFIG['TARGET_EXT']:
-            contents[normalize_path(child)] = child.name
+            contents[path_key] = get_file_meta(path_key, child)
     return contents
 
 
@@ -69,13 +80,17 @@ def find_first_new(dict_a: dict, dict_b: dict) -> str:
                 return subdiff
 
 
-async def scan_for_updates():
+async def scan_for_updates() -> str:
     global FILES
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
     logger.debug('Scanning for updated files...')
-    new_files = await scan(CONFIG['FOLDER_ROOT'])
-    diff = find_first_new(new_files, FILES)
+    try:
+        new_files = await scan(Path(CONFIG['FOLDER_ROOT']))
+        diff = find_first_new(new_files, FILES)
+    except Exception as e:
+        logger.error(e)
+        return ''
     result = diff if FILES and diff else ''
     FILES = new_files
     return result
@@ -84,11 +99,11 @@ async def scan_for_updates():
 THUMB_SIZE = (512, 512)
 
 
-def path_to_id(path):
+def path_to_id(path: Union[Path, str]) -> str:
     return str(path).replace('/', '_')
 
 
-def generate_thumb(path, mtime):
+def generate_thumb(path, mtime) -> str:
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
     filename = path_to_id(path)
@@ -209,10 +224,10 @@ async def get_folder_tree(target=None, sub_items=None):
     current_folder = sub_items if sub_items else FILES
     for name, item in current_folder.items():
         if target and name == target:
-            if isinstance(item, dict):
+            if isinstance(item, Mapping):
                 return 'folder', item, {}
             return 'image', name, {}
-        elif isinstance(item, dict):
+        elif isinstance(item, Mapping):
             deep_item = await get_folder_tree(target, item)
             if deep_item:
                 return deep_item
