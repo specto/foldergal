@@ -31,12 +31,28 @@ TODO
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
 
+
 Deployment
 ---
 
+### Prerequisites
+
+* python 3.6+
+* pip
+
+1. `pip install -r requirements.txt` (maybe in virtual env)
 1. Check config params in `foldergal.cfg`
-  * add www path prefix if needed
-  * set target folder root
+   - set target `FOLDER_ROOT` to the directory you will be serving files from
+   - set `FOLDER_CACHE` to the directory where you want to store 
+     the generated thumbnails, default is `cache` in the project
+   - set `WWW_PREFIX` if you need to run it in subfolder, 
+     e.g. for http://localhost/gallery/ use `WWW_PREFIX='gallery'`
+   - `SERVER_NAME` is important when you use `DISCORD_WEBHOOK`
+   - `AUTHORS` is used to map user ids from the file system to names and 
+     then to show the user names. Don't set it if you don't need authors.
+   - `TARGET_EXT` are the file extensions you want to be displayed. 
+     Every file with different extension is ignored. Valid extensions are 
+     the image file formats supported by `pillow`.
 1. Run with internal server:
    `python src/www.py &> log/foldergal.log`
 1. [optional] Put behind nginx

@@ -1,5 +1,6 @@
 import foldergal
 import os
+import argparse
 from signal import signal, SIGINT
 import logging
 import asyncio
@@ -47,7 +48,7 @@ async def rss(_):
         sort_keys=True, indent=2, default=str))
 
 
-# These must be the last routes in this order
+# These routes must be the last and in this order
 @app.route(app.config['WWW_PREFIX'] + "/<path:path>")
 @app.route(app.config['WWW_PREFIX'] + "/")
 async def index(req, path=''):
@@ -56,8 +57,8 @@ async def index(req, path=''):
     desc = req.args.get('desc', '0') in ['1', 'true', 'yes']
     try:
         items = await foldergal.get_folder_items(path, order_by, desc)
-    except ValueError:
-        # this is path to a file
+    except NotADirectoryError:
+        # the path leads to a file
         return await response.file_stream(await foldergal.get_file(path))
     # we are looking at a folder
     return response.html(render(
@@ -88,7 +89,7 @@ async def server_error_handler(_, exception):
         return response.html(render('error.html', title="Not found",
                                     message=exception), status=404)
     # It might be serious
-    logger.error(exception)
+    logger.error(exception, exc_info=app.config['DEBUG'])
     return response.html(
         render('error.html',
                heading="An error has occurred",
@@ -120,12 +121,20 @@ async def refresh():
                 )
                 req.raise_for_status()
             except Exception as err:
-                logger.error(err)
+                logger.error(err, exc_info=app.config['DEBUG'])
 
         await asyncio.sleep(app.config['RESCAN_SECONDS'])
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Show a folder on the web')
+    parser.add_argument('folder_root', nargs='?',
+        default='',
+        help="folder to make visible over http")
+    args = parser.parse_args()
+    if args.folder_root:
+        app.config['FOLDER_ROOT'] = args.folder_root
+
     logger.info(f'Starting @ {app.config.get("SERVER_NAME", "UNSPECIFIED SERVER")} '
                 f'v{app.config["VERSION"]}')
     asyncio.set_event_loop(uvloop.new_event_loop())
