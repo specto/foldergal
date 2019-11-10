@@ -79,6 +79,9 @@ async def index(req, path=''):
     except NotADirectoryError:
         # the path leads to a file
         return await response.file_stream(await foldergal.get_file(path))
+    except FileNotFoundError:
+        return response.html(render('error.html', title="Not found",
+                                    message=path), status=404)
     # we are looking at a folder
     return response.html(render(
         'list.html',
