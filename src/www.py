@@ -1,5 +1,6 @@
 import foldergal
 import os
+import argparse
 from signal import signal, SIGINT
 import logging
 import asyncio
@@ -44,7 +45,7 @@ async def rss(_):
     return response.text('waaaaa')
 
 
-# These must be the last routes in this order
+# These routes must be the last and in this order
 @app.route(app.config['WWW_PREFIX'] + "/<path:path>")
 @app.route(app.config['WWW_PREFIX'] + "/")
 async def index(req, path=''):
@@ -123,6 +124,14 @@ async def refresh():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Show a folder on the web')
+    parser.add_argument('folder_root', nargs='?',
+        default='',
+        help="folder to make visible over http")
+    args = parser.parse_args()
+    if args.folder_root:
+        app.config['FOLDER_ROOT'] = args.folder_root
+
     logger.info(f'Starting @ {app.config.get("SERVER_NAME", "UNSPECIFIED SERVER")} '
                 f'v{app.config["VERSION"]}')
     asyncio.set_event_loop(uvloop.new_event_loop())
