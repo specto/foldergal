@@ -21,6 +21,11 @@ def configure(config):
     CONFIG['TARGET_EXT'] = config['TARGET_EXT']
     CONFIG['FOLDER_CACHE'] = config['FOLDER_CACHE']
     CONFIG['THUMB_SIZE'] = config['THUMB_SIZE']
+    # Optional max image size to counter pillow's decompression bomb protection
+    # https://github.com/python-pillow/Pillow/issues/515
+    max_image_size = config.get('MAX_IMAGE_SIZE', None)
+    if max_image_size:
+        Image.MAX_IMAGE_PIXELS = max_image_size
     # Authors are optional
     AUTHORS = config.get('AUTHORS', {})
 
