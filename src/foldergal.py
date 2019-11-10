@@ -18,6 +18,8 @@ def configure(config):
     CONFIG['RESCAN_SECONDS'] = config['RESCAN_SECONDS']
     CONFIG['TARGET_EXT'] = config['TARGET_EXT']
     CONFIG['FOLDER_CACHE'] = config['FOLDER_CACHE']
+    CONFIG['THUMB_SIZE'] = config['THUMB_SIZE']
+    # Authors are optional
     AUTHORS = config.get('AUTHORS', {})
 
 
@@ -96,9 +98,6 @@ async def scan_for_updates() -> str:
     return result
 
 
-THUMB_SIZE = (512, 512)
-
-
 def path_to_id(path: Union[Path, str]) -> str:
     return str(path).replace('/', '_')
 
@@ -119,7 +118,7 @@ def generate_thumb(path, mtime) -> str:
         try:
             logger.debug(f'generating thumb for {filename}')
             im = Image.open(path)
-            im.thumbnail(THUMB_SIZE, resample=Image.BICUBIC)
+            im.thumbnail(CONFIG['THUMB_SIZE'], resample=Image.BICUBIC)
             exif = {ExifTags.TAGS.get(i, i): tag for i, tag in im.getexif().items()}
             orientation = exif.get('Orientation', 1)
             if orientation and orientation > 1:
