@@ -43,9 +43,28 @@ def render(template, *args, **kwargs):
 @app.route(app.config['WWW_PREFIX'] + "/rss")
 @app.route(app.config['WWW_PREFIX'] + "/atom")
 async def rss(_):
-    return response.text(json.dumps(
-        await foldergal.get_file_list(3),
-        sort_keys=True, indent=2, default=str))
+    item_list = await foldergal.get_file_list(app.config['RSS_ITEMS'])
+    iso_fmt = "%Y-%m-%dT%H:%M:%S%z"
+    items = map(lambda i: {
+        'title': i.name,
+        'url': app.url_for('index', path=i.id, _external=True),
+        'id': i.id,
+        'mdate': i.mdate.strftime(iso_fmt),
+        'cdate': i.cdate.strftime(iso_fmt),
+        'author': i.author.get('name'),
+    }, item_list)
+    last_date = item_list[0].cdate.strftime(iso_fmt)
+    server_name = app.config.get('SERVER_NAME')
+    vars = {
+        'site_title': server_name,
+        'site_url': app.url_for('index', path='.', _external=True),
+        'feed_url': app.url_for('index', path='rss', _external=True),
+        'site_description': 'A folder of images',
+        'last_date': last_date,
+        'items': items,
+    }
+    return response.html(render('rss.xml', **vars),
+                         headers={'Content-Type': 'application/rss+xml'})
 
 
 # These routes must be the last and in this order

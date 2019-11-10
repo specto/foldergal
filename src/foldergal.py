@@ -234,7 +234,7 @@ async def get_file_list(limit=0) -> Sequence[FolderItem]:
 
     def _flatten(dictionary):
         flat_list = []
-        for i in seq.values():
+        for i in dictionary.values():
             if isinstance(i, FolderItem):
                 flat_list.append(i)
             else:
