@@ -225,25 +225,34 @@ async def get_file_tree() -> Sequence[Union[Mapping, Sequence]]:
 
     def _dict_keys_to_list(d: Mapping):
         return [_dict_keys_to_list(val)
-                if isinstance(val, Mapping) else val._asdict()
+                if isinstance(val, Mapping) else key
                 for key, val in d.items()]
     return _dict_keys_to_list(FILES)
 
 
-async def get_file_list(limit=0) -> Sequence[Mapping]:
-    rez = []
+async def get_file_list(limit=0) -> Sequence[FolderItem]:
 
-    def _flatten(seq):
-        nonlocal rez
-        for i in seq:
-            print(len(rez))
-            if isinstance(i, Mapping):
-                rez += [i]
+    def _flatten(dictionary):
+        flat_list = []
+        for i in seq.values():
+            if isinstance(i, FolderItem):
+                flat_list.append(i)
             else:
-                rez += _flatten(i)
+                flat_list += _flatten(i)
+        return flat_list
 
-    _flatten(await get_file_tree())
-    return list(reversed(sorted(rez, key=lambda o: o['cdate'])))
+#     def _flatten_alt(seq, flat_list = []):
+#         for i in seq.values():
+#             if isinstance(i, FolderItem):
+#                 flat_list.append(i)
+#             else:
+#                 _flatten_alt(i, flat_list)
+
+    flat_files = _flatten(FILES)
+    sorted_files = list(reversed(sorted(flat_files, key=lambda o: o.cdate)))
+    if limit:
+        return sorted_files[:limit]
+    return sorted_files
 
 
 async def get_folder_tree(target=None, sub_items=None):
