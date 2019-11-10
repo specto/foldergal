@@ -53,8 +53,8 @@ async def index(req, path=''):
     desc = req.args.get('desc', '0') in ['1', 'true', 'yes']
     try:
         items = await foldergal.get_folder_items(path, order_by, desc)
-    except ValueError:
-        # this is path to a file
+    except NotADirectoryError:
+        # the path leads to a file
         return await response.file_stream(await foldergal.get_file(path))
     # we are looking at a folder
     return response.html(render(

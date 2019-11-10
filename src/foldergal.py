@@ -145,9 +145,9 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
     root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
     folder = root_path.joinpath(path).resolve()
     if not folder.exists():
-        raise LookupError(f'{path} not found')
+        raise FileNotFoundError(f'{path} not found')
     if not folder.is_dir():
-        raise ValueError(f'{path} is not a folder')
+        raise NotADirectoryError(f'{path} is not a folder')
     try:  # Security check
         folder.relative_to(root_path)
     except ValueError as e:
