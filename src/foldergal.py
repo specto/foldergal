@@ -10,11 +10,13 @@ from natsort import natsorted
 CONFIG = {}
 FILES = {}
 AUTHORS = {}
+DEBUG = False
 
 
 def configure(config):
-    global CONFIG, AUTHORS
-    CONFIG['FOLDER_ROOT'] = config['FOLDER_ROOT']
+    global CONFIG, AUTHORS, DEBUG
+    DEBUG = config.get('DEBUG', False)
+    CONFIG['FOLDER_ROOT'] = Path(config['FOLDER_ROOT']).expanduser().resolve()
     CONFIG['RESCAN_SECONDS'] = config['RESCAN_SECONDS']
     CONFIG['TARGET_EXT'] = config['TARGET_EXT']
     CONFIG['FOLDER_CACHE'] = config['FOLDER_CACHE']
@@ -88,10 +90,10 @@ async def scan_for_updates() -> str:
         raise ServerError("Call foldergal.configure")
     logger.debug('Scanning for updated files...')
     try:
-        new_files = await scan(Path(CONFIG['FOLDER_ROOT']))
+        new_files = await scan(CONFIG['FOLDER_ROOT'])
         diff = find_first_new(new_files, FILES)
     except Exception as e:
-        logger.error(e)
+        logger.error(e, exc_info=DEBUG)
         return ''
     result = diff if FILES and diff else ''
     FILES = new_files
@@ -111,7 +113,7 @@ def generate_thumb(path, mtime) -> str:
     try:  # Security check
         thumb_file.relative_to(cache_path)
     except ValueError as e:
-        logger.error(e)
+        logger.error(e, exc_info=DEBUG)
         return 'broken.svg'
     # Check for fresh thumb
     if not thumb_file.exists() or thumb_file.stat().st_mtime < mtime:
@@ -135,22 +137,21 @@ def generate_thumb(path, mtime) -> str:
                 im = im.transpose(method=orientation - 1)
             im.save(thumb_file)
         except Exception as e:
-            logger.error(e)
+            logger.error(e, exc_info=DEBUG)
             return 'broken.svg'
     return filename
 
 
 async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderItem]:
-    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
-    folder = root_path.joinpath(path).resolve()
+    folder = CONFIG['FOLDER_ROOT'].joinpath(path).resolve()
     if not folder.exists():
         raise FileNotFoundError(f'{path} not found')
     if not folder.is_dir():
         raise NotADirectoryError(f'{path} is not a folder')
     try:  # Security check
-        folder.relative_to(root_path)
+        folder.relative_to(CONFIG['FOLDER_ROOT'])
     except ValueError as e:
-        logger.error(e)
+        logger.error(e, exc_info=DEBUG)
         return []
     result = []
     for child in folder.iterdir():
@@ -190,12 +191,11 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
 
 
 async def get_file(path):
-    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
-    file = root_path.joinpath(path).resolve()
+    file = CONFIG['FOLDER_ROOT'].joinpath(path).resolve()
     try:  # Security check
-        file.relative_to(root_path)
+        file.relative_to(CONFIG['FOLDER_ROOT'])
     except ValueError as e:
-        logger.error(e)
+        logger.error(e, exc_info=DEBUG)
         return ''
     return file
 
@@ -211,9 +211,8 @@ async def get_current(path='./'):
 async def get_breadcrumbs(path=None):
     if not path or path == './':
         return []
-    root_path = Path(CONFIG['FOLDER_ROOT']).resolve()
-    location = root_path.joinpath(path).resolve()
-    location = location.relative_to(root_path)
+    location = CONFIG['FOLDER_ROOT'].joinpath(path).resolve()
+    location = location.relative_to(CONFIG['FOLDER_ROOT'])
     return list(reversed([l for l in location.parents if l.name])) + [location]
 
 

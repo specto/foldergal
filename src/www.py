@@ -86,7 +86,7 @@ async def server_error_handler(_, exception):
         return response.html(render('error.html', title="Not found",
                                     message=exception), status=404)
     # It might be serious
-    logger.error(exception)
+    logger.error(exception, exc_info=app.config['DEBUG'])
     return response.html(
         render('error.html',
                heading="An error has occurred",
@@ -118,7 +118,7 @@ async def refresh():
                 )
                 req.raise_for_status()
             except Exception as err:
-                logger.error(err)
+                logger.error(err, exc_info=app.config['DEBUG'])
 
         await asyncio.sleep(app.config['RESCAN_SECONDS'])
 
