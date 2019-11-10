@@ -30,6 +30,7 @@ TODO
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
++ [ ] Provide apple-touch-icon.png
 
 
 Deployment
