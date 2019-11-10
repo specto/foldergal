@@ -31,6 +31,7 @@ TODO
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
 + [ ] Provide apple-touch-icon.png
++ [ ] Use temporary folder for thumbnail cache
 
 
 Deployment
