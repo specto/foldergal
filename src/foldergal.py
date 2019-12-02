@@ -1,10 +1,10 @@
 from datetime import datetime
-from typing import NamedTuple, Sequence, Mapping, Union, Iterator
+from typing import NamedTuple, Sequence, Mapping, Union
 
 from sanic.exceptions import ServerError
 from sanic.log import logger
 from pathlib import Path
-from PIL import Image, ExifTags
+from PIL import Image, ImageOps
 from natsort import natsorted
 
 CONFIG = {}
@@ -126,32 +126,8 @@ def generate_thumb(path, mtime) -> str:
             logger.debug(f'generating thumb for {filename}')
             im = Image.open(path)
             im.thumbnail(CONFIG['THUMB_SIZE'], resample=Image.BICUBIC)
-            exif = {ExifTags.TAGS.get(i, i): tag for i, tag in im.getexif().items()}
-            orientation = exif.get('Orientation', 1)
-            # Orientation almost maps to pillow transpose 'method' values
-            # 1 - 000 NORMAL: -
-            # 2 - 001 FLIP_HORIZONTAL: flip()
-            # 3 - 010 ROTATE_180: rotate(180)
-            # 4 - 011 FLIP_VERTICAL: rotate(180) flip()
-            # 5 - 100 TRANSPOSE: rotate(90) flip()
-            # 6 - 101 ROTATE_90: rotate(90)
-            # 7 - 110 TRANSVERSE: rotate(-90) flip()
-            # 8 - 111 ROTATE_270: rotate(-90)
-            # See: https://sirv.com/help/resources/rotate-photos-to-be-upright/
-            if orientation == 2:
-                im = im.transpose(Image.FLIP_LEFT_RIGHT)
-            elif orientation == 3:
-                im = im.transpose(Image.ROTATE_180)
-            elif orientation == 4:
-                im = im.transpose(Image.FLIP_TOP_BOTTOM)
-            elif orientation == 5:
-                im = im.transpose(Image.TRANSPOSE)
-            elif orientation == 6:
-                im = im.transpose(Image.ROTATE_90)
-            elif orientation == 7:
-                im = im.transpose(Image.TRANSVERSE)
-            elif orientation == 8:
-                im = im.transpose(Image.ROTATE_270)
+            # Fix exif orientation
+            im = ImageOps.exif_transpose(im)
             im.save(thumb_file)
         except Exception as e:
             logger.error(e, exc_info=DEBUG)
