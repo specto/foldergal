@@ -109,7 +109,7 @@ def path_to_id(path: Union[Path, str]) -> str:
     return str(path).replace('/', '_')
 
 
-def generate_thumb(path, mtime) -> str:
+def generate_thumb(path, mtime, ctime) -> str:
     if not CONFIG:
         raise ServerError("Call foldergal.configure")
     filename = path_to_id(path)
@@ -120,18 +120,23 @@ def generate_thumb(path, mtime) -> str:
     except ValueError as e:
         logger.error(e, exc_info=DEBUG)
         return 'broken.svg'
-    # Check for fresh thumb
-    if not thumb_file.exists() or thumb_file.stat().st_mtime < mtime:
-        try:
-            logger.debug(f'generating thumb for {filename}')
-            im = Image.open(path)
-            im.thumbnail(CONFIG['THUMB_SIZE'], resample=Image.BICUBIC)
-            # Fix exif orientation
-            im = ImageOps.exif_transpose(im)
-            im.save(thumb_file)
-        except Exception as e:
-            logger.error(e, exc_info=DEBUG)
-            return 'broken.svg'
+    try:
+        # Check for fresh thumb
+        thumb_stat = thumb_file.stat()
+        if thumb_stat.st_mtime >= mtime and thumb_stat.st_ctime >= ctime:
+            return filename
+    except FileNotFoundError:
+        pass
+    try:
+        logger.debug(f'generating thumb for {filename}')
+        im = Image.open(path)
+        im.thumbnail(CONFIG['THUMB_SIZE'], resample=Image.BICUBIC)
+        # Fix exif orientation
+        im = ImageOps.exif_transpose(im)
+        im.save(thumb_file)
+    except Exception as e:
+        logger.error(e, exc_info=DEBUG)
+        return 'broken.svg'
     return filename
 
 
@@ -158,7 +163,7 @@ async def get_folder_items(path, order_by='name', desc=True) -> Sequence[FolderI
                 mdate=datetime.fromtimestamp(stat.st_mtime),
             ))
         elif child.suffix.lower() in CONFIG['TARGET_EXT']:
-            thumb = generate_thumb(child, stat.st_mtime)
+            thumb = generate_thumb(child, stat.st_mtime, stat.st_ctime)
             result.append(FolderItem(
                 type='image',
                 name=child.name,
