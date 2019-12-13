@@ -149,6 +149,18 @@ async def refresh():
 
 
 if __name__ == "__main__":
+
+    if not app.config["DEBUG"]:
+        logger.handlers = []
+    loghandler = logging.handlers.RotatingFileHandler(
+        f"{app.config['FOLDER_LOG']}/www.log",
+        maxBytes=20000,
+        backupCount=5
+    )
+    logformat = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    loghandler.setFormatter(logformat)
+    logger.addHandler(loghandler)
+
     parser = argparse.ArgumentParser(description='Show a folder on the web')
     parser.add_argument('folder_root', nargs='?',
         default='',
