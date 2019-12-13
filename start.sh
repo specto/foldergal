@@ -1,3 +1,3 @@
-#!/bin/sh
-source _env/bin/activate.csh
+#!/usr/bin/env bash
+source _env/bin/activate
 python src/www.py
