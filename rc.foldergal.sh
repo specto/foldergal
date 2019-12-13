@@ -8,7 +8,7 @@
 
 name="foldergal"
 rcvar="foldergal_enable"
-command="/bin/csh -c 'cd /srv/foldergal; source _env/bin/activate.csh >& /dev/null; python src/www.py >& /dev/null'"
+command="/srv/foldergal/start.sh"
 foldergal_user="librarian"
 pidfile="/var/run/${name}.pid"
 
