@@ -17,12 +17,12 @@ stop_cmd="foldergal_stop"
 status_cmd="foldergal_status"
 
 foldergal_start() {
-        /usr/sbin/daemon -P ${pidfile} -r -f -u $foldergal_user $command
+        /usr/sbin/daemon -P ${pidfile} -o /srv/foldergal/www.log -r -f -u $foldergal_user $command
 }
 
 foldergal_stop() {
         if [ -e "${pidfile}" ]; then
-                kill -s TERM `cat ${pidfile}`
+                kill -s KILL `cat ${pidfile}`
         else
                 echo "${name} is not running"
         fi
