@@ -26,12 +26,13 @@ TODO
 + [x] Name sort with natural digit order
 + [x] Notify discord (webhook!, direct to bot?)
 + [x] Show author, dates for each item
-+ [ ] Provide RSS/atom feed
++ [x] Provide RSS/atom feed
 + [ ] Attempt to redirect to 'archive' folder for non-existing items
 + [ ] Expose filter by author
 + [ ] Expose sort by date, name
 + [ ] Provide apple-touch-icon.png
 + [ ] Use temporary folder for thumbnail cache
++ [ ] Display counter of images in current folder
 
 
 Deployment
