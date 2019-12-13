@@ -44,7 +44,8 @@ Deployment
 * pip
 
 1. `pip install -r requirements.txt` (maybe in virtual env)
-1. Check config params in `foldergal.cfg`
+1. Create a file `foldergal.local.cfg` and set those options that you need
+  (overriding foldergal.cfg):
    - set target `FOLDER_ROOT` to the directory you will be serving files from
    - set `FOLDER_CACHE` to the directory where you want to store 
      the generated thumbnails, default is `cache` in the project

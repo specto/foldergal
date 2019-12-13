@@ -5,3 +5,4 @@ __pycache__
 !/cache/broken.svg
 /log/*
 !/log/README
+/foldergal.local.cfg

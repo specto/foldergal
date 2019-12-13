@@ -19,6 +19,15 @@ app.config.from_pyfile(
     os.path.join(os.path.dirname(__file__),
                  "../foldergal.cfg"))
 
+local_cfg = os.path.join(os.path.dirname(__file__),
+    "../foldergal.local.cfg")
+
+if not os.path.exists(local_cfg):
+    logger.error(f'Please create your config file: {os.path.abspath(local_cfg)}')
+    exit(1)
+
+app.config.from_pyfile(local_cfg)
+
 # Setup template engine
 jinja_env = Environment(
     loader=PackageLoader('www', 'templates'),
