@@ -8,7 +8,8 @@
 
 name="foldergal"
 rcvar="foldergal_enable"
-command="/srv/foldergal/start.sh"
+command="/usr/local/bin/bash"
+command_args="-c 'cd /srv/foldergal; source _env/bin/activate; python src/www.py'"
 foldergal_user="librarian"
 pidfile="/var/run/${name}.pid"
 
@@ -17,7 +18,7 @@ stop_cmd="foldergal_stop"
 status_cmd="foldergal_status"
 
 foldergal_start() {
-        /usr/sbin/daemon -P ${pidfile} -o /srv/foldergal/www.log -r -f -u $foldergal_user $command
+        /usr/sbin/daemon -P ${pidfile} -o /srv/foldergal/www.log -r -f -u $foldergal_user $command $command_args
 }
 
 foldergal_stop() {
