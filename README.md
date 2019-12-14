@@ -43,7 +43,7 @@ Deployment
 * python 3.6+
 * pip
 
-1. `pip install -r requirements.txt` (maybe in virtual env)
+1. `pip install -r requirements.txt` (maybe in virtualenv)
 1. Create a file `foldergal.local.cfg` and set those options that you need
   (overriding foldergal.cfg):
    - set target `FOLDER_ROOT` to the directory you will be serving files from
@@ -57,8 +57,8 @@ Deployment
    - `TARGET_EXT` are the file extensions you want to be displayed. 
      Every file with different extension is ignored. Valid extensions are 
      the image file formats supported by `pillow`.
-1. Run with internal server:
-   `python src/www.py &> log/foldergal.log`
+1. Run with internal server (maybe in virtualenv):
+   `python src/www.py`
 1. [optional] Put behind nginx
    ```
     location /www-prefix/ {
@@ -67,3 +67,14 @@ Deployment
     }
    ```
 1. Test...
+
+Run as service on FreeBSD
+---
+
+1. Create a user to run the service.
+1. Copy `rc.foldergal.sh` to `/usr/local/etc/rc.d/foldergal`
+1. Important: edit the script to match your virtualenv and project directories 
+   and also the new user. 
+1. Then add `foldergal_enable="yes"` in `/etc/rc.conf`
+1. You now have `service foldergal start`.
+
