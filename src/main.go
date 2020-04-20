@@ -1,10 +1,10 @@
 package main
 
 import (
+	"./templates"
 	"flag"
 	"fmt"
 	"github.com/kardianos/osext"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -59,10 +59,9 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 
-var _TEMPLATES *template.Template
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := _TEMPLATES.ExecuteTemplate(w, tmpl+".html", p)
+	err := templates.ListTemplate.ExecuteTemplate(w, "T", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -93,8 +92,6 @@ func main() {
 	flag.Parse()
 
 	log.Printf("Home folder is: %v", home)
-
-	_TEMPLATES = template.Must(template.ParseGlob(*home + "/templates/*"))
 
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/view/", makeHandler(viewHandler))
