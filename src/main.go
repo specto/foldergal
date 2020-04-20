@@ -61,7 +61,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ListTemplate.ExecuteTemplate(w, "T", p)
+	err := templates.ListHtml.ExecuteTemplate(w, "T", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
