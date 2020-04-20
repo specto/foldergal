@@ -7,7 +7,7 @@ PRODUCT := foldergal
 build: $(DEST_DIR)/$(PRODUCT)
 
 $(DEST_DIR)/$(PRODUCT): $(SRC_DIR)/main.go
-	go build -o $@ $?
+	go build -v -o $@ $?
 
 clean:
 	rm -rf $(DEST_DIR)/*
