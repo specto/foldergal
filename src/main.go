@@ -5,12 +5,14 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 func fileExists(filename string) bool {
@@ -44,13 +46,13 @@ func main() {
 	// Environment variables
 	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
 	defaultPort, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
-
 	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", execFolder)
 	defaultRoot := getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
 	defaultPrefix := getEnvWithDefault("FOLDERGAL_PREFIX", "")
 	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
 	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
 	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
+	defaultCacheSeconds, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_CACHE_SECONDS", "3600"))
 
 	// Command line arguments
 	host := *flag.String("host", defaultHost, "host address to bind to")
@@ -61,6 +63,7 @@ func main() {
 	tlsCrt := *flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2")
+	cacheSeconds := *flag.Int("cache-seconds", defaultCacheSeconds, "seconds to keep cached resources in memory")
 	flag.Parse()
 
 	// Check keys to enable tls
@@ -90,7 +93,13 @@ func main() {
 
 	// Routing
 	httpmux := http.NewServeMux()
-	fs := filteredFileSystem{http.Dir(root)}
+	//fs := filteredFileSystem{http.Dir(root)}
+	base := afero.NewOsFs()
+	layer := afero.NewMemMapFs()
+	logger.Printf("Setting cache timeout to: %ds", cacheSeconds)
+	afs := afero.NewHttpFs(afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds) * time.Second))
+	fs := filteredFileSystem{afs.Dir(root)}
+
 	if prefix != "" {
 		prefixPath := fmt.Sprintf("/%s/", prefix)
 		logger.Printf("Using prefix: %s", prefixPath)
