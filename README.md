@@ -13,8 +13,13 @@ Features
 * Provide search and filering
 
 
-Running
+Usage
 ---
+
+TLDR;
+1. Run in terminal something like
+   `./foldergal-binary --root /path/to/serve/files/from --home /tmp/foldergal`
+2. Visit http://localhost:8080
 
 Use environment variables if you like:
 ```
@@ -26,19 +31,23 @@ export FOLDERGAL_PREFIX=gallery
 export FOLDERGAL_CRT=/tls/server.crt
 export FOLDERGAL_KEY=/tls/server.key
 export FOLDERGAL_HTTP2=true
+export FOLDERGAL_CACHE_MINUTES=60
 ```
 
-Also, command line parameters are available.
-Run `./foldergal --help` for more info.
+Http2 works only with TLS, which works only if you provide certificate files.
 
-Home folder (defaults to the executable location) structure:
+Run `./foldergal --help` for full info on command line parameters.
+
+Home folder structure:
 ```
- |- foldergal.log
- |+ cache
-    |-... generated thumbnails
- |+ tls
-    |- server.crt [optional]
-    |- server.key [optional]
+home (defaults to current folder)
+ ╿
+ ├─ foldergal.log
+ ├╼ cache (created automatically)
+ │  └─ ...generated thumbnails
+ └╼ tls [optional]
+    ├─ server.crt [optional]
+    └─ server.key [optional]
 ```
 
 TODO

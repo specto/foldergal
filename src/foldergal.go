@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-
 var thumbOptions = vips.Options{
 	Width:        400,
 	Height:       400,

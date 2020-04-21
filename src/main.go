@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -40,11 +39,10 @@ var cacheFs afero.Fs
 
 func main() {
 	// Get current execution folder
-	execFolder, err := os.Executable()
+	execFolder, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	execFolder = filepath.Dir(execFolder)
 
 	// Environment variables
 	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
@@ -55,9 +53,9 @@ func main() {
 	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
 	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
 	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
-	defaultCacheSeconds, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_CACHE_SECONDS", "3600"))
+	defaultCacheMinutes, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_CACHE_MINUTES", "720"))
 
-	// Command line arguments
+	// Command line arguments (they override env)
 	host := *flag.String("host", defaultHost, "host address to bind to")
 	port := *flag.Int("port", defaultPort, "port to run at")
 	home := *flag.String("home", defaultHome, "home folder")
@@ -65,11 +63,12 @@ func main() {
 	prefix = *flag.String("prefix", defaultPrefix, "path prefix as in http://localhost/PREFIX/other/stuff")
 	tlsCrt := *flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
-	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2")
-	cacheSeconds := *flag.Int("cache-seconds", defaultCacheSeconds, "seconds to keep cached resources in memory")
+	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
+	cacheMinutesInt := *flag.Int("cache-minutes", defaultCacheMinutes, "minutes to keep cached resources in memory")
+	cacheMinutes := time.Duration(cacheMinutesInt)*time.Minute
 	flag.Parse()
 
-	// Check keys to enable tls
+	// Check keys to enable TLS
 	useTls := false
 	if tlsCrt == "" {
 		tlsCrt = filepath.Join(home, "tls/server.crt")
@@ -95,7 +94,7 @@ func main() {
 	logger.Printf("Root folder is: %v", root)
 
 	// Set up caching folder
-	logger.Printf("Setting cache timeout to: %ds", cacheSeconds)
+	logger.Printf("Setting cache timeout to: %d minutes", cacheMinutesInt)
 	cacheFolder := filepath.Join(home, "cache")
 	err = os.MkdirAll(cacheFolder, os.ModeDir)
 	if err != nil {
@@ -103,14 +102,14 @@ func main() {
 	} else {
 		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
-		cacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second)
+		cacheFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
 	}
 
 	// Set root media folder
 	//rootFs := filteredFileSystem{http.Dir(root)}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
-	rootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second)
+	rootFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
 	afs := afero.NewHttpFs(rootFs)
 	srvFs := filteredFileSystem{afs.Dir(root)}
 
