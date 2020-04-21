@@ -100,10 +100,8 @@ func main() {
 
 	// Environment variables
 	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
-	defaultPort, err := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	defaultPort, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
+
 	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", execFolder)
 	defaultRoot := getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
 	defaultPrefix := getEnvWithDefault("FOLDERGAL_PREFIX", "")
@@ -122,7 +120,7 @@ func main() {
 	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2")
 	flag.Parse()
 
-	// Check keys to enable http2 with tls
+	// Check keys to enable tls
 	useTls := false
 	if tlsCrt == "" {
 		tlsCrt = filepath.Join(home, "tls/server.crt")
@@ -143,11 +141,11 @@ func main() {
 	}
 	defer logFile.Close()
 	Logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
-
 	//Logger.Printf("Env is: %v", os.Environ())
 	Logger.Printf("Home folder is: %v", home)
 	Logger.Printf("Root folder is: %v", root)
 
+	// Routing
 	httpmux := http.NewServeMux()
 	fs := filteredFileSystem{http.Dir(root)}
 	if prefix != "" {
@@ -158,18 +156,20 @@ func main() {
 	bind := fmt.Sprintf("%s:%d", host, port)
 	httpmux.Handle("/", http.FileServer(fs))
 
-
-
+	// Server start sequence
+	if port == 0 {
+		log.Fatalf("Error: misconfigured port %d", port)
+	}
 	var srvErr error
 	if useTls {
 		tlsConfig := &tls.Config{}
+
+		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, err := ioutil.ReadFile(tlsCrt)
-		if err != nil {
-			Logger.Fatalf("Error loading CA File: %s", err)
-		}
+		pem, _ := ioutil.ReadFile(tlsCrt)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
+
 		if useHttp2 {
 			Logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
