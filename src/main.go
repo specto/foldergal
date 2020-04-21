@@ -4,11 +4,13 @@ import (
 	"./templates"
 	"flag"
 	"fmt"
-	"github.com/kardianos/osext"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 )
 
 type Page struct {
@@ -80,18 +82,33 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	}
 }
 
+func getEnvWithDefault(key string, defaultValue string) string {
+	if envValue := os.Getenv(key); envValue != "" {
+		return envValue
+	} else {
+		return defaultValue
+	}
+}
+
 func main() {
-	folderPath, err := osext.ExecutableFolder()
+
+	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
+	defaultPort, err := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	host := flag.String("host", "localhost", "host address to bind to")
-	port := flag.Int("port", 8080, "port to run at")
-	home := flag.String("home", folderPath, "home folder")
+	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", "")
+	if defaultHome == "" {
+		ex, _ := os.Executable()
+		defaultHome = filepath.Dir(ex)
+	}
+	host := flag.String("host", defaultHost, "host address to bind to")
+	port := flag.Int("port", defaultPort, "port to run at")
+	home := flag.String("home", defaultHome, "home folder")
 	flag.Parse()
 
-	log.Printf("Home folder is: %v", home)
+	//log.Printf("Env is: %v", os.Environ())
+	log.Printf("Home folder is: %v", *home)
 
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/view/", makeHandler(viewHandler))

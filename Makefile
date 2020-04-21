@@ -13,4 +13,4 @@ clean:
 	rm -rf $(DEST_DIR)/*
 
 run: build
-	@./$(DEST_DIR)/$(PRODUCT)
+	@. .env; ./$(DEST_DIR)/$(PRODUCT)
