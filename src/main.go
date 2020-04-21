@@ -90,6 +90,8 @@ func getEnvWithDefault(key string, defaultValue string) string {
 	}
 }
 
+var Logger *log.Logger
+
 func main() {
 
 	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
@@ -107,8 +109,18 @@ func main() {
 	home := flag.String("home", defaultHome, "home folder")
 	flag.Parse()
 
-	//log.Printf("Env is: %v", os.Environ())
-	log.Printf("Home folder is: %v", *home)
+	logFile, err := os.OpenFile(filepath.Join(*home, "foldergal.log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Print("Error: Log file cannot be created in home directory.")
+		log.Fatal(err)
+	}
+	defer logFile.Close()
+
+	Logger = log.New(logFile, "foldergal: ", log.Lshortfile | log.LstdFlags)
+
+	//Logger.Printf("Env is: %v", os.Environ())
+	Logger.Printf("Home folder is: %v", *home)
 
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/view/", makeHandler(viewHandler))
@@ -116,6 +128,8 @@ func main() {
 	httpmux.HandleFunc("/save/", makeHandler(saveHandler))
 
 	bind:= fmt.Sprintf("%s:%d", *host, *port)
-	log.Printf("Running at %v", bind)
-	log.Fatal(http.ListenAndServe(bind, httpmux))
+	Logger.Printf("Running at %v", bind)
+
+	srvErr := http.ListenAndServe(bind, httpmux)
+	defer log.Fatal(srvErr)
 }
