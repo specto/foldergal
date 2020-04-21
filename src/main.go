@@ -29,7 +29,7 @@ func getEnvWithDefault(key string, defaultValue string) string {
 	}
 }
 
-var Logger *log.Logger
+var logger *log.Logger
 var root string
 var prefix string
 
@@ -83,17 +83,17 @@ func main() {
 		log.Fatal(err)
 	}
 	defer logFile.Close()
-	Logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	//Logger.Printf("Env is: %v", os.Environ())
-	Logger.Printf("Home folder is: %v", home)
-	Logger.Printf("Root folder is: %v", root)
+	logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
+	//logger.Printf("Env is: %v", os.Environ())
+	logger.Printf("Home folder is: %v", home)
+	logger.Printf("Root folder is: %v", root)
 
 	// Routing
 	httpmux := http.NewServeMux()
 	fs := filteredFileSystem{http.Dir(root)}
 	if prefix != "" {
 		prefixPath := fmt.Sprintf("/%s/", prefix)
-		Logger.Printf("Using prefix: %s", prefixPath)
+		logger.Printf("Using prefix: %s", prefixPath)
 		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(fs)))
 	}
 	bind := fmt.Sprintf("%s:%d", host, port)
@@ -114,7 +114,7 @@ func main() {
 		tlsConfig.RootCAs = caCertPool
 
 		if useHttp2 {
-			Logger.Print("Using HTTP/2")
+			logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
 		} else {
 			tlsConfig.NextProtos = []string{"http/1.1"}
@@ -124,11 +124,11 @@ func main() {
 			Handler:   httpmux,
 			TLSConfig: tlsConfig,
 		}
-		Logger.Printf("Using certificate: %s and key: %s", tlsCrt, tlsKey)
-		Logger.Printf("Running at https://%v", bind)
+		logger.Printf("Using certificate: %s and key: %s", tlsCrt, tlsKey)
+		logger.Printf("Running at https://%v", bind)
 		srvErr = srv.ListenAndServeTLS(tlsCrt, tlsKey)
 	} else {
-		Logger.Printf("Running at http://%v", bind)
+		logger.Printf("Running at http://%v", bind)
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}
 	defer log.Fatal(srvErr)

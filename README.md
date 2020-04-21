@@ -31,6 +31,15 @@ export FOLDERGAL_HTTP2=true
 Also, command line parameters are available.
 Run `./foldergal --help` for more info.
 
+Home folder (defaults to the executable location) structure:
+```
+ |- foldergal.log
+ |+ cache
+    |-... generated thumbnails
+ |+ tls
+    |- server.crt [optional]
+    |- server.key [optional]
+```
 
 TODO
 ---

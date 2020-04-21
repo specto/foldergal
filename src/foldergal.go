@@ -4,6 +4,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -11,25 +12,20 @@ func containsDotFile(name string) bool {
 	parts := strings.Split(name, "/")
 	for _, part := range parts {
 		if strings.HasPrefix(part, ".") {
-			Logger.Printf("Detected dot: %s", name)
+			logger.Printf("Detected dot: %s", name)
 			return true
 		}
 	}
 	return false
 }
 
+var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
+
 func validMediaFile(name string) bool {
 	detectedMime, _ := mimetype.DetectFile(name)
-	isMedia := false
-	mimePrefixes := []string{"image", "video", "audio"}
-	for mime := detectedMime; mime != nil; mime = mime.Parent() {
-		for _, mimePrefix := range mimePrefixes {
-			if strings.HasPrefix(mime.String(), mimePrefix) {
-				isMedia = true
-			}
-		}
-	}
-	return isMedia
+	logger.Printf("Detected mime %s for: %s", name, detectedMime.String())
+	match := mimePrefixes.FindStringSubmatch(detectedMime.String())
+	return match != nil
 }
 
 type filteredFile struct {
