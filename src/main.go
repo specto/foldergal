@@ -1,85 +1,26 @@
 package main
 
 import (
-	"./templates"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/gabriel-vasile/mimetype"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
+	"strings"
 )
 
-type Page struct {
-	Title string
-	Body  []byte
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
 	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
-	}
-	renderTemplate(w, "view", p)
-}
-
-func editHandler(w http.ResponseWriter, _ *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}
-
-
-
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ListHtml.ExecuteTemplate(w, "T", p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-var _VALIDPATH = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := _VALIDPATH.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.NotFound(w, r)
-			return
-		}
-		fn(w, r, m[2])
-	}
+	return !info.IsDir()
 }
 
 func getEnvWithDefault(key string, defaultValue string) string {
@@ -90,46 +31,162 @@ func getEnvWithDefault(key string, defaultValue string) string {
 	}
 }
 
+func containsDotFile(name string) bool {
+	parts := strings.Split(name, "/")
+	for _, part := range parts {
+		if strings.HasPrefix(part, ".") {
+			Logger.Printf("Detected dot: %s", name)
+			return true
+		}
+	}
+	return false
+}
+
+func validMediaFile(name string) bool {
+	detectedMime, _ := mimetype.DetectFile(name)
+	isMedia := false
+	mimePrefixes := []string{"image", "video", "audio"}
+	for mime := detectedMime; mime != nil; mime = mime.Parent() {
+		for _, mimePrefix := range mimePrefixes {
+			if strings.HasPrefix(mime.String(), mimePrefix) {
+				isMedia = true
+			}
+		}
+	}
+	return isMedia
+}
+
+type filteredFile struct {
+	http.File
+}
+
+type filteredFileSystem struct {
+	http.FileSystem
+}
+
+func (fs filteredFileSystem) Open(name string) (http.File, error) {
+	if containsDotFile(name) {
+		return nil, os.ErrNotExist
+	}
+
+	file, err := fs.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return filteredFile{file}, err
+}
+
+func (f filteredFile) Readdir(n int) (fis []os.FileInfo, err error) {
+	files, err := f.File.Readdir(n)
+	for _, file := range files { // Filter out the dot files from listing
+		if !containsDotFile(file.Name()) {
+			fis = append(fis, file)
+		}
+	}
+	return
+}
+
 var Logger *log.Logger
+var root string
+var prefix string
 
 func main() {
+	// Get current execution folder
+	execFolder, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	execFolder = filepath.Dir(execFolder)
 
+	// Environment variables
 	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
 	defaultPort, err := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", "")
-	if defaultHome == "" {
-		ex, _ := os.Executable()
-		defaultHome = filepath.Dir(ex)
-	}
-	host := flag.String("host", defaultHost, "host address to bind to")
-	port := flag.Int("port", defaultPort, "port to run at")
-	home := flag.String("home", defaultHome, "home folder")
+	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", execFolder)
+	defaultRoot := getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
+	defaultPrefix := getEnvWithDefault("FOLDERGAL_PREFIX", "")
+	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
+	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
+	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
+
+	// Command line arguments
+	host := *flag.String("host", defaultHost, "host address to bind to")
+	port := *flag.Int("port", defaultPort, "port to run at")
+	home := *flag.String("home", defaultHome, "home folder")
+	root = *flag.String("root", defaultRoot, "root folder to serve files from")
+	prefix = *flag.String("prefix", defaultPrefix, "path prefix e.g. http://localhost/PREFIX/other/stuff")
+	tlsCrt := *flag.String("crt", defaultCrt, "certificate file for TLS")
+	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
+	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2")
 	flag.Parse()
 
-	logFile, err := os.OpenFile(filepath.Join(*home, "foldergal.log"),
+	// Check keys to enable http2 with tls
+	useTls := false
+	if tlsCrt == "" {
+		tlsCrt = filepath.Join(home, "tls/server.crt")
+	}
+	if tlsKey == "" {
+		tlsKey = filepath.Join(home, "tls/server.key")
+	}
+	if fileExists(tlsCrt) && fileExists(tlsKey) {
+		useTls = true
+	}
+
+	// Set up log file
+	logFile, err := os.OpenFile(filepath.Join(home, "foldergal.log"),
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Print("Error: Log file cannot be created in home directory.")
 		log.Fatal(err)
 	}
 	defer logFile.Close()
-
-	Logger = log.New(logFile, "foldergal: ", log.Lshortfile | log.LstdFlags)
+	Logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
 
 	//Logger.Printf("Env is: %v", os.Environ())
-	Logger.Printf("Home folder is: %v", *home)
+	Logger.Printf("Home folder is: %v", home)
+	Logger.Printf("Root folder is: %v", root)
 
 	httpmux := http.NewServeMux()
-	httpmux.HandleFunc("/view/", makeHandler(viewHandler))
-	httpmux.HandleFunc("/edit/", makeHandler(editHandler))
-	httpmux.HandleFunc("/save/", makeHandler(saveHandler))
+	fs := filteredFileSystem{http.Dir(root)}
+	if prefix != "" {
+		prefixPath := fmt.Sprintf("/%s/", prefix)
+		Logger.Printf("Using prefix: %s", prefixPath)
+		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(fs)))
+	}
+	bind := fmt.Sprintf("%s:%d", host, port)
+	httpmux.Handle("/", http.FileServer(fs))
 
-	bind:= fmt.Sprintf("%s:%d", *host, *port)
-	Logger.Printf("Running at %v", bind)
 
-	srvErr := http.ListenAndServe(bind, httpmux)
+
+	var srvErr error
+	if useTls {
+		tlsConfig := &tls.Config{}
+		caCertPool := x509.NewCertPool()
+		pem, err := ioutil.ReadFile(tlsCrt)
+		if err != nil {
+			Logger.Fatalf("Error loading CA File: %s", err)
+		}
+		caCertPool.AppendCertsFromPEM(pem)
+		tlsConfig.RootCAs = caCertPool
+		if useHttp2 {
+			Logger.Print("Using HTTP/2")
+			tlsConfig.NextProtos = []string{"h2"}
+		} else {
+			tlsConfig.NextProtos = []string{"http/1.1"}
+		}
+		srv := &http.Server{
+			Addr:      bind,
+			Handler:   httpmux,
+			TLSConfig: tlsConfig,
+		}
+		Logger.Printf("Using certificate: %s and key: %s", tlsCrt, tlsKey)
+		Logger.Printf("Running at https://%v", bind)
+		srvErr = srv.ListenAndServeTLS(tlsCrt, tlsKey)
+	} else {
+		Logger.Printf("Running at http://%v", bind)
+		srvErr = http.ListenAndServe(bind, httpmux)
+	}
 	defer log.Fatal(srvErr)
 }
