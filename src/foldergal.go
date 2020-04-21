@@ -1,43 +1,63 @@
 package main
 
+import (
+	"github.com/gabriel-vasile/mimetype"
+	"net/http"
+	"os"
+	"strings"
+)
 
-type Node struct {
-	Path string
+func containsDotFile(name string) bool {
+	parts := strings.Split(name, "/")
+	for _, part := range parts {
+		if strings.HasPrefix(part, ".") {
+			Logger.Printf("Detected dot: %s", name)
+			return true
+		}
+	}
+	return false
 }
 
-type Video struct {
-	Node
+func validMediaFile(name string) bool {
+	detectedMime, _ := mimetype.DetectFile(name)
+	isMedia := false
+	mimePrefixes := []string{"image", "video", "audio"}
+	for mime := detectedMime; mime != nil; mime = mime.Parent() {
+		for _, mimePrefix := range mimePrefixes {
+			if strings.HasPrefix(mime.String(), mimePrefix) {
+				isMedia = true
+			}
+		}
+	}
+	return isMedia
 }
 
-type Image struct {
-	Node
+type filteredFile struct {
+	http.File
 }
 
-type Folder struct {
-	Node
+type filteredFileSystem struct {
+	http.FileSystem
 }
 
-func (v *Video) GetChildren() []NodeItem {
-	var r []NodeItem = nil
-	return r
+func (fs filteredFileSystem) Open(name string) (http.File, error) {
+	if containsDotFile(name) {
+		return nil, os.ErrNotExist
+	}
+
+	file, err := fs.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return filteredFile{file}, err
 }
 
-func (i *Image) GetChildren() []NodeItem {
-	var r []NodeItem = nil
-	return r
-}
-
-func (v *Folder) GetChildren() []NodeItem {
-	var r []NodeItem
-	return r
-}
-
-func (n *Node) GetPath() string {
-	return n.Path
-}
-
-
-type NodeItem interface {
-	GetChildren() []NodeItem
-	GetPath() string
+func (f filteredFile) Readdir(n int) (fis []os.FileInfo, err error) {
+	files, err := f.File.Readdir(n)
+	for _, file := range files { // Filter out the dot files from listing
+		if !containsDotFile(file.Name()) {
+			fis = append(fis, file)
+		}
+	}
+	return
 }

@@ -6,7 +6,7 @@ PRODUCT := foldergal
 
 build: $(DEST_DIR)/$(PRODUCT)
 
-$(DEST_DIR)/$(PRODUCT): $(SRC_DIR)/main.go
+$(DEST_DIR)/$(PRODUCT): $(SRC_DIR)/*.go
 	go build -v -o $@ $?
 
 clean:
@@ -16,8 +16,8 @@ run: build
 	@. .env; ./$(DEST_DIR)/$(PRODUCT)
 
 build-all: build
-	GOOS=windows GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT).exe $(SRC_DIR)/main.go
-	GOOS=linux GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT)-linux $(SRC_DIR)/main.go
-	GOOS=freebsd GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT)-freebsd $(SRC_DIR)/main.go
-	GOOS=linux GOARCH=arm GOARM=7 go build -v -o $(DEST_DIR)/$(PRODUCT)-pi $(SRC_DIR)/main.go
+	GOOS=windows GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT).exe $(SRC_DIR)/*.go
+	GOOS=linux GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT)-linux $(SRC_DIR)/*.go
+	GOOS=freebsd GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT)-freebsd $(SRC_DIR)/*.go
+	GOOS=linux GOARCH=arm GOARM=7 go build -v -o $(DEST_DIR)/$(PRODUCT)-pi $(SRC_DIR)/*.go
 
