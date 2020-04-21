@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/spf13/afero"
 	"mime"
 	"net/http"
 	"os"
@@ -8,6 +9,19 @@ import (
 	"regexp"
 	"strings"
 )
+
+func storeCachedFile(name string, contents []byte) error {
+	err := cacheFs.MkdirAll(filepath.Dir(name), os.ModePerm)
+	if err != nil {
+		return err
+	}
+	_, _ = cacheFs.Create(name)
+	return afero.WriteFile(cacheFs, name, contents, os.ModePerm)
+}
+
+func getCachedFile(name string) ([]byte, error) {
+	return afero.ReadFile(cacheFs, name)
+}
 
 func containsDotFile(name string) bool {
 	parts := strings.Split(name, "/")

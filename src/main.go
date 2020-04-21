@@ -34,6 +34,8 @@ func getEnvWithDefault(key string, defaultValue string) string {
 var logger *log.Logger
 var root string
 var prefix string
+var rootFs http.FileSystem
+var cacheFs afero.Fs
 
 func main() {
 	// Get current execution folder
@@ -91,22 +93,34 @@ func main() {
 	logger.Printf("Home folder is: %v", home)
 	logger.Printf("Root folder is: %v", root)
 
-	// Routing
-	httpmux := http.NewServeMux()
-	//fs := filteredFileSystem{http.Dir(root)}
+	// Set up caching folder
+	cacheFolder := filepath.Join(home, "cache")
+	err = os.MkdirAll(cacheFolder, os.ModeDir)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
+		layer := afero.NewMemMapFs()
+		cacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second)
+	}
+
+	// Set root media folder
+	//rootFs := filteredFileSystem{http.Dir(root)}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
 	logger.Printf("Setting cache timeout to: %ds", cacheSeconds)
-	afs := afero.NewHttpFs(afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds) * time.Second))
-	fs := filteredFileSystem{afs.Dir(root)}
+	afs := afero.NewHttpFs(afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second))
+	rootFs = filteredFileSystem{afs.Dir(root)}
 
+	// Routing
+	httpmux := http.NewServeMux()
 	if prefix != "" {
 		prefixPath := fmt.Sprintf("/%s/", prefix)
 		logger.Printf("Using prefix: %s", prefixPath)
-		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(fs)))
+		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(rootFs)))
 	}
 	bind := fmt.Sprintf("%s:%d", host, port)
-	httpmux.Handle("/", http.FileServer(fs))
+	httpmux.Handle("/", http.FileServer(rootFs))
 
 	// Server start sequence
 	if port == 0 {

@@ -47,4 +47,5 @@ TODO
 * [x] Enable support for http2 (with tls) and fall back to http1
 * [ ] Embed favicon and serve it
 * [ ] Notifications with discord hook
+* [ ] Use and show app version
 
