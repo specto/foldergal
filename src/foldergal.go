@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/daddye/vips"
 	"github.com/spf13/afero"
 	"mime"
 	"net/http"
@@ -10,16 +11,32 @@ import (
 	"strings"
 )
 
-func storeCachedFile(name string, contents []byte) error {
+
+var thumbOptions = vips.Options{
+	Width:        400,
+	Height:       400,
+	Crop:         false,
+	Extend:       vips.EXTEND_WHITE,
+	Interpolator: vips.BILINEAR,
+	Gravity:      vips.CENTRE,
+	Quality:      95,
+}
+
+func storePreviewFile(name string, contents []byte) error {
 	err := cacheFs.MkdirAll(filepath.Dir(name), os.ModePerm)
 	if err != nil {
 		return err
 	}
 	_, _ = cacheFs.Create(name)
-	return afero.WriteFile(cacheFs, name, contents, os.ModePerm)
+	buf, err := vips.Resize(contents, thumbOptions)
+	if err != nil {
+		return err
+	} else {
+		return afero.WriteFile(cacheFs, name, buf, os.ModePerm)
+	}
 }
 
-func getCachedFile(name string) ([]byte, error) {
+func getPreviewFile(name string) ([]byte, error) {
 	return afero.ReadFile(cacheFs, name)
 }
 
@@ -42,14 +59,14 @@ func validMediaByExtension(name string) bool {
 	return match != nil
 }
 
-func validMediaFile(file http.File, name string) bool {
+func validMediaFile(file http.File) bool {
 	buffer := make([]byte, 512)
 	_, err := file.Read(buffer)
-	// Reset seek to start to be able to read the file later
-	_, _ = file.Seek(0, 0)
 	if err != nil {
 		return false
 	}
+	// Reset seek to start to be able to read the file later
+	_, _ = file.Seek(0, 0)
 	contentType := http.DetectContentType(buffer)
 	match := mimePrefixes.FindStringSubmatch(contentType)
 	return match != nil
@@ -76,8 +93,16 @@ func (fs filteredFileSystem) Open(name string) (http.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !stat.IsDir() && !validMediaFile(file, name) {
-		return nil, os.ErrNotExist
+	if !stat.IsDir() {
+		if !validMediaFile(file) {
+			return nil, os.ErrNotExist
+		}
+		contents, err := afero.ReadFile(rootFs, filepath.Join(root, name))
+		if err != nil {
+			logger.Print(err)
+		} else {
+			_ = storePreviewFile(name, contents)
+		}
 	}
 	return filteredFile{file}, nil
 }

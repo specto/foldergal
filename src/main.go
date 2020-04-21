@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -34,7 +35,7 @@ func getEnvWithDefault(key string, defaultValue string) string {
 var logger *log.Logger
 var root string
 var prefix string
-var rootFs http.FileSystem
+var rootFs afero.Fs
 var cacheFs afero.Fs
 
 func main() {
@@ -61,7 +62,7 @@ func main() {
 	port := *flag.Int("port", defaultPort, "port to run at")
 	home := *flag.String("home", defaultHome, "home folder")
 	root = *flag.String("root", defaultRoot, "root folder to serve files from")
-	prefix = *flag.String("prefix", defaultPrefix, "path prefix e.g. http://localhost/PREFIX/other/stuff")
+	prefix = *flag.String("prefix", defaultPrefix, "path prefix as in http://localhost/PREFIX/other/stuff")
 	tlsCrt := *flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2")
@@ -94,6 +95,7 @@ func main() {
 	logger.Printf("Root folder is: %v", root)
 
 	// Set up caching folder
+	logger.Printf("Setting cache timeout to: %ds", cacheSeconds)
 	cacheFolder := filepath.Join(home, "cache")
 	err = os.MkdirAll(cacheFolder, os.ModeDir)
 	if err != nil {
@@ -108,19 +110,19 @@ func main() {
 	//rootFs := filteredFileSystem{http.Dir(root)}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
-	logger.Printf("Setting cache timeout to: %ds", cacheSeconds)
-	afs := afero.NewHttpFs(afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second))
-	rootFs = filteredFileSystem{afs.Dir(root)}
+	rootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(cacheSeconds)*time.Second)
+	afs := afero.NewHttpFs(rootFs)
+	srvFs := filteredFileSystem{afs.Dir(root)}
 
 	// Routing
 	httpmux := http.NewServeMux()
 	if prefix != "" {
 		prefixPath := fmt.Sprintf("/%s/", prefix)
 		logger.Printf("Using prefix: %s", prefixPath)
-		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(rootFs)))
+		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(srvFs)))
 	}
 	bind := fmt.Sprintf("%s:%d", host, port)
-	httpmux.Handle("/", http.FileServer(rootFs))
+	httpmux.Handle("/", http.FileServer(srvFs))
 
 	// Server start sequence
 	if port == 0 {
