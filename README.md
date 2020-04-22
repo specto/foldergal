@@ -57,4 +57,5 @@ TODO
 * [ ] Embed favicon and serve it
 * [ ] Notifications with discord hook
 * [ ] Use and show app version
+* [ ] Call ffmpeg binary to generate video thumbnail
 
