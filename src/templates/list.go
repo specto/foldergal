@@ -11,6 +11,8 @@ type ListItem struct {
 	Url   string
 	Name  string
 	Thumb string
+	W     int
+	H     int
 }
 
 type List struct {
