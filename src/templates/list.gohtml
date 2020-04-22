@@ -1,24 +1,32 @@
-{{ define "head" }}{{end}}
+{{ define "head" }}
+<style type="text/css">
+    img {object-fit: contain; object-position: center bottom;}
+</style>
+{{end}}
 {{ define "body" }}
     <header>
-        {{if .Title }}
+        {{ if .Title }}
         <h1>{{ .Title }}</h1>
-        {{end}}
+        {{ end }}
     </header>
     <main>
-    {{$prefix := .Prefix}}
+    {{ $prefix := .Prefix }}
     <ul>
-        {{if .ParentUrl}}
-            <li><a href="{{.ParentUrl}}">..</a></li>
-        {{end}}
-        {{range .Items}}
-            <li><a href="{{$prefix}}{{.Url}}">
-                    {{ if .Thumb }}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}"/>
-                    {{end}}
-                    {{.Name}}
+        {{ if .ParentUrl }}
+            <li><a href="{{- .ParentUrl -}}">..</a></li>
+        {{ end }}
+        {{ range .Items }}
+            <li><a href="{{- $prefix -}}{{- .Url -}}">
+                    {{ if .Thumb -}}
+                        <img src="{{ .Thumb }}" alt="{{ .Name }}" {{ if .W -}}
+                            width="{{- .W -}}"
+                        {{- end }} {{ if .H -}}
+                            height="{{- .H -}}"
+                        {{- end }}/>
+                    {{- end }}
+                    {{- .Name -}}
                 </a></li>
-        {{end}}
+        {{ end }}
     </ul>
     </main>
-{{end}}
+{{ end }}
