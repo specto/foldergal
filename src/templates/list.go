@@ -2,10 +2,24 @@ package templates
 
 import "html/template"
 
-var ListHtml, _ = template.New("foo").Parse(`{{define "T"}}<!DOCTYPE html>
-<html>
-<h1>List</h1>
-<main>
-{{.}}
-</main>
-</html>{{end}}`)
+type Page struct {
+	Title  string
+	Prefix string
+}
+
+type ListItem struct {
+	Url  string
+	Name string
+}
+
+type List struct {
+	ParentUrl string
+	Items     []ListItem
+	Page
+}
+
+var ListTpl = template.Must(template.New("").ParseFiles(
+	"src/templates/layout.gohtml",
+	"src/templates/list.gohtml",
+	"src/templates/footer.gohtml",
+))

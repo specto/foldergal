@@ -31,11 +31,15 @@ func getEnvWithDefault(key string, defaultValue string) string {
 	}
 }
 
-var logger *log.Logger
-var root string
-var prefix string
-var rootFs afero.Fs
-var cacheFs afero.Fs
+var (
+	logger    *log.Logger
+	root      string
+	prefix    string
+	rootFs    afero.Fs
+	cacheFs   afero.Fs
+	urlPrefix = "/"
+	//httpFs  http.FileSystem
+)
 
 func main() {
 	// Get current execution folder
@@ -65,7 +69,7 @@ func main() {
 	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
 	cacheMinutesInt := *flag.Int("cache-minutes", defaultCacheMinutes, "minutes to keep cached resources in memory")
-	cacheMinutes := time.Duration(cacheMinutesInt)*time.Minute
+	cacheMinutes := time.Duration(cacheMinutesInt) * time.Minute
 	flag.Parse()
 
 	// Check keys to enable TLS
@@ -110,18 +114,19 @@ func main() {
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
 	rootFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
-	afs := afero.NewHttpFs(rootFs)
-	srvFs := filteredFileSystem{afs.Dir(root)}
+	//httpFs = afero.NewHttpFs(rootFs)
+	//srvFs := filteredFileSystem{afs.Dir(root)}
 
 	// Routing
 	httpmux := http.NewServeMux()
 	if prefix != "" {
 		prefixPath := fmt.Sprintf("/%s/", prefix)
+		urlPrefix = prefixPath
 		logger.Printf("Using prefix: %s", prefixPath)
-		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.FileServer(srvFs)))
+		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.HandlerFunc(httpHandler)))
 	}
 	bind := fmt.Sprintf("%s:%d", host, port)
-	httpmux.Handle("/", http.FileServer(srvFs))
+	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 
 	// Server start sequence
 	if port == 0 {

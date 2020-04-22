@@ -1,0 +1,19 @@
+{{ define "head" }}{{end}}
+{{ define "body" }}
+    <header>
+        {{if .Title }}
+        <h1>{{ .Title }}</h1>
+        {{end}}
+    </header>
+    <main>
+    {{$prefix := .Prefix}}
+    <ul>
+        {{if .ParentUrl}}
+            <li><a href="{{.ParentUrl}}">..</a></li>
+        {{end}}
+        {{range .Items}}
+            <li><a href="{{$prefix}}{{.Url}}">{{.Name}}</a></li>
+        {{end}}
+    </ul>
+    </main>
+{{end}}

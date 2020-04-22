@@ -1,6 +1,8 @@
 package main
 
 import (
+	"./templates"
+	"fmt"
 	"github.com/daddye/vips"
 	"github.com/spf13/afero"
 	"mime"
@@ -114,4 +116,58 @@ func (f filteredFile) Readdir(n int) (fis []os.FileInfo, err error) {
 		}
 	}
 	return
+}
+
+func httpHandler(w http.ResponseWriter, r *http.Request) {
+	fullPath := filepath.Join(root, r.URL.Path)
+	exists, _ := afero.Exists(rootFs, fullPath)
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+	isDir, _ := afero.IsDir(rootFs, fullPath)
+	if isDir { // Prepare and render folder contents
+		contents, err := afero.ReadDir(rootFs, fullPath)
+		if err != nil {
+			logger.Print(err)
+			http.Error(w, "500 internal server error", http.StatusInternalServerError)
+		}
+		children := make([]templates.ListItem, 0, len(contents))
+		for _, child := range contents {
+			if containsDotFile(child.Name()) {
+				continue
+			}
+			if !child.IsDir() && !validMediaByExtension(child.Name()) {
+				continue
+			}
+			childPath, _ := filepath.Rel(root, filepath.Join(fullPath, child.Name()))
+			children = append(children, templates.ListItem{
+				Url:  childPath,
+				Name: child.Name(),
+			})
+		}
+		var (
+			parentUrl string
+			title     string
+		)
+		if fullPath != root {
+			title = filepath.Base(r.URL.Path)
+			parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
+		}
+		err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
+			Page:      templates.Page{Title: title, Prefix: urlPrefix},
+			ParentUrl: parentUrl,
+			Items:     children,
+		})
+		if err != nil {
+			logger.Print(err)
+			http.Error(w, "500 internal server error", http.StatusInternalServerError)
+		}
+	} else {
+		// TODO: Serve files from rootFs!
+		http.ServeFile(w, r, fullPath)
+		return
+	}
+
+	fmt.Fprintf(w, "URL: %v", fullPath)
 }
