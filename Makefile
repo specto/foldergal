@@ -2,7 +2,7 @@ SRC_DIR := src
 DEST_DIR := dist
 PRODUCT := foldergal
 
-.PHONY: clean, run, build, build-all
+.PHONY: clean run build build-all reload
 
 build: $(DEST_DIR)/$(PRODUCT)
 
@@ -21,3 +21,4 @@ build-all: build
 	GOOS=freebsd GOARCH=amd64 go build -v -o $(DEST_DIR)/$(PRODUCT)-freebsd $(SRC_DIR)/*.go
 	GOOS=linux GOARCH=arm GOARM=7 go build -v -o $(DEST_DIR)/$(PRODUCT)-pi $(SRC_DIR)/*.go
 
+reload: clean run

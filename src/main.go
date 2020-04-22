@@ -100,7 +100,7 @@ func main() {
 	// Set up caching folder
 	logger.Printf("Setting cache timeout to: %d minutes", cacheMinutesInt)
 	cacheFolder := filepath.Join(home, "cache")
-	err = os.MkdirAll(cacheFolder, os.ModeDir)
+	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
 	} else {

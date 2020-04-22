@@ -2,43 +2,36 @@ package main
 
 import (
 	"./templates"
+	"bytes"
 	"fmt"
-	"github.com/daddye/vips"
+	"github.com/disintegration/imaging"
 	"github.com/spf13/afero"
+	_ "image/gif"
+	"image/jpeg"
+	_ "image/png"
+	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
-var thumbOptions = vips.Options{
-	Width:        400,
-	Height:       400,
-	Crop:         false,
-	Extend:       vips.EXTEND_WHITE,
-	Interpolator: vips.BILINEAR,
-	Gravity:      vips.CENTRE,
-	Quality:      95,
-}
 
-func storePreviewFile(name string, contents []byte) error {
-	err := cacheFs.MkdirAll(filepath.Dir(name), os.ModePerm)
+func storePreviewFile(fullpath string, contents []byte) error {
+	err := cacheFs.MkdirAll(filepath.Dir(fullpath), os.ModePerm)
 	if err != nil {
 		return err
 	}
-	_, _ = cacheFs.Create(name)
-	buf, err := vips.Resize(contents, thumbOptions)
+	_, err = cacheFs.Create(fullpath)
 	if err != nil {
 		return err
 	} else {
-		return afero.WriteFile(cacheFs, name, buf, os.ModePerm)
+		return afero.WriteFile(cacheFs, fullpath, contents, os.ModePerm)
 	}
-}
-
-func getPreviewFile(name string) ([]byte, error) {
-	return afero.ReadFile(cacheFs, name)
 }
 
 func containsDotFile(name string) bool {
@@ -60,66 +53,73 @@ func validMediaByExtension(name string) bool {
 	return match != nil
 }
 
-func validMediaFile(file http.File) bool {
-	buffer := make([]byte, 512)
-	_, err := file.Read(buffer)
-	if err != nil {
-		return false
-	}
-	// Reset seek to start to be able to read the file later
-	_, _ = file.Seek(0, 0)
-	contentType := http.DetectContentType(buffer)
-	match := mimePrefixes.FindStringSubmatch(contentType)
-	return match != nil
+//func validMediaFile(file http.File) bool {
+//	buffer := make([]byte, 512)
+//	_, err := file.Read(buffer)
+//	if err != nil {
+//		return false
+//	}
+//	// Reset seek to start to be able to read the file later
+//	_, _ = file.Seek(0, 0)
+//	contentType := http.DetectContentType(buffer)
+//	match := mimePrefixes.FindStringSubmatch(contentType)
+//	return match != nil
+//}
+
+func fail500(w http.ResponseWriter, err error, _ *http.Request) {
+	logger.Print(err)
+	http.Error(w, "500 internal server error", http.StatusInternalServerError)
 }
 
-type filteredFile struct {
-	http.File
-}
 
-type filteredFileSystem struct {
-	http.FileSystem
-}
-
-func (fs filteredFileSystem) Open(name string) (http.File, error) {
-	if containsDotFile(name) {
-		return nil, os.ErrNotExist
-	}
-
-	file, err := fs.FileSystem.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !stat.IsDir() {
-		if !validMediaFile(file) {
-			return nil, os.ErrNotExist
-		}
-		contents, err := afero.ReadFile(rootFs, filepath.Join(root, name))
+func previewHandler(w http.ResponseWriter, r *http.Request) {
+	fullPath := filepath.Join(root, r.URL.Path)
+	exists, _ := afero.Exists(cacheFs, fullPath)
+	if !exists { // Generate thumbnail for the first time
+		// TODO: check for valid media file
+		file, err := rootFs.Open(fullPath)
 		if err != nil {
-			logger.Print(err)
+			fail500(w, err, r)
+			return
 		} else {
-			_ = storePreviewFile(name, contents)
+			// TODO: change image library with one that supports cross compilation and has correct rotation
+			img, err := imaging.Decode(file)
+			if err != nil {
+				fail500(w, err, r)
+				return
+			}
+			resized := imaging.Resize(img, 200, 0, imaging.Lanczos)
+			buf := new(bytes.Buffer)
+			err = jpeg.Encode(buf, resized, nil)
+			if err != nil {
+				fail500(w, err, r)
+				return
+			}
+			_ = storePreviewFile(strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg", buf.Bytes())
 		}
+		defer file.Close()
 	}
-	return filteredFile{file}, nil
+	// TODO: compare cached date with root date and refresh if needed
+	thumbFile, err := cacheFs.Open(fullPath)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+	defer thumbFile.Close()
+	// TODO: correct modtime
+	http.ServeContent(w, r, fullPath, time.Now(), io.ReadSeeker(thumbFile))
 }
 
-func (f filteredFile) Readdir(n int) (fis []os.FileInfo, err error) {
-	files, err := f.File.Readdir(n)
-	for _, file := range files { // Filter out the dot and non-media files from listing
-		if !containsDotFile(file.Name()) && (file.IsDir() || validMediaByExtension(file.Name())) {
-			fis = append(fis, file)
-		}
-	}
-	return
-}
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(root, r.URL.Path)
+	logger.Printf("URL: %v", r.URL)
+
+	if _, ok := r.URL.Query()["thumb"]; ok { // Check if thumb is in the query map
+		previewHandler(w, r)
+		return
+	}
+
 	exists, _ := afero.Exists(rootFs, fullPath)
 	if !exists {
 		http.NotFound(w, r)
@@ -129,8 +129,16 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if isDir { // Prepare and render folder contents
 		contents, err := afero.ReadDir(rootFs, fullPath)
 		if err != nil {
-			logger.Print(err)
-			http.Error(w, "500 internal server error", http.StatusInternalServerError)
+			fail500(w, err, r)
+			return
+		}
+		var (
+			parentUrl string
+			title     string
+		)
+		if fullPath != root {
+			title = filepath.Base(r.URL.Path)
+			parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
 		}
 		children := make([]templates.ListItem, 0, len(contents))
 		for _, child := range contents {
@@ -141,18 +149,16 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			childPath, _ := filepath.Rel(root, filepath.Join(fullPath, child.Name()))
+			childPath = url.PathEscape(childPath)
+			var thumb string
+			if !child.IsDir() {
+				thumb = fmt.Sprintf("%s?w=%d&h=%d&thumb", childPath, 200, 200)
+			}
 			children = append(children, templates.ListItem{
 				Url:  childPath,
 				Name: child.Name(),
+				Thumb: thumb,
 			})
-		}
-		var (
-			parentUrl string
-			title     string
-		)
-		if fullPath != root {
-			title = filepath.Base(r.URL.Path)
-			parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
 		}
 		err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
 			Page:      templates.Page{Title: title, Prefix: urlPrefix},
@@ -160,14 +166,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 			Items:     children,
 		})
 		if err != nil {
-			logger.Print(err)
-			http.Error(w, "500 internal server error", http.StatusInternalServerError)
+			fail500(w, err, r)
+			return
 		}
 	} else {
-		// TODO: Serve files from rootFs!
-		http.ServeFile(w, r, fullPath)
+		// TODO: check for correctness
+		file, err := rootFs.Open(fullPath)
+		defer file.Close()
+		if err != nil {
+			fail500(w, err, r)
+			return
+		}
+		// TODO: fix modtime
+		http.ServeContent(w, r, fullPath, time.Now(), io.ReadSeeker(file))
 		return
 	}
-
-	fmt.Fprintf(w, "URL: %v", fullPath)
 }

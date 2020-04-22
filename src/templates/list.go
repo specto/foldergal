@@ -8,8 +8,9 @@ type Page struct {
 }
 
 type ListItem struct {
-	Url  string
-	Name string
+	Url   string
+	Name  string
+	Thumb string
 }
 
 type List struct {
