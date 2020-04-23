@@ -2,9 +2,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {{ if .Title }}
-    <title>{{.Title}}</title>
-    {{ end }}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" href="/?favicon" />
+    <title>{{ if .Title -}}
+        {{- .Title -}}
+    {{- else -}}
+            Foldergal
+        {{- end }}</title>
     {{template "head" .}}
 </head>
 <body>

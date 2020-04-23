@@ -2,6 +2,7 @@ package main
 
 import (
 	"./templates"
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -73,24 +74,24 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
 	} else {
-		embeddedFileHandler(w, r, brokenImage)
+		embeddedFileHandler(w, r, brokenImage, "")
 		return
 	}
 	if !f.fileExists() {
-		embeddedFileHandler(w, r, brokenImage)
+		embeddedFileHandler(w, r, brokenImage, "")
 		return
 	}
 	if f.thumbExpired() {
 		err := f.thumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			embeddedFileHandler(w, r, brokenImage)
+			embeddedFileHandler(w, r, brokenImage, "")
 			return
 		}
 	}
 	thumb := f.thumb()
 	if thumb == nil || *thumb == nil {
-		embeddedFileHandler(w, r, brokenImage)
+		embeddedFileHandler(w, r, brokenImage, "")
 		return
 	}
 	thP := f.media().thumbPath
@@ -172,6 +173,14 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
 }
 
+func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFileId, forceContentType string) {
+	if forceContentType != "" {
+		w.Header().Set("Content-Type", forceContentType)
+	}
+	http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(embeddedFiles[id]))
+}
+
+
 // Elaborate router
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(root, r.URL.Path)
@@ -181,15 +190,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		previewHandler(w, r)
 		return
 	} else if len(q) > 0 {
-		var embeddedSvg embeddedFileId
+		var embeddedFile embeddedFileId
+		contentType := "image/svg+xml"
 		if _, ok := q["broken"]; ok {
-			embeddedSvg = brokenImage
+			embeddedFile = brokenImage
 		} else if _, ok := q["up"]; ok {
-			embeddedSvg = upImage
+			embeddedFile = upImage
 		} else if _, ok := q["folder"]; ok {
-			embeddedSvg = folderImage
+			embeddedFile = folderImage
+		} else if _, ok := q["favicon"]; ok {
+			embeddedFile = faviconImage
+			contentType = "" // Expecting ServeContent to put the correct image/x-icon
 		}
-		embeddedFileHandler(w, r, embeddedSvg)
+		embeddedFileHandler(w, r, embeddedFile, contentType)
 		return
 	}
 
