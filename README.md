@@ -54,8 +54,8 @@ TODO
 ---
 
 * [x] Enable support for http2 (with tls) and fall back to http1
-* [ ] Embed favicon and serve it
+* [x] Embed favicon and serve it
+* [x] Use and show app version
 * [ ] Notifications with discord hook
-* [ ] Use and show app version
 * [ ] Call ffmpeg binary to generate video thumbnail
 

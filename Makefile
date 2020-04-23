@@ -5,7 +5,7 @@ VERSION:="1.9.9"
 TIME:=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS:=-ldflags="-X 'main.BuildTime=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build build-all reload
+.PHONY: clean run build build-all compress-all rerun rebuild
 
 build: $(DEST_DIR)/$(PRODUCT)
 
@@ -24,5 +24,9 @@ build-all: build
 	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-freebsd $(SRC_DIR)/*.go
 	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-pi $(SRC_DIR)/*.go
 
-reload: clean run
+rerun: clean run
 
+rebuild: clean build
+
+compress-all: $(DEST_DIR)/$(PRODUCT) $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
+	upx --brute $?

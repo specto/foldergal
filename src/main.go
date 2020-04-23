@@ -37,14 +37,14 @@ func getEnvWithDefault(key string, defaultValue string) string {
 }
 
 var (
-	logger       *log.Logger
-	root         string
-	prefix       string
-	rootFs       afero.Fs
-	cacheFs      afero.Fs
-	urlPrefix    = "/"
-	BuildVersion = "dev"
-	BuildTime    = "now"
+	logger          *log.Logger
+	rootFolder      string
+	rootFs          afero.Fs
+	cacheFolderName = "_foldergal_cache"
+	cacheFs         afero.Fs
+	urlPrefix       = "/"
+	BuildVersion    = "dev"
+	BuildTime       = "now"
 )
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
@@ -54,7 +54,7 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 
 // Serve image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(root, r.URL.Path)
+	fullPath := filepath.Join(rootFolder, r.URL.Path)
 	ext := filepath.Ext(fullPath)
 	contentType := mime.TypeByExtension(ext)
 	var f media
@@ -102,8 +102,8 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
-	deepcrumb := "/" + prefix + "/"
-	crumbs = append(crumbs, templates.BreadCrumb{Url:deepcrumb, Title:"#:\\"})
+	deepcrumb := urlPrefix
+	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
 	enslavedPath, _ := url.PathUnescape(pageUrl.Path)
 	for _, br := range strings.Split(enslavedPath, "/") {
 		if br == "" {
@@ -115,7 +115,6 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 	return
 }
 
-
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -124,13 +123,13 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err       error
 		contents  []os.FileInfo
 	)
-	fullPath := filepath.Join(root, r.URL.Path)
+	fullPath := filepath.Join(rootFolder, r.URL.Path)
 	contents, err = afero.ReadDir(rootFs, fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	if fullPath != root {
+	if fullPath != rootFolder {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
 	}
@@ -142,7 +141,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if !child.IsDir() && !validMediaByExtension(child.Name()) {
 			continue
 		}
-		childPath, _ := filepath.Rel(root, filepath.Join(fullPath, child.Name()))
+		childPath, _ := filepath.Rel(rootFolder, filepath.Join(fullPath, child.Name()))
 		childPath = url.PathEscape(childPath)
 		thumb := "/go?folder"
 		if !child.IsDir() {
@@ -177,7 +176,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(root, r.URL.Path)
+	fullPath := filepath.Join(rootFolder, r.URL.Path)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
 	m := mediaFile{
@@ -206,8 +205,7 @@ func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFile
 
 // Elaborate router
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(root, r.URL.Path)
-	//logger.Printf("URL: %v", r.URL)
+	fullPath := filepath.Join(rootFolder, r.URL.Path)
 	q := r.URL.Query()
 	if _, ok := q["thumb"]; ok { // Thumbnails are marked with &thumb in the query string
 		previewHandler(w, r)
@@ -260,89 +258,102 @@ func main() {
 	defaultCacheMinutes, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_CACHE_MINUTES", "720"))
 
 	// Command line arguments (they override env)
-	host := *flag.String("host", defaultHost, "host address to bind to")
-	port := *flag.Int("port", defaultPort, "port to run at")
-	home := *flag.String("home", defaultHome, "home folder")
-	root = *flag.String("root", defaultRoot, "root folder to serve files from")
-	prefix = *flag.String("prefix", defaultPrefix, "path prefix as in http://localhost/PREFIX/other/stuff")
-	tlsCrt := *flag.String("crt", defaultCrt, "certificate file for TLS")
-	tlsKey := *flag.String("key", defaultKey, "key file for TLS")
-	useHttp2 := *flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
+	host := flag.String("host", defaultHost, "host address to bind to")
+	port := flag.Int("port", defaultPort, "port to run at")
+	home := flag.String("home", defaultHome, "home folder e.g. to keep thumbnails")
+	root := flag.String("root", defaultRoot, "root folder to serve files from")
+	prefix := flag.String("prefix", defaultPrefix, "path prefix as in http://localhost/PREFIX/other/stuff")
+	tlsCrt := flag.String("crt", defaultCrt, "certificate file for TLS")
+	tlsKey := flag.String("key", defaultKey, "key file for TLS")
+	useHttp2 := flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
 	cacheMinutesInt := *flag.Int("cache-minutes", defaultCacheMinutes, "minutes to keep cached resources in memory")
 	cacheMinutes := time.Duration(cacheMinutesInt) * time.Minute
 	flag.Parse()
 
-	// Check keys to enable TLS
-	useTls := false
-	if tlsCrt == "" {
-		tlsCrt = filepath.Join(home, "tls/server.crt")
-	}
-	if tlsKey == "" {
-		tlsKey = filepath.Join(home, "tls/server.key")
-	}
-	if fileExists(tlsCrt) && fileExists(tlsKey) {
-		useTls = true
-	}
+	////////////////////////////////////////////////////////////////////////////
 
 	// Set up log file
-	logFile, err := os.OpenFile(filepath.Join(home, "foldergal.log"),
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile := filepath.Join(*home, "foldergal.log")
+	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Print("Error: Log file cannot be created in home directory.")
 		log.Fatal(err)
 	}
-	defer logFile.Close()
-	logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	//logger.Printf("Env is: %v", os.Environ())
-	logger.Printf("Home folder is: %s", home)
-	logger.Printf("Root folder is: %s", root)
+	defer logging.Close()
+	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
+	log.Printf("Logging to %s", logFile)
+
+	// Set rootFolder media folder
+	rootFolder = *root
+	logger.Printf("Root folder is: %s", rootFolder)
+	base := afero.NewOsFs()
+	layer := afero.NewMemMapFs()
+	rootFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
 
 	// Set up caching folder
 	logger.Printf("Setting cache timeout to: %d minutes", cacheMinutesInt)
-	cacheFolder := filepath.Join(home, "cache")
+	cacheFolder := filepath.Join(*home, cacheFolderName)
 	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
 	} else {
+		log.Printf("Created cache folder: %s\n", cacheFolder)
+		logger.Printf("Cache folder is: %s", cacheFolder)
 		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
 		cacheFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
 	}
 
-	// Set root media folder
-	//rootFs := filteredFileSystem{http.Dir(root)}
-	base := afero.NewOsFs()
-	layer := afero.NewMemMapFs()
-	rootFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
-	//httpFs = afero.NewHttpFs(rootFs)
-	//srvFs := filteredFileSystem{afs.Dir(root)}
-
 	// Routing
 	httpmux := http.NewServeMux()
-	if prefix != "" {
-		prefixPath := fmt.Sprintf("/%s/", prefix)
-		urlPrefix = prefixPath
-		logger.Printf("Using prefix: %s", prefixPath)
-		httpmux.Handle(prefixPath, http.StripPrefix(prefixPath, http.HandlerFunc(httpHandler)))
+	if *prefix != "" {
+		urlPrefix = fmt.Sprintf("/%s/", *prefix)
+		logger.Printf("Using prefix url: %s", urlPrefix)
+		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
 	}
-	bind := fmt.Sprintf("%s:%d", host, port)
+	bind := fmt.Sprintf("%s:%d", *host, *port)
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 
 	// Server start sequence
-	if port == 0 {
+	if *port == 0 {
 		log.Fatalf("Error: misconfigured port %d", port)
 	}
+
+	// Check keys to enable TLS
+	useTls := false
+	var (
+		tlsCrtFile string
+		tlsKeyFile string
+	)
+	if *tlsCrt == "" {
+		tlsCrtFile = filepath.Join(*home, "tls/server.crt")
+	}
+	if *tlsKey == "" {
+		tlsKeyFile = filepath.Join(*home, "tls/server.key")
+	}
+	if fileExists(tlsCrtFile) && fileExists(tlsKeyFile) {
+		useTls = true
+	}
+
+	// Start the server
+	log.Print("Press ^C to stop...\n")
 	var srvErr error
-	if useTls {
+	defer func() {
+		if srvErr != nil {
+			log.Fatal(srvErr)
+		}
+	}()
+	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{}
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, _ := ioutil.ReadFile(tlsCrt)
+		pem, _ := ioutil.ReadFile(tlsCrtFile)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
 
-		if useHttp2 {
+		// Optional http2
+		if *useHttp2 {
 			logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
 		} else {
@@ -353,12 +364,11 @@ func main() {
 			Handler:   httpmux,
 			TLSConfig: tlsConfig,
 		}
-		logger.Printf("Using certificate: %s and key: %s", tlsCrt, tlsKey)
-		logger.Printf("Running at https://%v", bind)
-		srvErr = srv.ListenAndServeTLS(tlsCrt, tlsKey)
-	} else {
-		logger.Printf("Running at http://%v", bind)
+		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
+		logger.Printf("Running v:%v at https://%v", BuildVersion, bind)
+		srvErr = srv.ListenAndServeTLS(tlsCrtFile, tlsKeyFile)
+	} else { // Normal start
+		logger.Printf("Running v:%v at http://%v", BuildVersion, bind)
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}
-	defer log.Fatal(srvErr)
 }
