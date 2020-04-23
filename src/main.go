@@ -38,8 +38,40 @@ var (
 	rootFs    afero.Fs
 	cacheFs   afero.Fs
 	urlPrefix = "/"
-	//httpFs  http.FileSystem
 )
+
+// Elaborate router
+func httpHandler(w http.ResponseWriter, r *http.Request) {
+	fullPath := filepath.Join(root, r.URL.Path)
+	//logger.Printf("URL: %v", r.URL)
+	q := r.URL.Query()
+	if _, ok := q["thumb"]; ok { // Thumbnails are marked with &thumb in the query string
+		previewHandler(w, r)
+		return
+	} else if len(q) > 0 {
+		var embeddedSvg embeddedFileId
+		if _, ok := q["broken"]; ok {
+			embeddedSvg = brokenImage
+		} else if _, ok := q["up"]; ok {
+			embeddedSvg = upImage
+		} else if _, ok := q["folder"]; ok {
+			embeddedSvg = folderImage
+		}
+		embeddedFileHandler(w, r, embeddedSvg)
+		return
+	}
+
+	stat, err := rootFs.Stat(fullPath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if stat.IsDir() { // Prepare and render folder contents
+		listHandler(w, r)
+	} else { // This is a media file and we should serve it in all it's glory
+		fileHandler(w, r)
+	}
+}
 
 func main() {
 	// Get current execution folder

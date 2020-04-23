@@ -1,6 +1,13 @@
 {{ define "head" }}
 <style type="text/css">
-    img {object-fit: contain; object-position: center bottom;}
+    img {
+        width: auto;
+        height: auto;
+        max-height: 8em;
+        max-width: 9em;
+        object-fit: contain;
+        object-position: center bottom;
+    }
 </style>
 {{end}}
 {{ define "body" }}
@@ -13,16 +20,12 @@
     {{ $prefix := .Prefix }}
     <ul>
         {{ if .ParentUrl }}
-            <li><a href="{{- .ParentUrl -}}">..</a></li>
+            <li><a href="{{- .ParentUrl -}}"><img src="/go?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" />..</a></li>
         {{ end }}
         {{ range .Items }}
             <li><a href="{{- $prefix -}}{{- .Url -}}">
                     {{ if .Thumb -}}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}" {{ if .W -}}
-                            width="{{- .W -}}"
-                        {{- end }} {{ if .H -}}
-                            height="{{- .H -}}"
-                        {{- end }}/>
+                        <img src="{{ .Thumb }}" alt="{{ .Name }}" title="{{ .Name }}" />
                     {{- end }}
                     {{- .Name -}}
                 </a></li>
