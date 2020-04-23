@@ -47,46 +47,26 @@ func (f *mediaFile) media() *mediaFile {
 	return f
 }
 
-func (f *mediaFile) extractThumbStat() (err error) {
-	f.thumbInfo, err = cacheFs.Stat(f.thumbPath)
+func (f *mediaFile) file() *afero.File {
+	file, err := rootFs.Open(f.fullPath)
+	if err != nil {
+		return nil
+	}
+	return &file
+}
+
+func (f *mediaFile) fileExists() (exists bool) {
+	exists, _ = afero.Exists(rootFs, f.fullPath)
+	// Ensure we refresh file stat
+	f.fileInfo, _ = cacheFs.Stat(f.fullPath)
 	return
 }
 
-func (f *mediaFile) thumbExists() (exists bool) {
-	var err error
-	exists, err = afero.Exists(cacheFs, f.thumbPath)
-	if err != nil {
-		return false
-	}
-	// Ensure we refresh thumb stat
-	err = f.extractThumbStat()
-	if err != nil {
-		return false
-	}
-	return
+type imageFile struct {
+	*mediaFile
 }
 
-func (f *mediaFile) fileExists() bool {
-	exists, err := afero.Exists(rootFs, f.fullPath)
-	if err != nil {
-		return false
-	}
-	return exists
-}
-
-func (f *mediaFile) thumbExpired() bool {
-	if !f.thumbExists() {
-		return true
-	}
-	m := f.media()
-	diff := m.thumbInfo.ModTime().Sub(m.fileInfo.ModTime())
-	if diff < 0*time.Second {
-		return true
-	}
-	return false
-}
-
-func (f *mediaFile) thumb() *afero.File {
+func (f *imageFile) thumb() *afero.File {
 	if !f.thumbExists() {
 		return nil
 	}
@@ -97,32 +77,20 @@ func (f *mediaFile) thumb() *afero.File {
 	return &file
 }
 
-func (f *mediaFile) file() *afero.File {
-	file, err := rootFs.Open(f.fullPath)
-	if err != nil {
-		return nil
-	}
-	return &file
-}
-
-func makeMedia(fullPath string, thumbPath string) (m mediaFile, err error) {
-	var fstat os.FileInfo
-	m = mediaFile{
-		fullPath:  fullPath,
-		thumbPath: thumbPath,
-	}
-	fstat, err = rootFs.Stat(fullPath)
-	if err != nil {
-		return
-	}
-	m.fileInfo = fstat
-	// Ignore non-existing thumbs
-	_ = m.extractThumbStat()
+func (f *imageFile) thumbExists() (exists bool) {
+	exists, _ = afero.Exists(cacheFs, f.thumbPath)
+	// Ensure we refresh thumb stat
+	f.thumbInfo, _ = cacheFs.Stat(f.thumbPath)
 	return
 }
 
-type imageFile struct {
-	mediaFile
+func (f *imageFile) thumbExpired() (expired bool) {
+	if !f.thumbExists() {
+		return
+	}
+	m := f.media()
+	diff := m.thumbInfo.ModTime().Sub(m.fileInfo.ModTime())
+	return diff < 0*time.Second
 }
 
 func (f *imageFile) thumbGenerate() (err error) {
@@ -154,12 +122,39 @@ func (f *imageFile) thumbGenerate() (err error) {
 		return
 	}
 	_ = afero.WriteFile(cacheFs, f.thumbPath, buf.Bytes(), os.ModePerm)
-	_ = f.extractThumbStat()
+	f.thumbInfo, err = cacheFs.Stat(f.thumbPath)
 	return
 }
 
 type svgFile struct {
-	mediaFile
+	*mediaFile
+}
+
+func (f *svgFile) thumb() *afero.File {
+	if !f.thumbExists() {
+		return nil
+	}
+	file, err := cacheFs.Open(f.thumbPath)
+	if err != nil {
+		return nil
+	}
+	return &file
+}
+
+func (f *svgFile) thumbExists() (exists bool) {
+	exists, _ = afero.Exists(cacheFs, f.thumbPath)
+	// Ensure we refresh thumb stat
+	f.thumbInfo, _ = cacheFs.Stat(f.thumbPath)
+	return
+}
+
+func (f *svgFile) thumbExpired() (expired bool) {
+	if !f.thumbExists() {
+		return
+	}
+	m := f.media()
+	diff := m.thumbInfo.ModTime().Sub(m.fileInfo.ModTime())
+	return diff < 0*time.Second
 }
 
 func (f *svgFile) thumbGenerate() (err error) {
@@ -190,17 +185,71 @@ func (f *svgFile) thumbGenerate() (err error) {
 	}
 	// Since we just copy SVGs the thumb file is the same as the original
 	f.thumbPath = f.fullPath
-	_ = f.extractThumbStat()
+	f.thumbInfo, err = cacheFs.Stat(f.thumbPath)
 	return
 }
 
-//type audioFile struct {
-//	mediaFile
-//}
-//
-//type videoFile struct {
-//	mediaFile
-//}
+type audioFile struct {
+	*mediaFile
+}
+
+func (f *audioFile) thumb() *afero.File {
+	thumb, _ := memoryFs.Open("audio.svg")
+	return &thumb
+}
+
+func (f *audioFile) thumbExists() (exists bool) {
+	var err error
+	exists, err = afero.Exists(memoryFs, "audio.svg")
+	if err != nil {
+		return false
+	}
+	f.thumbInfo, err = memoryFs.Stat("audio.svg")
+	if err != nil {
+		return false
+	}
+	return
+}
+
+func (f *audioFile) thumbExpired() (expired bool) {
+	return true
+}
+
+func (f *audioFile) thumbGenerate() (err error) {
+	_ = f.thumbExists()
+	return
+}
+
+type videoFile struct {
+	*mediaFile
+}
+
+func (f *videoFile) thumb() *afero.File {
+	thumb, _ := memoryFs.Open("video.svg")
+	return &thumb
+}
+
+func (f *videoFile) thumbExists() (exists bool) {
+	var err error
+	exists, err = afero.Exists(memoryFs, "video.svg")
+	if err != nil {
+		return false
+	}
+	f.thumbInfo, err = memoryFs.Stat("video.svg")
+	if err != nil {
+		return false
+	}
+	return
+}
+
+func (f *videoFile) thumbExpired() (expired bool) {
+	return true
+}
+
+func (f *videoFile) thumbGenerate() (err error) {
+	_ = f.thumbExists()
+	return
+}
 
 func containsDotFile(name string) bool {
 	parts := strings.Split(name, "/")
@@ -234,18 +283,16 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	var f media
 	// All thumbnails are jpeg, except when they are not...
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
-	m, err := makeMedia(fullPath, thumbPath)
-	if err != nil {
-		logger.Print(err)
-		embeddedFileHandler(w, r, brokenImage)
-		return
-	}
-	// TODO: implement thumbs for other media files
+
 	if strings.HasPrefix(contentType, "image/svg") {
 		w.Header().Set("Content-Type", contentType)
-		f = &svgFile{m}
+		f = &svgFile{&mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
 	} else if strings.HasPrefix(contentType, "image/") {
-		f = &imageFile{m}
+		f = &imageFile{&mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
+	} else if strings.HasPrefix(contentType, "audio/") {
+		f = &audioFile{&mediaFile{fullPath: fullPath}}
+	} else if strings.HasPrefix(contentType, "video/") {
+		f = &videoFile{&mediaFile{fullPath: fullPath}}
 	} else {
 		embeddedFileHandler(w, r, brokenImage)
 		return
@@ -325,7 +372,12 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 func fileHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(root, r.URL.Path)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
-	m, err := makeMedia(fullPath, thumbPath)
+	var err error
+	m := mediaFile{
+		fullPath:  fullPath,
+		thumbPath: thumbPath,
+	}
+	m.fileInfo, err = rootFs.Stat(fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -344,19 +396,28 @@ const (
 	brokenImage = iota + 1
 	folderImage
 	upImage
+	audioImage
+	videoImage
 )
 
 var embeddedFiles = make(map[embeddedFileId][]byte)
 
+var memoryFs afero.Fs
+
 func init() {
 	embeddedFiles[brokenImage] = []byte(`<?xml version="1.0" encoding="utf-8"?>
 		<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-		viewBox="0 0 1024 768" style="enable-background:new 0 0 1024 768;" xml:space="preserve">
+			 viewBox="0 0 1024 768" style="enable-background:new 0 0 1024 768;" xml:space="preserve">
 		<style type="text/css">
-		.st0{fill:#FFFFFF;stroke:#000000;stroke-width:64;stroke-miterlimit:10;}
+			.st0{fill:#FFFFFF;stroke:#999999;stroke-width:64;stroke-miterlimit:10;}
+			.st1{fill:none;stroke:#999999;stroke-width:64;stroke-miterlimit:10;}
 		</style>
-		<path class="st0" d="M849.9,678.5H174.1c-27.39,0-49.6-22.21-49.6-49.6V139.1c0-27.39,22.21-49.6,49.6-49.6h199.97l24.29,80H849.9
-		c27.39,0,49.6,22.21,49.6,49.6v409.8C899.5,656.29,877.29,678.5,849.9,678.5z"/>
+		<rect x="151" y="96" class="st0" width="722" height="576"/>
+		<line class="st1" x1="272.5" y1="367" x2="442.5" y2="197"/>
+		<line class="st1" x1="272.5" y1="197" x2="442.5" y2="367"/>
+		<line class="st1" x1="581.5" y1="367" x2="751.5" y2="197"/>
+		<line class="st1" x1="581.5" y1="197" x2="751.5" y2="367"/>
+		<path class="st1" d="M614.26,590c0-37-44.89-78-100.26-78s-100.26,41-100.26,78"/>
 		</svg>`)
 	embeddedFiles[folderImage] = []byte(`<?xml version="1.0" encoding="utf-8"?>
 		<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
@@ -379,6 +440,32 @@ func init() {
 		<polyline class="st1" points="434,385.79 434,541.45 693,541.45 		"/>
 		<polygon points="570.06,404.03 297.94,404.03 434,268 			"/>
 		</svg>`)
+	// Todo: change with actual audio icon
+	embeddedFiles[audioImage] = []byte(`<?xml version="1.0" encoding="utf-8"?>
+		<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+		viewBox="0 0 1024 768" style="enable-background:new 0 0 1024 768;" xml:space="preserve">
+		<style type="text/css">
+		.st0{fill:#FFFFFF;stroke:orange;stroke-width:64;stroke-miterlimit:10;}
+		</style>
+		<path class="st0" d="M849.9,678.5H174.1c-27.39,0-49.6-22.21-49.6-49.6V139.1c0-27.39,22.21-49.6,49.6-49.6h199.97l24.29,80H849.9
+		c27.39,0,49.6,22.21,49.6,49.6v409.8C899.5,656.29,877.29,678.5,849.9,678.5z"/>
+		</svg>`)
+	// Todo: change with actual video icon
+	embeddedFiles[videoImage] = []byte(`<?xml version="1.0" encoding="utf-8"?>
+		<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+		viewBox="0 0 1024 768" style="enable-background:new 0 0 1024 768;" xml:space="preserve">
+		<style type="text/css">
+		.st0{fill:#FFFFFF;stroke:blue;stroke-width:64;stroke-miterlimit:10;}
+		</style>
+		<path class="st0" d="M849.9,678.5H174.1c-27.39,0-49.6-22.21-49.6-49.6V139.1c0-27.39,22.21-49.6,49.6-49.6h199.97l24.29,80H849.9
+		c27.39,0,49.6,22.21,49.6,49.6v409.8C899.5,656.29,877.29,678.5,849.9,678.5z"/>
+		</svg>`)
+
+	memoryFs = afero.NewMemMapFs()
+	mmfile, _ := memoryFs.Create("video.svg")
+	_, _ = mmfile.Write(embeddedFiles[videoImage])
+	mmfile, _ = memoryFs.Create("audio.svg")
+	_, _ = mmfile.Write(embeddedFiles[audioImage])
 }
 
 func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFileId) {
