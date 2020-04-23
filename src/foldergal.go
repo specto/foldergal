@@ -1,9 +1,7 @@
 package main
 
 import (
-	"./templates"
 	"bytes"
-	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/go-errors/errors"
 	"github.com/spf13/afero"
@@ -13,7 +11,6 @@ import (
 	_ "image/png"
 	"mime"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -67,7 +64,6 @@ func (f *mediaFile) fileExists() (exists bool) {
 	}
 	return
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 type imageFile struct {
 	mediaFile
@@ -316,132 +312,6 @@ func validMediaByExtension(name string) bool {
 	contentType := mime.TypeByExtension(ext)
 	match := mimePrefixes.FindStringSubmatch(contentType)
 	return match != nil
-}
-
-func fail500(w http.ResponseWriter, err error, _ *http.Request) {
-	logger.Print(err)
-	http.Error(w, "500 internal server error", http.StatusInternalServerError)
-}
-
-// Generate and serve image previews of media files
-func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(root, r.URL.Path)
-	ext := filepath.Ext(fullPath)
-	contentType := mime.TypeByExtension(ext)
-	var f media
-	// All thumbnails are jpeg, except when they are not...
-	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
-
-	if strings.HasPrefix(contentType, "image/svg") {
-		w.Header().Set("Content-Type", contentType)
-		f = &svgFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
-	} else if strings.HasPrefix(contentType, "image/") {
-		f = &imageFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
-	} else if strings.HasPrefix(contentType, "audio/") {
-		w.Header().Set("Content-Type", "image/svg+xml")
-		f = &audioFile{mediaFile{fullPath: fullPath}}
-	} else if strings.HasPrefix(contentType, "video/") {
-		w.Header().Set("Content-Type", "image/svg+xml")
-		f = &videoFile{mediaFile{fullPath: fullPath}}
-	} else if strings.HasPrefix(contentType, "application/pdf") {
-		w.Header().Set("Content-Type", "image/svg+xml")
-		f = &pdfFile{mediaFile{fullPath: fullPath}}
-	} else {
-		embeddedFileHandler(w, r, brokenImage)
-		return
-	}
-	if !f.fileExists() {
-		embeddedFileHandler(w, r, brokenImage)
-		return
-	}
-	if f.thumbExpired() {
-		err := f.thumbGenerate()
-		if err != nil {
-			logger.Print(err)
-			embeddedFileHandler(w, r, brokenImage)
-			return
-		}
-	}
-	thumb := f.thumb()
-	if thumb == nil || *thumb == nil {
-		embeddedFileHandler(w, r, brokenImage)
-		return
-	}
-	thP := f.media().thumbPath
-	thT := f.media().thumbInfo.ModTime()
-	http.ServeContent(w, r, thP, thT, *thumb)
-}
-
-func listHandler(w http.ResponseWriter, r *http.Request) {
-	var (
-		parentUrl string
-		title     string
-		err       error
-		contents  []os.FileInfo
-	)
-	fullPath := filepath.Join(root, r.URL.Path)
-	contents, err = afero.ReadDir(rootFs, fullPath)
-	if err != nil {
-		fail500(w, err, r)
-		return
-	}
-	if fullPath != root {
-		title = filepath.Base(r.URL.Path)
-		parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
-	}
-	children := make([]templates.ListItem, 0, len(contents))
-	for _, child := range contents {
-		if containsDotFile(child.Name()) {
-			continue
-		}
-		if !child.IsDir() && !validMediaByExtension(child.Name()) {
-			continue
-		}
-		childPath, _ := filepath.Rel(root, filepath.Join(fullPath, child.Name()))
-		childPath = url.PathEscape(childPath)
-		thumb := "/go?folder"
-		if !child.IsDir() {
-			thumb = fmt.Sprintf("%s?thumb", childPath)
-		}
-		li := templates.ListItem{
-			Url:   childPath,
-			Name:  child.Name(),
-			Thumb: thumb,
-			W:     ThumbWidth,
-			H:     ThumbHeight,
-		}
-		children = append(children, li)
-	}
-	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
-		Page:      templates.Page{Title: title, Prefix: urlPrefix},
-		ParentUrl: parentUrl,
-		Items:     children,
-	})
-	if err != nil {
-		fail500(w, err, r)
-		return
-	}
-}
-
-func fileHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(root, r.URL.Path)
-	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
-	var err error
-	m := mediaFile{
-		fullPath:  fullPath,
-		thumbPath: thumbPath,
-	}
-	m.fileInfo, err = rootFs.Stat(fullPath)
-	if err != nil {
-		fail500(w, err, r)
-		return
-	}
-	contents := m.file()
-	if contents == nil {
-		http.NotFound(w, r)
-		return
-	}
-	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
 }
 
 type embeddedFileId int
