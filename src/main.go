@@ -37,12 +37,14 @@ func getEnvWithDefault(key string, defaultValue string) string {
 }
 
 var (
-	logger    *log.Logger
-	root      string
-	prefix    string
-	rootFs    afero.Fs
-	cacheFs   afero.Fs
-	urlPrefix = "/"
+	logger       *log.Logger
+	root         string
+	prefix       string
+	rootFs       afero.Fs
+	cacheFs      afero.Fs
+	urlPrefix    = "/"
+	BuildVersion = "dev"
+	BuildTime    = "now"
 )
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
@@ -99,6 +101,21 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, thP, thT, *thumb)
 }
 
+func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
+	deepcrumb := "/" + prefix + "/"
+	crumbs = append(crumbs, templates.BreadCrumb{Url:deepcrumb, Title:"#:\\"})
+	enslavedPath, _ := url.PathUnescape(pageUrl.Path)
+	for _, br := range strings.Split(enslavedPath, "/") {
+		if br == "" {
+			continue
+		}
+		crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb + br, Title: br})
+		deepcrumb += br + "/"
+	}
+	return
+}
+
+
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -140,8 +157,15 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		children = append(children, li)
 	}
+	crumbs := splitUrlToBreadCrumbs(r.URL)
 	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
-		Page:      templates.Page{Title: title, Prefix: urlPrefix},
+		Page: templates.Page{
+			Title:        title,
+			Prefix:       urlPrefix,
+			AppVersion:   BuildVersion,
+			AppBuildTime: BuildTime,
+			BreadCrumbs:  crumbs,
+		},
 		ParentUrl: parentUrl,
 		Items:     children,
 	})
@@ -179,7 +203,6 @@ func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFile
 	}
 	http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(embeddedFiles[id]))
 }
-
 
 // Elaborate router
 func httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -271,8 +294,8 @@ func main() {
 	defer logFile.Close()
 	logger = log.New(logFile, "foldergal: ", log.Lshortfile|log.LstdFlags)
 	//logger.Printf("Env is: %v", os.Environ())
-	logger.Printf("Home folder is: %v", home)
-	logger.Printf("Root folder is: %v", root)
+	logger.Printf("Home folder is: %s", home)
+	logger.Printf("Root folder is: %s", root)
 
 	// Set up caching folder
 	logger.Printf("Setting cache timeout to: %d minutes", cacheMinutesInt)

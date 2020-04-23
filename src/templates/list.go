@@ -2,9 +2,17 @@ package templates
 
 import "html/template"
 
+type BreadCrumb struct {
+	Url   string
+	Title string
+}
+
 type Page struct {
-	Title  string
-	Prefix string
+	Title        string
+	Prefix       string
+	AppVersion   string
+	AppBuildTime string
+	BreadCrumbs  []BreadCrumb
 }
 
 type ListItem struct {
