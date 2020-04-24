@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"github.com/disintegration/imaging"
-	"github.com/go-errors/errors"
 	"github.com/spf13/afero"
 	"image"
 	_ "image/gif"

@@ -101,7 +101,16 @@ func init () {
         border-bottom-style: dotted;
         border-bottom-color: transparent;
         padding-right: 0.2em;
+		max-width: 18em;
+		overflow: hidden;
+		white-space: nowrap; 
+ 		text-overflow: ellipsis;
     }
+	body > header span {
+		overflow: hidden;
+		display: inline-block;
+		white-space: nowrap;
+	}
 
     body > header a:hover
     {
@@ -182,10 +191,8 @@ func init () {
 
     main a img
     {
-        width: auto;
-        height: auto;
-        max-height: 8em;
-        max-width: 9em;
+        height: 8em;
+        width: 9em;
         object-fit: contain;
         object-position: center bottom;
         display: inline-block;
@@ -260,11 +267,9 @@ func init () {
         <nav>
             <h1>
                 {{ range .BreadCrumbs -}}
-                    <a href="{{ .Url }}">
-                        {{- .Title -}}
-                    </a>
+                    <a href="{{ .Url }}" title="{{ .Title }}">{{ .Title }}</a>
                 {{- end }}
-                &gt;
+                <span>&gt;</span>
             </h1>
         </nav>
     </header>
@@ -282,7 +287,7 @@ func init () {
             <li><a class="title-container" href="{{- $prefix -}}{{- .Url -}}" title="{{ .Name }}">
                 <span>
                     {{ if .Thumb -}}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}" />
+                        <img src="{{- $prefix -}}{{ .Thumb }}" alt="{{ .Name }}" />
                     {{- end }}
 
                     <span class="title">{{- .Name -}}</span>

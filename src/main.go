@@ -14,7 +14,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +54,20 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	http.Error(w, "500 internal server error", http.StatusInternalServerError)
 }
 
+var dangerousPathSymbols = regexp.MustCompile("[:]")
+
+func sanitizePath(path string) string {
+	var sanitized string
+	if vol := filepath.VolumeName(path); vol != "" {
+		sanitized = strings.TrimPrefix(path, vol)
+		sanitized = strings.TrimPrefix(sanitized, "\\")
+	} else {
+		sanitized = path
+	}
+	dangerousPathSymbols.ReplaceAllString(sanitized, "_")
+	return sanitized
+}
+
 // Serve image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(rootFolder, r.URL.Path)
@@ -59,7 +75,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	contentType := mime.TypeByExtension(ext)
 	var f media
 	// All thumbnails are jpeg, except when they are not...
-	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
+	thumbPath := strings.TrimSuffix(sanitizePath(fullPath), filepath.Ext(fullPath)) + ".jpg"
 
 	if strings.HasPrefix(contentType, "image/svg") {
 		w.Header().Set("Content-Type", contentType)
@@ -76,24 +92,24 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
 	} else {
-		embeddedFileHandler(w, r, brokenImage, "")
+		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
 		return
 	}
 	if !f.fileExists() {
-		embeddedFileHandler(w, r, brokenImage, "")
+		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
 		return
 	}
 	if f.thumbExpired() {
 		err := f.thumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			embeddedFileHandler(w, r, brokenImage, "")
+			embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
 			return
 		}
 	}
 	thumb := f.thumb()
 	if thumb == nil || *thumb == nil {
-		embeddedFileHandler(w, r, brokenImage, "")
+		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
 		return
 	}
 	thP := f.media().thumbPath
@@ -131,7 +147,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if fullPath != rootFolder {
 		title = filepath.Base(r.URL.Path)
-		parentUrl = filepath.Join(urlPrefix, r.URL.Path, "..")
+		parentUrl = path.Join(urlPrefix, r.URL.Path, "..")
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -142,8 +158,8 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		childPath, _ := filepath.Rel(rootFolder, filepath.Join(fullPath, child.Name()))
-		childPath = url.PathEscape(childPath)
-		thumb := "/go?folder"
+		childPath = filepath.ToSlash(childPath)
+		thumb := "go?folder"
 		if !child.IsDir() {
 			thumb = fmt.Sprintf("%s?thumb", childPath)
 		}
@@ -279,7 +295,9 @@ func main() {
 		log.Print("Error: Log file cannot be created in home directory.")
 		log.Fatal(err)
 	}
-	defer logging.Close()
+	defer func() {
+		_ = logging.Close()
+	}()
 	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
 	log.Printf("Logging to %s", logFile)
 
