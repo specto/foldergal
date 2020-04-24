@@ -191,8 +191,8 @@ func init () {
 
     main a img
     {
-        height: 8em;
-        width: 9em;
+        max-height: 10em;
+        width: 10em;
         object-fit: contain;
         object-position: center bottom;
         display: inline-block;
@@ -261,8 +261,8 @@ func init () {
         max-width: 16em;
     }
 </style>
-{{end}}
-{{ define "body" }}
+{{end}}`,
+		`{{ define "body" }}
     <header>
         <nav>
             <h1>
