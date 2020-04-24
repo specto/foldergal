@@ -271,19 +271,22 @@ func main() {
 	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
 	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
 	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
-	defaultCacheMinutes, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_CACHE_MINUTES", "720"))
+	defaultCacheExpires, _ := time.ParseDuration(getEnvWithDefault("FOLDERGAL_CACHE_EXPIRES_AFTER", "6h"))
 
 	// Command line arguments (they override env)
 	host := flag.String("host", defaultHost, "host address to bind to")
 	port := flag.Int("port", defaultPort, "port to run at")
 	home := flag.String("home", defaultHome, "home folder e.g. to keep thumbnails")
 	root := flag.String("root", defaultRoot, "root folder to serve files from")
-	prefix := flag.String("prefix", defaultPrefix, "path prefix as in http://localhost/PREFIX/other/stuff")
+	prefix := flag.String("prefix", defaultPrefix,
+		"path prefix as in http://localhost/PREFIX/other/stuff")
 	tlsCrt := flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
-	cacheMinutesInt := *flag.Int("cache-minutes", defaultCacheMinutes, "minutes to keep cached resources in memory")
-	cacheMinutes := time.Duration(cacheMinutesInt) * time.Minute
+	cacheExpires := flag.Duration("cache-expires-after",
+		defaultCacheExpires,
+		"duration to keep cached resources in memory")
+
 	flag.Parse()
 
 	////////////////////////////////////////////////////////////////////////////
@@ -306,10 +309,10 @@ func main() {
 	logger.Printf("Root folder is: %s", rootFolder)
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
-	rootFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
+	rootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 
 	// Set up caching folder
-	logger.Printf("Setting cache timeout to: %d minutes", cacheMinutesInt)
+	logger.Printf("Setting cache in-memory expiration to: %v", *cacheExpires)
 	cacheFolder := filepath.Join(*home, cacheFolderName)
 	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
@@ -319,7 +322,7 @@ func main() {
 		logger.Printf("Cache folder is: %s", cacheFolder)
 		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
-		cacheFs = afero.NewCacheOnReadFs(base, layer, cacheMinutes)
+		cacheFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 	}
 
 	// Routing

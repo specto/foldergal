@@ -31,7 +31,7 @@ export FOLDERGAL_PREFIX=gallery
 export FOLDERGAL_CRT=/tls/server.crt
 export FOLDERGAL_KEY=/tls/server.key
 export FOLDERGAL_HTTP2=true
-export FOLDERGAL_CACHE_MINUTES=60
+export FOLDERGAL_CACHE_EXPIRES_AFTER=60m
 ```
 
 Http2 works only with TLS, which works only if you provide certificate files.
