@@ -283,6 +283,7 @@ func main() {
 	tlsCrt := flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
+	quiet := flag.Bool("quiet", false, "don't print to console")
 	cacheExpires := flag.Duration("cache-expires-after",
 		defaultCacheExpires,
 		"duration to keep cached resources in memory")
@@ -302,11 +303,16 @@ func main() {
 		_ = logging.Close()
 	}()
 	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	log.Printf("Logging to %s", logFile)
+	if !*quiet {
+		log.Printf("Logging to %s", logFile)
+	}
 
 	// Set rootFolder media folder
 	rootFolder = *root
 	logger.Printf("Root folder is: %s", rootFolder)
+	if !*quiet {
+		log.Printf("Serving files from: %v", rootFolder)
+	}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
 	rootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
@@ -318,7 +324,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		log.Printf("Created cache folder: %s\n", cacheFolder)
+		if !*quiet {
+			log.Printf("Created cache folder: %s\n", cacheFolder)
+		}
 		logger.Printf("Cache folder is: %s", cacheFolder)
 		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
@@ -357,7 +365,6 @@ func main() {
 	}
 
 	// Start the server
-	log.Print("Press ^C to stop...\n")
 	var srvErr error
 	defer func() {
 		if srvErr != nil {
@@ -387,9 +394,15 @@ func main() {
 		}
 		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
 		logger.Printf("Running v:%v at https://%v", BuildVersion, bind)
+		if !*quiet {
+			log.Printf("Running v:%v at https://%v Press ^C to stop...\n", BuildVersion, bind)
+		}
 		srvErr = srv.ListenAndServeTLS(tlsCrtFile, tlsKeyFile)
 	} else { // Normal start
 		logger.Printf("Running v:%v at http://%v", BuildVersion, bind)
+		if !*quiet {
+			log.Printf("Running v:%v at https://%v Press ^C to stop...\n", BuildVersion, bind)
+		}
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}
 }
