@@ -1,7 +1,7 @@
 SRC_DIR := src
 DEST_DIR := dist
 PRODUCT := foldergal
-VERSION:="1.9.9"
+VERSION:="2.0.0"
 TIME:=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS:=-ldflags="-X 'main.BuildTime=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
