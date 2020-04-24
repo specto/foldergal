@@ -43,6 +43,7 @@ var (
 	RootFolder      string
 	RootFs          afero.Fs
 	CacheFs         afero.Fs
+	PublicUrl       string
 	cacheFolderName = "_foldergal_cache"
 	UrlPrefix       = "/"
 	BuildVersion    = "dev"
@@ -271,7 +272,11 @@ func main() {
 	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
 	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
 	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
-	defaultCacheExpires, _ := time.ParseDuration(getEnvWithDefault("FOLDERGAL_CACHE_EXPIRES_AFTER", "6h"))
+	defaultCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
+		"FOLDERGAL_CACHE_EXPIRES_AFTER", "6h"))
+	defaultDiscordWebhook := getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
+	defaultPublicHost := getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
+	defaultQuiet, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_QUIET", ""))
 
 	// Command line arguments (they override env)
 	host := flag.String("host", defaultHost, "host address to bind to")
@@ -283,10 +288,12 @@ func main() {
 	tlsCrt := flag.String("crt", defaultCrt, "certificate file for TLS")
 	tlsKey := flag.String("key", defaultKey, "key file for TLS")
 	useHttp2 := flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
-	quiet := flag.Bool("quiet", false, "don't print to console")
+	quiet := flag.Bool("quiet", defaultQuiet, "don't print to console")
 	cacheExpires := flag.Duration("cache-expires-after",
 		defaultCacheExpires,
 		"duration to keep cached resources in memory")
+	publicHost := flag.String("pub-host", defaultPublicHost,
+		"the public name for the machine")
 
 	flag.Parse()
 
@@ -318,7 +325,6 @@ func main() {
 	RootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 
 	// Set up caching folder
-	logger.Printf("Setting cache in-memory expiration to: %v", *cacheExpires)
 	cacheFolder := filepath.Join(*home, cacheFolderName)
 	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
@@ -332,6 +338,7 @@ func main() {
 		layer := afero.NewMemMapFs()
 		CacheFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 	}
+	logger.Printf("Cache in-memory expiration after %v", *cacheExpires)
 
 	// Routing
 	httpmux := http.NewServeMux()
@@ -349,18 +356,11 @@ func main() {
 
 	// Check keys to enable TLS
 	useTls := false
-	var (
-		tlsCrtFile string
-		tlsKeyFile string
-	)
-	if *tlsCrt == "" {
-		tlsCrtFile = filepath.Join(*home, "tls/server.crt")
-	}
-	if *tlsKey == "" {
-		tlsKeyFile = filepath.Join(*home, "tls/server.key")
-	}
+	tlsCrtFile := *tlsCrt
+	tlsKeyFile := *tlsKey
 	if fileExists(tlsCrtFile) && fileExists(tlsKeyFile) {
 		useTls = true
+		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
 	}
 
 	// Start the server
@@ -370,6 +370,12 @@ func main() {
 			log.Fatal(srvErr)
 		}
 	}()
+	if *publicHost != "" {
+		PublicUrl = fmt.Sprintf("%v:%v",
+			strings.Trim(*publicHost, "/"), *port) + UrlPrefix
+	} else {
+		PublicUrl = bind + UrlPrefix
+	}
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{}
 
@@ -391,16 +397,17 @@ func main() {
 			Handler:   httpmux,
 			TLSConfig: tlsConfig,
 		}
-		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
-		logger.Printf("Running v:%v at https://%v", BuildVersion, bind)
+		PublicUrl = "https://" + PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
 		if !*quiet {
-			log.Printf("Running v:%v at https://%v Press ^C to stop...\n", BuildVersion, bind)
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
 		}
 		srvErr = srv.ListenAndServeTLS(tlsCrtFile, tlsKeyFile)
 	} else { // Normal start
-		logger.Printf("Running v:%v at http://%v", BuildVersion, bind)
+		PublicUrl = "http://" + PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
 		if !*quiet {
-			log.Printf("Running v:%v at https://%v Press ^C to stop...\n", BuildVersion, bind)
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
 		}
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}
