@@ -18,7 +18,8 @@ clean:
 run: build
 	@. .env; ./$(DEST_DIR)/$(PRODUCT)
 
-build-all: build
+build-all:
+	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-mac $(SRC_DIR)/*.go
 	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT).exe $(SRC_DIR)/*.go
 	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-linux $(SRC_DIR)/*.go
 	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-freebsd $(SRC_DIR)/*.go
@@ -28,5 +29,10 @@ rerun: clean run
 
 rebuild: clean build
 
-compress-all: $(DEST_DIR)/$(PRODUCT) $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
+compress-all: $(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
 	upx --brute $?
+
+$(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd: build-all
+	zip $@.zip $@
+
+zip-all: $(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
