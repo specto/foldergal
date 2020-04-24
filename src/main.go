@@ -17,6 +17,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ func getEnvWithDefault(key string, defaultValue string) string {
 var (
 	logger          *log.Logger
 	RootFolder      string
+	cacheFolder     string
 	RootFs          afero.Fs
 	CacheFs         afero.Fs
 	PublicUrl       string
@@ -48,6 +50,7 @@ var (
 	UrlPrefix       = "/"
 	BuildVersion    = "dev"
 	BuildTime       = "now"
+	startTime       time.Time
 )
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
@@ -130,6 +133,52 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 		deepcrumb += br + "/"
 	}
 	return
+}
+
+func diskUsage(currentPath string, info os.FileInfo) int64 {
+	size := info.Size()
+	if !info.IsDir() {
+		return size
+	}
+
+	dir, err := os.Open(currentPath)
+	if err != nil {
+		return size
+	}
+	defer dir.Close()
+
+	files, err := dir.Readdir(-1)
+	if err != nil {
+		return 0
+	}
+	for _, file := range files {
+		if file.Name() == "." || file.Name() == ".." {
+			continue
+		}
+		size += diskUsage(currentPath+"/"+file.Name(), file)
+	}
+	return size
+}
+
+func statusHandler(w http.ResponseWriter, _ *http.Request) {
+	bToMb := func(b uint64) uint64 {
+		return b / 1024 / 1024
+	}
+	info, _ := os.Lstat(RootFolder)
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	_, _ = fmt.Fprintf(w, "Root:       %v\n", RootFolder)
+	_, _ = fmt.Fprintf(w, "Root size:  %v MiB\n", bToMb(uint64(diskUsage(RootFolder, info))))
+	_, _ = fmt.Fprintf(w, "Cache:      %v\n", cacheFolder)
+	_, _ = fmt.Fprintf(w, "Cache size: %v MiB\n", bToMb(uint64(diskUsage(cacheFolder, info))))
+	_, _ = fmt.Fprintf(w, "\n")
+	_, _ = fmt.Fprintf(w, "Alloc:      %v MiB\n", bToMb(m.Alloc))
+	_, _ = fmt.Fprintf(w, "TotalAlloc: %v MiB\n", bToMb(m.TotalAlloc))
+	_, _ = fmt.Fprintf(w, "Sys:        %v MiB\n", bToMb(m.Sys))
+	_, _ = fmt.Fprintf(w, "NumGC:      %v\n", m.NumGC)
+	_, _ = fmt.Fprintf(w, "Goroutines: %v\n", runtime.NumGoroutine())
+	//_, _ = fmt.Fprintf(w, "goVersion:  %v\n", runtime.Version())
+	_, _ = fmt.Fprintf(w, "SvcUptime:  %v\n", time.Since(startTime))
 }
 
 // Prepare list of files
@@ -239,6 +288,9 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		} else if _, ok := q["favicon"]; ok {
 			embeddedFile = faviconImage
 			contentType = "" // Expecting ServeContent to put the correct image/x-icon
+		} else if _, ok := q["status"]; ok {
+			statusHandler(w, r)
+			return
 		}
 		embeddedFileHandler(w, r, embeddedFile, contentType)
 		return
@@ -254,6 +306,10 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}
+}
+
+func init() {
+	startTime = time.Now()
 }
 
 func main() {
@@ -327,7 +383,7 @@ func main() {
 	RootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 
 	// Set up caching folder
-	cacheFolder := filepath.Join(*home, cacheFolderName)
+	cacheFolder = filepath.Join(*home, cacheFolderName)
 	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
