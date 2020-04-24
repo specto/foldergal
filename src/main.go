@@ -40,11 +40,11 @@ func getEnvWithDefault(key string, defaultValue string) string {
 
 var (
 	logger          *log.Logger
-	rootFolder      string
-	rootFs          afero.Fs
+	RootFolder      string
+	RootFs          afero.Fs
+	CacheFs         afero.Fs
 	cacheFolderName = "_foldergal_cache"
-	cacheFs         afero.Fs
-	urlPrefix       = "/"
+	UrlPrefix       = "/"
 	BuildVersion    = "dev"
 	BuildTime       = "now"
 )
@@ -70,7 +70,7 @@ func sanitizePath(path string) string {
 
 // Serve image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(rootFolder, r.URL.Path)
+	fullPath := filepath.Join(RootFolder, r.URL.Path)
 	ext := filepath.Ext(fullPath)
 	contentType := mime.TypeByExtension(ext)
 	var f media
@@ -118,7 +118,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
-	deepcrumb := urlPrefix
+	deepcrumb := UrlPrefix
 	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
 	enslavedPath, _ := url.PathUnescape(pageUrl.Path)
 	for _, br := range strings.Split(enslavedPath, "/") {
@@ -139,15 +139,15 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err       error
 		contents  []os.FileInfo
 	)
-	fullPath := filepath.Join(rootFolder, r.URL.Path)
-	contents, err = afero.ReadDir(rootFs, fullPath)
+	fullPath := filepath.Join(RootFolder, r.URL.Path)
+	contents, err = afero.ReadDir(RootFs, fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	if fullPath != rootFolder {
+	if fullPath != RootFolder {
 		title = filepath.Base(r.URL.Path)
-		parentUrl = path.Join(urlPrefix, r.URL.Path, "..")
+		parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -157,7 +157,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if !child.IsDir() && !validMediaByExtension(child.Name()) {
 			continue
 		}
-		childPath, _ := filepath.Rel(rootFolder, filepath.Join(fullPath, child.Name()))
+		childPath, _ := filepath.Rel(RootFolder, filepath.Join(fullPath, child.Name()))
 		childPath = filepath.ToSlash(childPath)
 		thumb := "go?folder"
 		if !child.IsDir() {
@@ -176,7 +176,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
-			Prefix:       urlPrefix,
+			Prefix:       UrlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTime,
 			BreadCrumbs:  crumbs,
@@ -192,14 +192,14 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(rootFolder, r.URL.Path)
+	fullPath := filepath.Join(RootFolder, r.URL.Path)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
 	m := mediaFile{
 		fullPath:  fullPath,
 		thumbPath: thumbPath,
 	}
-	m.fileInfo, err = rootFs.Stat(fullPath)
+	m.fileInfo, err = RootFs.Stat(fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -221,7 +221,7 @@ func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFile
 
 // Elaborate router
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(rootFolder, r.URL.Path)
+	fullPath := filepath.Join(RootFolder, r.URL.Path)
 	q := r.URL.Query()
 	if _, ok := q["thumb"]; ok { // Thumbnails are marked with &thumb in the query string
 		previewHandler(w, r)
@@ -243,7 +243,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stat, err := rootFs.Stat(fullPath)
+	stat, err := RootFs.Stat(fullPath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -307,15 +307,15 @@ func main() {
 		log.Printf("Logging to %s", logFile)
 	}
 
-	// Set rootFolder media folder
-	rootFolder = *root
-	logger.Printf("Root folder is: %s", rootFolder)
+	// Set root media folder
+	RootFolder = *root
+	logger.Printf("Root folder is: %s", RootFolder)
 	if !*quiet {
-		log.Printf("Serving files from: %v", rootFolder)
+		log.Printf("Serving files from: %v", RootFolder)
 	}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
-	rootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
+	RootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 
 	// Set up caching folder
 	logger.Printf("Setting cache in-memory expiration to: %v", *cacheExpires)
@@ -330,15 +330,14 @@ func main() {
 		logger.Printf("Cache folder is: %s", cacheFolder)
 		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
-		cacheFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
+		CacheFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
 	}
 
 	// Routing
 	httpmux := http.NewServeMux()
 	if *prefix != "" {
-		urlPrefix = fmt.Sprintf("/%s/", *prefix)
-		logger.Printf("Using prefix url: %s", urlPrefix)
-		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
+		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(*prefix, "/"))
+		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	bind := fmt.Sprintf("%s:%d", *host, *port)
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))

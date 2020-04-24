@@ -48,7 +48,7 @@ func (f *mediaFile) media() *mediaFile {
 }
 
 func (f *mediaFile) file() *afero.File {
-	file, err := rootFs.Open(f.fullPath)
+	file, err := RootFs.Open(f.fullPath)
 	if err != nil {
 		return nil
 	}
@@ -57,14 +57,15 @@ func (f *mediaFile) file() *afero.File {
 
 func (f *mediaFile) fileExists() (exists bool) {
 	var err error
-	exists, err = afero.Exists(rootFs, f.fullPath)
+	exists, err = afero.Exists(RootFs, f.fullPath)
 	// Ensure we refresh file stat
-	f.fileInfo, err = rootFs.Stat(f.fullPath)
+	f.fileInfo, err = RootFs.Stat(f.fullPath)
 	if err != nil {
 		return false
 	}
 	return
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 type imageFile struct {
 	mediaFile
@@ -74,7 +75,7 @@ func (f *imageFile) thumb() *afero.File {
 	if !f.thumbExists() {
 		return nil
 	}
-	file, err := cacheFs.Open(f.thumbPath)
+	file, err := CacheFs.Open(f.thumbPath)
 	if err != nil {
 		return nil
 	}
@@ -82,9 +83,9 @@ func (f *imageFile) thumb() *afero.File {
 }
 
 func (f *imageFile) thumbExists() (exists bool) {
-	exists, _ = afero.Exists(cacheFs, f.thumbPath)
+	exists, _ = afero.Exists(CacheFs, f.thumbPath)
 	// Ensure we refresh thumb stat
-	f.media().thumbInfo, _ = cacheFs.Stat(f.thumbPath)
+	f.media().thumbInfo, _ = CacheFs.Stat(f.thumbPath)
 	return
 }
 
@@ -102,7 +103,7 @@ func (f *imageFile) thumbGenerate() (err error) {
 		file afero.File
 		img  image.Image
 	)
-	file, err = rootFs.Open(f.fullPath)
+	file, err = RootFs.Open(f.fullPath)
 	defer func() { _ = file.Close() }()
 	if err != nil {
 		return
@@ -117,16 +118,16 @@ func (f *imageFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = cacheFs.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
+	err = CacheFs.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = cacheFs.Create(f.thumbPath)
+	_, err = CacheFs.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
-	_ = afero.WriteFile(cacheFs, f.thumbPath, buf.Bytes(), os.ModePerm)
-	f.media().thumbInfo, err = cacheFs.Stat(f.thumbPath)
+	_ = afero.WriteFile(CacheFs, f.thumbPath, buf.Bytes(), os.ModePerm)
+	f.media().thumbInfo, err = CacheFs.Stat(f.thumbPath)
 	return
 }
 
@@ -139,7 +140,7 @@ func (f *svgFile) thumb() *afero.File {
 	if !f.thumbExists() {
 		return nil
 	}
-	file, err := cacheFs.Open(f.thumbPath)
+	file, err := CacheFs.Open(f.thumbPath)
 	if err != nil {
 		return nil
 	}
@@ -147,9 +148,9 @@ func (f *svgFile) thumb() *afero.File {
 }
 
 func (f *svgFile) thumbExists() (exists bool) {
-	exists, _ = afero.Exists(cacheFs, f.thumbPath)
+	exists, _ = afero.Exists(CacheFs, f.thumbPath)
 	// Ensure we refresh thumb stat
-	f.media().thumbInfo, _ = cacheFs.Stat(f.thumbPath)
+	f.media().thumbInfo, _ = CacheFs.Stat(f.thumbPath)
 	return
 }
 
@@ -167,7 +168,7 @@ func (f *svgFile) thumbGenerate() (err error) {
 		file     afero.File
 		contents []byte
 	)
-	file, err = rootFs.Open(f.fullPath)
+	file, err = RootFs.Open(f.fullPath)
 	defer func() { _ = file.Close() }()
 	if err != nil {
 		return
@@ -176,21 +177,21 @@ func (f *svgFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = cacheFs.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
+	err = CacheFs.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = cacheFs.Create(f.thumbPath)
+	_, err = CacheFs.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
-	err = afero.WriteFile(cacheFs, f.thumbPath, contents, os.ModePerm)
+	err = afero.WriteFile(CacheFs, f.thumbPath, contents, os.ModePerm)
 	if err != nil {
 		return
 	}
 	// Since we just copy SVGs the thumb file is the same as the original
 	f.thumbPath = f.fullPath
-	f.media().thumbInfo, err = cacheFs.Stat(f.thumbPath)
+	f.media().thumbInfo, err = CacheFs.Stat(f.thumbPath)
 	return
 }
 
@@ -331,9 +332,9 @@ var embeddedFiles = make(map[embeddedFileId][]byte)
 
 var memoryFs afero.Fs
 
-func unzip (data []byte) (out []byte, err error) {
+func unzip(data []byte) (out []byte, err error) {
 	var (
-		gz *gzip.Reader
+		gz  *gzip.Reader
 		buf bytes.Buffer
 	)
 	gz, err = gzip.NewReader(bytes.NewBuffer(data))
@@ -473,7 +474,6 @@ func init() {
 	faviconData, _ := unzip(faviconGzip)
 	embeddedFiles[faviconImage] = faviconData
 
-
 	memoryFs = afero.NewMemMapFs()
 	mmfile, _ := memoryFs.Create("video.svg")
 	_, _ = mmfile.Write(embeddedFiles[videoImage])
@@ -482,4 +482,3 @@ func init() {
 	mmfile, _ = memoryFs.Create("pdf.svg")
 	_, _ = mmfile.Write(embeddedFiles[pdfImage])
 }
-
