@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
@@ -39,6 +40,7 @@ func getEnvWithDefault(key string, defaultValue string) string {
 }
 
 var (
+	watcher         *fsnotify.Watcher
 	logger          *log.Logger
 	RootFolder      string
 	RootFs          afero.Fs
@@ -292,6 +294,8 @@ func main() {
 	cacheExpires := flag.Duration("cache-expires-after",
 		defaultCacheExpires,
 		"duration to keep cached resources in memory")
+	discordWebhook := flag.String("discord", defaultDiscordWebhook,
+		"webhook URL to receive notifications when new media appears")
 	publicHost := flag.String("pub-host", defaultPublicHost,
 		"the public name for the machine")
 
@@ -362,6 +366,9 @@ func main() {
 		useTls = true
 		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
 	}
+
+	// Fire filesystem change monitor
+	go startFsWatcher(RootFolder, *discordWebhook)
 
 	// Start the server
 	var srvErr error
