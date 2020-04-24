@@ -50,12 +50,22 @@ home (defaults to current folder)
     └─ server.key [optional]
 ```
 
+Limitations and known issues
+---
+
+You should clean the "home" folder manually after using the application.
+The thumnail cache and the log file remain on your disk.
+
+In the rare case that you shared a folder from one volume (windows drive) and
+later shared a folder with the same name but from different volume
+you might see some erroneous thumbnails.
+
 TODO
 ---
 
 * [x] Enable support for http2 (with tls) and fall back to http1
 * [x] Embed favicon and serve it
 * [x] Use and show app version
-* [ ] Notifications with discord hook
+* [ ] Notifications for new files via web e.g. discord webhook.
 * [ ] Call ffmpeg binary to generate video thumbnail
 
