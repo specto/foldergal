@@ -54,7 +54,7 @@ func init () {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="shortcut icon" href="/?favicon" />
+    <link rel="shortcut icon" href="{{ .Prefix }}go?favicon" />
     <title>{{ if .Title -}}
         {{- .Title -}}
     {{- else -}}
