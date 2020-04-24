@@ -279,7 +279,7 @@ func init () {
         {{ if .ParentUrl }}
             <li>
                 <a class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="/go?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
+                    <span><img src="{{ $prefix }}go?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
                     <span class="title clear">..</span>
                 </a></li>
         {{ end }}
