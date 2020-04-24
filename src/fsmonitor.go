@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	watcher           *fsnotify.Watcher
 	webhookUrl        string
 	notificationFlush = 100
 	notificationDelay = 1 * time.Second

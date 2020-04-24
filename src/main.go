@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
@@ -40,7 +39,6 @@ func getEnvWithDefault(key string, defaultValue string) string {
 }
 
 var (
-	watcher         *fsnotify.Watcher
 	logger          *log.Logger
 	RootFolder      string
 	RootFs          afero.Fs
