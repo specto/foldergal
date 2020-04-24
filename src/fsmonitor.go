@@ -18,7 +18,7 @@ var (
 	watcher           *fsnotify.Watcher
 	webhookUrl        string
 	notificationFlush = 100
-	notificationDelay = 1 * time.Second
+	notificationDelay = 6 * time.Minute
 	watchedFolders    = 0
 )
 
