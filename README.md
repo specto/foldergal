@@ -32,6 +32,7 @@ export FOLDERGAL_CRT=/tls/server.crt
 export FOLDERGAL_KEY=/tls/server.key
 export FOLDERGAL_HTTP2=true
 export FOLDERGAL_CACHE_EXPIRES_AFTER=60m
+export FOLDERGAL_DISCORD_WEBHOOK=https://discordapp.com/api/webhooks/xxxxx
 ```
 
 Http2 works only with TLS, which works only if you provide certificate files.
@@ -59,6 +60,11 @@ The thumnail cache and the log file remain on your disk.
 In the rare case that you shared a folder from one volume (windows drive) and
 later shared a folder with the same name but from different volume
 you might see some erroneous thumbnails.
+
+Developer notes
+---
+
+fsnotify requires `go get -u golang.org/x/sys/...`
 
 TODO
 ---

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/charithe/timedbuf"
 	"github.com/fsnotify/fsnotify"
-	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +19,7 @@ var (
 	webhookUrl        string
 	notificationFlush = 100
 	notificationDelay = 1 * time.Second
+	watchedFolders    = 0
 )
 
 //noinspection GoSnakeCaseUsage
@@ -43,16 +44,30 @@ func sendDiscord(jsonData DiscordMessage) {
 	_ = resp.Body.Close()
 }
 
+
 func notify(items []interface{}) {
-	var ss []string
-	for _, item := range items {
+	uniqueUrls := make(map[string]int)
+	for i, item := range items {
 		if path, err := filepath.Rel(RootFolder, fmt.Sprint(item)); err == nil {
-			ss = append(ss, PublicUrl+filepath.ToSlash(path))
+			dirPath := filepath.Dir(path)
+			if dirPath == "" {
+				uniqueUrls[PublicUrl] = i
+			} else {
+				urlPage, _ := url.Parse(PublicUrl + filepath.ToSlash(dirPath))
+				uniqueUrls[urlPage.String()] = i
+			}
 		}
+	}
+	urlStrings := make([]string, 0, len(uniqueUrls))
+	for k := range uniqueUrls {
+		urlStrings = append(urlStrings, k)
+	}
+	if len(urlStrings) == 0 {
+		return
 	}
 	jsonData := DiscordMessage{
 		Username: "Gallery",
-		Content:  "See what was just published: \n" + strings.Join(ss[:], "\n"),
+		Content:  "See what was just published: \n" + strings.Join(urlStrings[:], "\n"),
 	}
 	go sendDiscord(jsonData)
 }
@@ -66,7 +81,8 @@ func startFsWatcher(path string, webhook string) {
 	var err error
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		logger.Print(err)
+		return
 	}
 	defer func() { _ = watcher.Close() }()
 
@@ -113,9 +129,30 @@ func startFsWatcher(path string, webhook string) {
 		}
 	}()
 
+	err = filepath.Walk(path,
+		func(walkPath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				return nil
+			}
+			err = watcher.Add(walkPath)
+			if err != nil {
+				return err
+			}
+			watchedFolders++
+			return nil
+		})
+	if err != nil {
+		logger.Print(err)
+	}
+
 	err = watcher.Add(path)
 	if err != nil {
-		log.Fatal(err)
+		logger.Print(err)
+		return
 	}
+	watchedFolders++
 	<-done
 }

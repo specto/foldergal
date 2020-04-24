@@ -135,50 +135,40 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 	return
 }
 
-func diskUsage(currentPath string, info os.FileInfo) int64 {
-	size := info.Size()
-	if !info.IsDir() {
-		return size
-	}
-
-	dir, err := os.Open(currentPath)
+func folderSize(startPath string) (totalSize int64) {
+	err := filepath.Walk(startPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			totalSize += info.Size()
+			return nil
+		})
 	if err != nil {
-		return size
+		logger.Print(err)
 	}
-	defer dir.Close()
-
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return 0
-	}
-	for _, file := range files {
-		if file.Name() == "." || file.Name() == ".." {
-			continue
-		}
-		size += diskUsage(currentPath+"/"+file.Name(), file)
-	}
-	return size
+	return
 }
 
 func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	bToMb := func(b uint64) uint64 {
 		return b / 1024 / 1024
 	}
-	info, _ := os.Lstat(RootFolder)
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_, _ = fmt.Fprintf(w, "Root:       %v\n", RootFolder)
-	_, _ = fmt.Fprintf(w, "Root size:  %v MiB\n", bToMb(uint64(diskUsage(RootFolder, info))))
-	_, _ = fmt.Fprintf(w, "Cache:      %v\n", cacheFolder)
-	_, _ = fmt.Fprintf(w, "Cache size: %v MiB\n", bToMb(uint64(diskUsage(cacheFolder, info))))
+	_, _ = fmt.Fprintf(w, "Root:        %v\n", RootFolder)
+	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(RootFolder))))
+	_, _ = fmt.Fprintf(w, "Cache:       %v\n", cacheFolder)
+	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(cacheFolder))))
+	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", watchedFolders)
 	_, _ = fmt.Fprintf(w, "\n")
-	_, _ = fmt.Fprintf(w, "Alloc:      %v MiB\n", bToMb(m.Alloc))
-	_, _ = fmt.Fprintf(w, "TotalAlloc: %v MiB\n", bToMb(m.TotalAlloc))
-	_, _ = fmt.Fprintf(w, "Sys:        %v MiB\n", bToMb(m.Sys))
-	_, _ = fmt.Fprintf(w, "NumGC:      %v\n", m.NumGC)
-	_, _ = fmt.Fprintf(w, "Goroutines: %v\n", runtime.NumGoroutine())
-	//_, _ = fmt.Fprintf(w, "goVersion:  %v\n", runtime.Version())
-	_, _ = fmt.Fprintf(w, "SvcUptime:  %v\n", time.Since(startTime))
+	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
+	_, _ = fmt.Fprintf(w, "TotalAlloc:  %v MiB\n", bToMb(m.TotalAlloc))
+	_, _ = fmt.Fprintf(w, "Sys:         %v MiB\n", bToMb(m.Sys))
+	_, _ = fmt.Fprintf(w, "NumGC:       %v\n", m.NumGC)
+	_, _ = fmt.Fprintf(w, "Goroutines:  %v\n", runtime.NumGoroutine())
+	//_, _ = fmt.Fprintf(w, "goVersion:   %v\n", runtime.Version())
+	_, _ = fmt.Fprintf(w, "SvcUptime:   %v\n", time.Since(startTime))
 }
 
 // Prepare list of files
