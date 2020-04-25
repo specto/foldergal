@@ -100,6 +100,8 @@ edit your `config.json`.
 
 After `sudo systemctl daemon-reload` you can `sudo service foldergal start`.
 
+To enable auto-start: `sudo systemctl enable foldergal`
+
 TODO
 ---
 
