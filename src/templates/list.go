@@ -274,20 +274,19 @@ func init () {
         </nav>
     </header>
     <main>
-    {{ $prefix := .Prefix }}
     <ul>
         {{ if .ParentUrl }}
             <li>
                 <a class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ $prefix }}go?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
+                    <span><img src="{{ .Prefix }}go?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
                     <span class="title clear">..</span>
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li><a class="title-container" href="{{- $prefix -}}{{- .Url -}}" title="{{ .Name }}">
+            <li><a class="title-container" href="{{- .Url -}}" title="{{ .Name }}">
                 <span>
                     {{ if .Thumb -}}
-                        <img src="{{- $prefix -}}{{ .Thumb }}" alt="{{ .Name }}" />
+                        <img src="{{ .Thumb }}" alt="{{ .Name }}" />
                     {{- end }}
 
                     <span class="title">{{- .Name -}}</span>

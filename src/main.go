@@ -242,20 +242,20 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if !child.IsDir() && !validMediaByExtension(child.Name()) {
 			continue
 		}
-		childPath, _ := filepath.Rel(Config.Root, filepath.Join(fullPath, child.Name()))
+		childPath, _ := filepath.Rel(Config.Root,
+			filepath.Join(fullPath, child.Name()))
 		childPath = filepath.ToSlash(childPath)
-		thumb := "go?folder"
+		thumb := UrlPrefix + "go?folder"
 		if !child.IsDir() {
 			thumb = fmt.Sprintf("%s?thumb", childPath)
 		}
-		li := templates.ListItem{
-			Url:   childPath,
+		children = append(children, templates.ListItem{
+			Url:   UrlPrefix + childPath,
 			Name:  child.Name(),
 			Thumb: thumb,
 			W:     ThumbWidth,
 			H:     ThumbHeight,
-		}
-		children = append(children, li)
+		})
 	}
 	crumbs := splitUrlToBreadCrumbs(r.URL)
 	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
