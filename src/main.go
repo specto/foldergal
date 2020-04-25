@@ -318,6 +318,9 @@ func embeddedFileHandler(q url.Values, w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["favicon"]; ok {
 		embeddedFile = faviconImage
 		contentType = "" // Expecting ServeContent to put the correct image/x-icon
+	} else if _, ok := q["css"]; ok {
+		embeddedFile = css
+		contentType = "text/css"
 	} else if _, ok := q["status"]; ok {
 		statusHandler(w, r)
 		return
