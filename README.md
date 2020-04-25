@@ -93,12 +93,17 @@ Setting up service on Freebsd
 1. copy somewehere the executable e.g. `/usr/local/bin/foldergal`
 1. create a user to run the service e.g. `foldergaluser`
 1. create the folder `/var/run/foldergal` and make the service user it's owner
-1. create a file `/usr/local/rc.d/foldergal` make sure it is executable
+1. create a file `/usr/local/etc/rc.d/foldergal` make sure it is executable
 1. put there the contents of `rc-example-freebsd.sh` and edit
 1. set the service user, correct paths, port, public name
 1. add the line `foldergal_enable="yes"` in /etc/rc.conf
 1. `service foldergal start`
 1. you can check the logs in `FOLDERGAL_HOME` foldergal.log
+
+Important: in order for file type detection to work you will need to have 
+`/etc/mime-types` which freebsd does not have. 
+One solution is to install apache and symlink to it's mime.types.
+Ugly, yes, but foldergal will not see your videos otherwise.
 
 Service on linux
 --
