@@ -76,7 +76,13 @@ you might see some erroneous thumbnails.
 Developer notes
 ---
 
-fsnotify requires `go get -u golang.org/x/sys/...`
+When building use these flags to set the build time and version:
+```
+go build -ldflags="-X 'main.BuildTimestamp=TIME' -X 'main.BuildVersion=VERSION'"
+```
+Where TIME must be an RFC3339 string.
+
+Package fsnotify requires `go get -u golang.org/x/sys/...`
 
 Setting up service on Freebsd
 ---

@@ -3,7 +3,7 @@ DEST_DIR := dist
 PRODUCT := foldergal
 VERSION:="2.0.0"
 TIME:=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-FLAGS:=-ldflags="-X 'main.BuildTime=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
+FLAGS:=-ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
 .PHONY: clean run build build-all compress-all rerun rebuild
 

@@ -50,7 +50,8 @@ var (
 	cacheFolderName = "_foldergal_cache"
 	UrlPrefix       = "/"
 	BuildVersion    = "dev"
-	BuildTime       = "now"
+	BuildTimestamp  = "now"
+	BuildTime		time.Time
 	startTime       time.Time
 )
 
@@ -119,54 +120,50 @@ func sanitizePath(path string) string {
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	ext := filepath.Ext(fullPath)
-	contentType := mime.TypeByExtension(ext)
+	mimeType := mime.TypeByExtension(ext)
 	var f media
-	// All thumbnails are jpeg, except when they are not...
+	// All thumbnails are jpeg... most of the time
 	thumbPath := strings.TrimSuffix(sanitizePath(fullPath),
 		filepath.Ext(fullPath)) + ".jpg"
+	contentType := "image/jpeg"
 
-	if strings.HasPrefix(contentType, "image/svg") {
-		w.Header().Set("Content-Type", contentType)
+	if strings.HasPrefix(mimeType, "image/svg") {
+		contentType = mimeType
 		f = &svgFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
-	} else if strings.HasPrefix(contentType, "image/") {
+	} else if strings.HasPrefix(mimeType, "image/") {
 		f = &imageFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
-	} else if strings.HasPrefix(contentType, "audio/") {
-		w.Header().Set("Content-Type", "image/svg+xml")
+	} else if strings.HasPrefix(mimeType, "audio/") {
+		contentType = "image/svg+xml"
 		f = &audioFile{mediaFile{fullPath: fullPath}}
-	} else if strings.HasPrefix(contentType, "video/") {
-		w.Header().Set("Content-Type", "image/svg+xml")
+	} else if strings.HasPrefix(mimeType, "video/") {
+		contentType = "image/svg+xml"
 		f = &videoFile{mediaFile{fullPath: fullPath}}
-	} else if strings.HasPrefix(contentType, "application/pdf") {
-		w.Header().Set("Content-Type", "image/svg+xml")
+	} else if strings.HasPrefix(mimeType, "application/pdf") {
+		contentType = "image/svg+xml"
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
 	} else {
-		// Todo: fix time
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
 		return
 	}
 	if !f.fileExists() {
-		// Todo: fix time
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
 		return
 	}
 	if f.thumbExpired() {
 		err := f.thumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			// Todo: fix time
-			renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
+			renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
 			return
 		}
 	}
 	thumb := f.thumb()
 	if thumb == nil || *thumb == nil {
-		// Todo: fix time
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
 		return
 	}
-	thP := f.media().thumbPath
-	thT := f.media().thumbInfo.ModTime()
-	http.ServeContent(w, r, thP, thT, *thumb)
+	w.Header().Set("Content-Type", contentType)
+	http.ServeContent(w, r, f.media().thumbPath, f.media().thumbInfo.ModTime(), *thumb)
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
@@ -228,13 +225,13 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err       error
 		contents  []os.FileInfo
 	)
-	fullPath := filepath.Join(Config.Root, r.URL.Path)
-	contents, err = afero.ReadDir(RootFs, fullPath)
+	folderPath := filepath.Join(Config.Root, r.URL.Path)
+	contents, err = afero.ReadDir(RootFs, folderPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	if fullPath != Config.Root {
+	if folderPath != Config.Root {
 		title = filepath.Base(r.URL.Path)
 		if r.URL.Path != "" {
 			parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
@@ -249,11 +246,11 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		childPath, _ := filepath.Rel(Config.Root,
-			filepath.Join(fullPath, child.Name()))
+			filepath.Join(folderPath, child.Name()))
 		childPath = filepath.ToSlash(childPath)
-		thumb := UrlPrefix + "go?folder"
+		thumb := UrlPrefix + "static?folder"
 		if !child.IsDir() {
-			thumb = fmt.Sprintf("%s?thumb", childPath)
+			thumb = fmt.Sprintf("%s%s?thumb", UrlPrefix, childPath)
 		}
 		children = append(children, templates.ListItem{
 			Url:   UrlPrefix + childPath,
@@ -269,7 +266,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			Title:        title,
 			Prefix:       UrlPrefix,
 			AppVersion:   BuildVersion,
-			AppBuildTime: BuildTime,
+			AppBuildTime: BuildTimestamp,
 			BreadCrumbs:  crumbs,
 		},
 		ParentUrl: parentUrl,
@@ -325,8 +322,7 @@ func embeddedFileHandler(q url.Values, w http.ResponseWriter, r *http.Request) {
 		statusHandler(w, r)
 		return
 	}
-	// Todo: fix time
-	renderEmbeddedFile(w, r, embeddedFile, contentType, time.Now())
+	renderEmbeddedFile(w, r, embeddedFile, contentType, BuildTime)
 }
 
 func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
@@ -382,6 +378,11 @@ func (c *configuration) FromFile(configFile string) (err error) {
 
 func init() {
 	startTime = time.Now()
+	var errTime error
+	BuildTime, errTime = time.Parse(time.RFC3339, BuildTimestamp)
+	if errTime != nil {
+		BuildTime = time.Now()
+	}
 
 	// Get current execution folder
 	execFolder, err := os.Getwd()
@@ -474,7 +475,7 @@ func main() {
 		layer := afero.NewMemMapFs()
 		CacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
 	}
-	logger.Printf("Cache in-memory expiration after %v", Config.CacheExpiresAfter)
+	logger.Printf("Cache in-memory expiration after %v", time.Duration(Config.CacheExpiresAfter))
 
 	// Routing
 	httpmux := http.NewServeMux()
