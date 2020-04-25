@@ -485,8 +485,11 @@ func main() {
 		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(Config.Prefix, "/"))
 		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
-	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
+	httpmux.Handle("/favicon.ico", http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		renderEmbeddedFile(w, r, faviconImage, "", BuildTime)
+	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
+	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
 
 	// Server start sequence
 	if Config.Port == 0 {
