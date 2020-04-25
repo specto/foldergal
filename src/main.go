@@ -230,7 +230,9 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if fullPath != Config.Root {
 		title = filepath.Base(r.URL.Path)
-		parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
+		if r.URL.Path != "" {
+			parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
+		}
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
