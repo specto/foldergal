@@ -45,7 +45,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 
 	return
 }
-func init () {
+func init() {
 	var err error
 	ListTpl, err = parseTemplates(
 		`{{ define "layout" }}

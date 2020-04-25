@@ -231,6 +231,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		fail500(w, err, r)
 		return
 	}
+	folderInfo, _ := RootFs.Stat(folderPath)
 	if folderPath != Config.Root {
 		title = filepath.Base(r.URL.Path)
 		if r.URL.Path != "" {
@@ -261,6 +262,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	crumbs := splitUrlToBreadCrumbs(r.URL)
+	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
 	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
