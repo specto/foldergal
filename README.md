@@ -64,6 +64,9 @@ to point the executable to them.
 Limitations and known issues
 ---
 
+Privacy warning: all media is served as is, to the byte. 
+This means that no EXIF or other metadata is removed from your files.
+
 Http2 works only with TLS, which works only if you provide certificate files.
 
 You should clean the "home" folder manually after using the application.
