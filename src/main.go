@@ -122,7 +122,8 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	contentType := mime.TypeByExtension(ext)
 	var f media
 	// All thumbnails are jpeg, except when they are not...
-	thumbPath := strings.TrimSuffix(sanitizePath(fullPath), filepath.Ext(fullPath)) + ".jpg"
+	thumbPath := strings.TrimSuffix(sanitizePath(fullPath),
+		filepath.Ext(fullPath)) + ".jpg"
 
 	if strings.HasPrefix(contentType, "image/svg") {
 		w.Header().Set("Content-Type", contentType)
@@ -139,24 +140,28 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
 	} else {
-		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
+		// Todo: fix time
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
 		return
 	}
 	if !f.fileExists() {
-		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
+		// Todo: fix time
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
 		return
 	}
 	if f.thumbExpired() {
 		err := f.thumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
+			// Todo: fix time
+			renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
 			return
 		}
 	}
 	thumb := f.thumb()
 	if thumb == nil || *thumb == nil {
-		embeddedFileHandler(w, r, brokenImage, "image/svg+xml")
+		// Todo: fix time
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", time.Now())
 		return
 	}
 	thP := f.media().thumbPath
@@ -172,7 +177,8 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 		if br == "" {
 			continue
 		}
-		crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb + br, Title: br})
+		crumbs = append(crumbs,
+			templates.BreadCrumb{Url: deepcrumb + br, Title: br})
 		deepcrumb += br + "/"
 	}
 	return
@@ -297,41 +303,56 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
 }
 
-func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFileId, forceContentType string) {
-	if forceContentType != "" {
-		w.Header().Set("Content-Type", forceContentType)
+func embeddedFileHandler(q url.Values, w http.ResponseWriter, r *http.Request) {
+	var embeddedFile embeddedFileId
+	var contentType string
+	if _, ok := q["broken"]; ok {
+		embeddedFile = brokenImage
+		contentType = "image/svg+xml"
+	} else if _, ok := q["up"]; ok {
+		embeddedFile = upImage
+		contentType = "image/svg+xml"
+	} else if _, ok := q["folder"]; ok {
+		embeddedFile = folderImage
+		contentType = "image/svg+xml"
+	} else if _, ok := q["favicon"]; ok {
+		embeddedFile = faviconImage
+		contentType = "" // Expecting ServeContent to put the correct image/x-icon
+	} else if _, ok := q["status"]; ok {
+		statusHandler(w, r)
+		return
 	}
-	http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(embeddedFiles[id]))
+	// Todo: fix time
+	renderEmbeddedFile(w, r, embeddedFile, contentType, time.Now())
 }
 
-// Elaborate router
+func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
+	id embeddedFileId, contentType string, modTime time.Time) {
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	http.ServeContent(w, r, r.URL.Path, modTime, bytes.NewReader(embeddedFiles[id]))
+}
+
+// A secondary router.
+//
+// Since we are mapping URLs to file system resources we cannot use any names
+// for our internal resources.
+//
+// Otherwise we show an html page for folders and serve files.
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	q := r.URL.Query()
-	if _, ok := q["thumb"]; ok { // Thumbnails are marked with &thumb in the query string
+	// We use query string parameters for internal resources. Isn't that novel!
+	if _, ok := q["thumb"]; ok {
 		previewHandler(w, r)
 		return
 	} else if len(q) > 0 {
-		var embeddedFile embeddedFileId
-		contentType := "image/svg+xml"
-		if _, ok := q["broken"]; ok {
-			embeddedFile = brokenImage
-		} else if _, ok := q["up"]; ok {
-			embeddedFile = upImage
-		} else if _, ok := q["folder"]; ok {
-			embeddedFile = folderImage
-		} else if _, ok := q["favicon"]; ok {
-			embeddedFile = faviconImage
-			contentType = "" // Expecting ServeContent to put the correct image/x-icon
-		} else if _, ok := q["status"]; ok {
-			statusHandler(w, r)
-			return
-		}
-		embeddedFileHandler(w, r, embeddedFile, contentType)
+		embeddedFileHandler(q, w, r)
 		return
 	}
 
-	stat, err := RootFs.Stat(fullPath)
+	stat, err := RootFs.Stat(fullPath) // Check for existing resource
 	if err != nil {
 		http.NotFound(w, r)
 		return
