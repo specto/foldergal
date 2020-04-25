@@ -309,7 +309,7 @@ func containsDotFile(name string) bool {
 
 var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
 
-func validMediaByExtension(name string) bool {
+func validMedia(name string) bool {
 	ext := filepath.Ext(name)
 	contentType := mime.TypeByExtension(ext)
 	match := mimePrefixes.FindStringSubmatch(contentType)

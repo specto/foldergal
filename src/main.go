@@ -219,6 +219,10 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request) {
+	if containsDotFile(r.URL.Path) {
+		http.NotFound(w, r)
+		return
+	}
 	var (
 		parentUrl string
 		title     string
@@ -243,7 +247,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if containsDotFile(child.Name()) {
 			continue
 		}
-		if !child.IsDir() && !validMediaByExtension(child.Name()) {
+		if !child.IsDir() && !validMedia(child.Name()) {
 			continue
 		}
 		childPath, _ := filepath.Rel(Config.Root,
@@ -282,6 +286,10 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
+	if containsDotFile(r.URL.Path) {
+		http.NotFound(w, r)
+		return
+	}
 	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
@@ -292,6 +300,10 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	m.fileInfo, err = RootFs.Stat(fullPath)
 	if err != nil {
 		fail500(w, err, r)
+		return
+	}
+	if m.fileInfo.IsDir() || !validMedia(fullPath) {
+		http.NotFound(w, r)
 		return
 	}
 	contents := m.file()
