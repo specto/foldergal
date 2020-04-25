@@ -5,7 +5,7 @@ VERSION:="2.0.0"
 TIME:=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS:=-ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build build-all compress-all rerun rebuild
+.PHONY: clean run build build-all compress-all rerun rebuild zip-all
 
 build: $(DEST_DIR)/$(PRODUCT)
 
@@ -32,7 +32,5 @@ rebuild: clean build
 compress-all: $(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
 	upx --brute $?
 
-$(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd: build-all
-	zip $@.zip $@
-
-zip-all: $(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
+zip-all:
+	cd ${DEST_DIR}; find . -type f -not -name "*.zip" -and -not -name ".*" -exec zip "{}.zip" "{}" \;

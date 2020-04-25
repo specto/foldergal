@@ -1,7 +1,7 @@
 Web Gallery from Folders
 ===
 
-A web server that displays folders of images.
+A web server that displays folders of images, video and audio.
 
 Features
 ---
