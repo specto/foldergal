@@ -422,8 +422,7 @@ func main() {
 		}
 	}()
 	if *publicHost != "" {
-		PublicUrl = fmt.Sprintf("%v:%v",
-			strings.Trim(*publicHost, "/"), *port) + UrlPrefix
+		PublicUrl = strings.Trim(*publicHost, "/") + UrlPrefix
 	} else {
 		PublicUrl = bind + UrlPrefix
 	}
