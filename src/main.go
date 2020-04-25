@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/spf13/afero"
@@ -24,11 +26,10 @@ import (
 )
 
 func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
+	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
 		return false
 	}
-	return !info.IsDir()
+	return true
 }
 
 func getEnvWithDefault(key string, defaultValue string) string {
@@ -41,10 +42,10 @@ func getEnvWithDefault(key string, defaultValue string) string {
 
 var (
 	logger          *log.Logger
-	RootFolder      string
-	cacheFolder     string
-	RootFs          afero.Fs
+	Config          configuration
+	CacheFolder     string
 	CacheFs         afero.Fs
+	RootFs          afero.Fs
 	PublicUrl       string
 	cacheFolderName = "_foldergal_cache"
 	UrlPrefix       = "/"
@@ -52,6 +53,48 @@ var (
 	BuildTime       = "now"
 	startTime       time.Time
 )
+
+type configuration struct {
+	Host              string
+	Port              int
+	Home              string
+	Root              string
+	Prefix            string
+	TlsCrt            string
+	TlsKey            string
+	Http2             bool
+	CacheExpiresAfter jsonDuration
+	DiscordWebhook    string
+	PublicHost        string
+	Quiet             bool
+}
+
+type jsonDuration time.Duration
+
+func (d jsonDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+func (d *jsonDuration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		*d = jsonDuration(time.Duration(value))
+		return nil
+	case string:
+		tmp, err := time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		*d = jsonDuration(tmp)
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
+}
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	logger.Print(err)
@@ -74,7 +117,7 @@ func sanitizePath(path string) string {
 
 // Serve image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(RootFolder, r.URL.Path)
+	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	ext := filepath.Ext(fullPath)
 	contentType := mime.TypeByExtension(ext)
 	var f media
@@ -156,10 +199,10 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_, _ = fmt.Fprintf(w, "Root:        %v\n", RootFolder)
-	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(RootFolder))))
-	_, _ = fmt.Fprintf(w, "Cache:       %v\n", cacheFolder)
-	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(cacheFolder))))
+	_, _ = fmt.Fprintf(w, "Root:        %v\n", Config.Root)
+	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(Config.Root))))
+	_, _ = fmt.Fprintf(w, "Cache:       %v\n", CacheFolder)
+	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(CacheFolder))))
 	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", watchedFolders)
 	_, _ = fmt.Fprintf(w, "\n")
 	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
@@ -179,13 +222,13 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err       error
 		contents  []os.FileInfo
 	)
-	fullPath := filepath.Join(RootFolder, r.URL.Path)
+	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	contents, err = afero.ReadDir(RootFs, fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	if fullPath != RootFolder {
+	if fullPath != Config.Root {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
 	}
@@ -197,7 +240,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if !child.IsDir() && !validMediaByExtension(child.Name()) {
 			continue
 		}
-		childPath, _ := filepath.Rel(RootFolder, filepath.Join(fullPath, child.Name()))
+		childPath, _ := filepath.Rel(Config.Root, filepath.Join(fullPath, child.Name()))
 		childPath = filepath.ToSlash(childPath)
 		thumb := "go?folder"
 		if !child.IsDir() {
@@ -232,7 +275,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(RootFolder, r.URL.Path)
+	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
 	m := mediaFile{
@@ -261,7 +304,7 @@ func embeddedFileHandler(w http.ResponseWriter, r *http.Request, id embeddedFile
 
 // Elaborate router
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(RootFolder, r.URL.Path)
+	fullPath := filepath.Join(Config.Root, r.URL.Path)
 	q := r.URL.Query()
 	if _, ok := q["thumb"]; ok { // Thumbnails are marked with &thumb in the query string
 		previewHandler(w, r)
@@ -298,11 +341,22 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func init() {
-	startTime = time.Now()
+func (c *configuration) FromFile(configFile string) (err error) {
+	if !fileExists(configFile) {
+		return errors.New("missing " + configFile)
+	}
+	var file *os.File
+	if file, err = os.Open(configFile); err != nil {
+		return
+	}
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&c)
+	return
 }
 
-func main() {
+func init() {
+	startTime = time.Now()
+
 	// Get current execution folder
 	execFolder, err := os.Getwd()
 	if err != nil {
@@ -310,119 +364,119 @@ func main() {
 	}
 
 	// Environment variables
-	defaultHost := getEnvWithDefault("FOLDERGAL_HOST", "localhost")
-	defaultPort, _ := strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
-	defaultHome := getEnvWithDefault("FOLDERGAL_HOME", execFolder)
-	defaultRoot := getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
-	defaultPrefix := getEnvWithDefault("FOLDERGAL_PREFIX", "")
-	defaultCrt := getEnvWithDefault("FOLDERGAL_CRT", "")
-	defaultKey := getEnvWithDefault("FOLDERGAL_KEY", "")
-	defaultHttp2, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
-	defaultCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
+	Config.Host = getEnvWithDefault("FOLDERGAL_HOST", "localhost")
+	Config.Port, _ = strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
+	Config.Home = getEnvWithDefault("FOLDERGAL_HOME", execFolder)
+	Config.Root = getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
+	Config.Prefix = getEnvWithDefault("FOLDERGAL_PREFIX", "")
+	Config.TlsCrt = getEnvWithDefault("FOLDERGAL_CRT", "")
+	Config.TlsKey = getEnvWithDefault("FOLDERGAL_KEY", "")
+	Config.Http2, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
+	envCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
 		"FOLDERGAL_CACHE_EXPIRES_AFTER", "6h"))
-	defaultDiscordWebhook := getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
-	defaultPublicHost := getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
-	defaultQuiet, _ := strconv.ParseBool(getEnvWithDefault("FOLDERGAL_QUIET", ""))
+	Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
+	Config.DiscordWebhook = getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
+	Config.PublicHost = getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
+	Config.Quiet, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_QUIET", ""))
 
 	// Command line arguments (they override env)
-	host := flag.String("host", defaultHost, "host address to bind to")
-	port := flag.Int("port", defaultPort, "port to run at")
-	home := flag.String("home", defaultHome, "home folder e.g. to keep thumbnails")
-	root := flag.String("root", defaultRoot, "root folder to serve files from")
-	prefix := flag.String("prefix", defaultPrefix,
+	flag.StringVar(&Config.Host, "host", Config.Host, "host address to bind to")
+	flag.IntVar(&Config.Port, "port", Config.Port, "port to run at")
+	flag.StringVar(&Config.Home, "home", Config.Home, "home folder e.g. to keep thumbnails")
+	flag.StringVar(&Config.Root, "root", Config.Root, "root folder to serve files from")
+	flag.StringVar(&Config.Prefix, "prefix", Config.Prefix,
 		"path prefix as in http://localhost/PREFIX/other/stuff")
-	tlsCrt := flag.String("crt", defaultCrt, "certificate file for TLS")
-	tlsKey := flag.String("key", defaultKey, "key file for TLS")
-	useHttp2 := flag.Bool("http2", defaultHttp2, "enable HTTP/2 (only with TLS)")
-	quiet := flag.Bool("quiet", defaultQuiet, "don't print to console")
-	cacheExpires := flag.Duration("cache-expires-after",
-		defaultCacheExpires,
+	flag.StringVar(&Config.TlsCrt, "crt", Config.TlsCrt, "certificate file for TLS")
+	flag.StringVar(&Config.TlsKey, "key", Config.TlsKey, "key file for TLS")
+	flag.BoolVar(&Config.Http2, "http2", Config.Http2, "enable HTTP/2 (only with TLS)")
+	flag.BoolVar(&Config.Quiet, "quiet", Config.Quiet, "don't print to console")
+	flag.DurationVar((*time.Duration)(&Config.CacheExpiresAfter), "cache-expires-after",
+		time.Duration(Config.CacheExpiresAfter),
 		"duration to keep cached resources in memory")
-	discordWebhook := flag.String("discord", defaultDiscordWebhook,
+	flag.StringVar(&Config.DiscordWebhook, "discord", Config.DiscordWebhook,
 		"webhook URL to receive notifications when new media appears")
-	publicHost := flag.String("pub-host", defaultPublicHost,
+	flag.StringVar(&Config.PublicHost, "pub-host", Config.PublicHost,
 		"the public name for the machine")
+}
+
+func main() {
+	configFile := flag.String("config", "",
+		"json file to get all the parameters from")
 
 	flag.Parse()
 
-	////////////////////////////////////////////////////////////////////////////
+	if err := Config.FromFile(*configFile); *configFile != "" && err != nil {
+		log.Fatalf("error: invalid config %v", err)
+	}
 
 	// Set up log file
-	logFile := filepath.Join(*home, "foldergal.log")
+	logFile := filepath.Join(Config.Home, "foldergal.log")
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Print("Error: Log file cannot be created in home directory.")
+		log.Print("Error: Log file cannot be created.")
 		log.Fatal(err)
 	}
-	defer func() {
-		_ = logging.Close()
-	}()
+	defer func() { _ = logging.Close() }()
 	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	if !*quiet {
+	if !Config.Quiet {
 		log.Printf("Logging to %s", logFile)
 	}
 
 	// Set root media folder
-	RootFolder = *root
-	logger.Printf("Root folder is: %s", RootFolder)
-	if !*quiet {
-		log.Printf("Serving files from: %v", RootFolder)
+	if exists, err := os.Stat(Config.Root); os.IsNotExist(err) || !exists.IsDir() {
+		log.Fatalf("Root folder does not exist: %v", Config.Root)
+	}
+	logger.Printf("Root folder is: %s", Config.Root)
+	if !Config.Quiet {
+		log.Printf("Serving files from: %v", Config.Root)
 	}
 	base := afero.NewOsFs()
 	layer := afero.NewMemMapFs()
-	RootFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
+	RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
 
 	// Set up caching folder
-	cacheFolder = filepath.Join(*home, cacheFolderName)
-	err = os.MkdirAll(cacheFolder, 0750)
+	CacheFolder = filepath.Join(Config.Home, cacheFolderName)
+	err = os.MkdirAll(CacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		if !*quiet {
-			log.Printf("Created cache folder: %s\n", cacheFolder)
+		if !Config.Quiet {
+			log.Printf("Cache folder is: %s\n", CacheFolder)
 		}
-		logger.Printf("Cache folder is: %s", cacheFolder)
-		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
+		logger.Printf("Cache folder is: %s", CacheFolder)
+		base := afero.NewBasePathFs(afero.NewOsFs(), CacheFolder)
 		layer := afero.NewMemMapFs()
-		CacheFs = afero.NewCacheOnReadFs(base, layer, *cacheExpires)
+		CacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
 	}
-	logger.Printf("Cache in-memory expiration after %v", *cacheExpires)
+	logger.Printf("Cache in-memory expiration after %v", Config.CacheExpiresAfter)
 
 	// Routing
 	httpmux := http.NewServeMux()
-	if *prefix != "" {
-		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(*prefix, "/"))
+	if Config.Prefix != "" {
+		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(Config.Prefix, "/"))
 		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
-	bind := fmt.Sprintf("%s:%d", *host, *port)
+	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 
 	// Server start sequence
-	if *port == 0 {
-		log.Fatalf("Error: misconfigured port %d", port)
+	if Config.Port == 0 {
+		log.Fatalf("Error: misconfigured port %d", Config.Port)
 	}
-
-	// Check keys to enable TLS
 	useTls := false
-	tlsCrtFile := *tlsCrt
-	tlsKeyFile := *tlsKey
-	if fileExists(tlsCrtFile) && fileExists(tlsKeyFile) {
+	if fileExists(Config.TlsCrt) && fileExists(Config.TlsKey) {
 		useTls = true
-		logger.Printf("Using certificate: %s and key: %s", tlsCrtFile, tlsKeyFile)
+		logger.Printf("Using certificate: %s and key: %s", Config.TlsCrt, Config.TlsKey)
 	}
-
-	// Fire filesystem change monitor
-	go startFsWatcher(RootFolder, *discordWebhook)
-
-	// Start the server
+	go startFsWatcher(Config.Root) // Start filesystem watcher
 	var srvErr error
 	defer func() {
 		if srvErr != nil {
 			log.Fatal(srvErr)
 		}
 	}()
-	if *publicHost != "" {
-		PublicUrl = strings.Trim(*publicHost, "/") + UrlPrefix
+	if Config.PublicHost != "" {
+		PublicUrl = strings.Trim(Config.PublicHost, "/") + UrlPrefix
 	} else {
 		PublicUrl = bind + UrlPrefix
 	}
@@ -431,12 +485,12 @@ func main() {
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, _ := ioutil.ReadFile(tlsCrtFile)
+		pem, _ := ioutil.ReadFile(Config.TlsCrt)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
 
 		// Optional http2
-		if *useHttp2 {
+		if Config.Http2 {
 			logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
 		} else {
@@ -449,14 +503,14 @@ func main() {
 		}
 		PublicUrl = "https://" + PublicUrl
 		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
-		if !*quiet {
+		if !Config.Quiet {
 			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
 		}
-		srvErr = srv.ListenAndServeTLS(tlsCrtFile, tlsKeyFile)
+		srvErr = srv.ListenAndServeTLS(Config.TlsCrt, Config.TlsKey)
 	} else { // Normal start
 		PublicUrl = "http://" + PublicUrl
 		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
-		if !*quiet {
+		if !Config.Quiet {
 			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
 		}
 		srvErr = http.ListenAndServe(bind, httpmux)

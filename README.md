@@ -21,10 +21,20 @@ TLDR;
    `./foldergal-binary --root /path/to/serve/files/from --home /tmp/foldergal`
 2. Visit http://localhost:8080
 
-Use environment variables if you like:
+### Configuration
+
+#### Config File
+
+`foldergal --config /path/to/config.json`
+
+See config.default.json for details. Parameter names are case insensitive.
+
+All settings in the config file override the env and cli parameters!
+
+#### Environment Variables
 ```
-export FOLDERGAL_PORT=8080
 export FOLDERGAL_HOST=localhost
+export FOLDERGAL_PORT=8080
 export FOLDERGAL_HOME=/path/to/settings/
 export FOLDERGAL_ROOT=/files/to/serve/
 export FOLDERGAL_PREFIX=gallery
@@ -33,26 +43,28 @@ export FOLDERGAL_KEY=/tls/server.key
 export FOLDERGAL_HTTP2=true
 export FOLDERGAL_CACHE_EXPIRES_AFTER=60m
 export FOLDERGAL_DISCORD_WEBHOOK=https://discordapp.com/api/webhooks/xxxxx
+export FOLDERGAL_PUBLIC_HOST=example.com
+export FOLDERGAL_QUIET=true
 ```
 
-Http2 works only with TLS, which works only if you provide certificate files.
+#### Parameters
 
-Run `./foldergal --help` for full info on command line parameters.
+Run `./foldergal --help` for full info on command line parameters. 
+They will override the env variables.
 
-Home folder structure:
-```
-home (defaults to current folder)
- ╿
- ├─ foldergal.log
- ├╼ cache (created automatically)
- │  └─ ...generated thumbnails
- └╼ tls [optional]
-    ├─ server.crt [optional]
-    └─ server.key [optional]
-```
+#### Home folder structure
+
+* home (defaults to current folder)
+  * `foldergal.log`
+  * `_foldergal_cache/` (created automatically)
+  
+You can put config.json and tls certificates there but you will still have 
+to point the executable to them.
 
 Limitations and known issues
 ---
+
+Http2 works only with TLS, which works only if you provide certificate files.
 
 You should clean the "home" folder manually after using the application.
 The thumnail cache and the log file remain on your disk.
@@ -65,6 +77,19 @@ Developer notes
 ---
 
 fsnotify requires `go get -u golang.org/x/sys/...`
+
+Setting up service on Freebsd
+---
+
+1. copy somewehere the executable e.g. `/usr/local/bin/foldergal`
+1. create a user to run the service e.g. `foldergaluser`
+1. create the folder `/var/run/foldergal` and make the service user it's owner
+1. create a file `/usr/local/rc.d/foldergal` make sure it is executable
+1. put there the contents of `rc-foldergal-freebsd.sh` and edit
+1. set the service user, correct paths, port, public name
+1. add the line `foldergal_enable="yes"` in /etc/rc.conf
+1. `service foldergal start`
+1. you can check the logs in `FOLDERGAL_HOME` foldergal.log
 
 TODO
 ---

@@ -16,7 +16,6 @@ import (
 
 var (
 	watcher           *fsnotify.Watcher
-	webhookUrl        string
 	notificationFlush = 100
 	notificationDelay = 6 * time.Minute
 	watchedFolders    = 0
@@ -34,7 +33,8 @@ func sendDiscord(jsonData DiscordMessage) {
 	if errj != nil {
 		logger.Printf("error: invalid json: %v", errj)
 	}
-	resp, errp := http.Post(webhookUrl, "application/json; charset=utf-8", jsonBuf)
+	resp, errp := http.Post(Config.DiscordWebhook,
+		"application/json; charset=utf-8", jsonBuf)
 	if errp != nil {
 		logger.Printf("error: cannot send discord notification: %v", errp)
 	}
@@ -48,7 +48,7 @@ func sendDiscord(jsonData DiscordMessage) {
 func notify(items []interface{}) {
 	uniqueUrls := make(map[string]int)
 	for i, item := range items {
-		if path, err := filepath.Rel(RootFolder, fmt.Sprint(item)); err == nil {
+		if path, err := filepath.Rel(Config.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
 			if dirPath == "" {
 				uniqueUrls[PublicUrl] = i
@@ -72,11 +72,10 @@ func notify(items []interface{}) {
 	go sendDiscord(jsonData)
 }
 
-func startFsWatcher(path string, webhook string) {
-	if webhook == "" { // No WebHook no cry
+func startFsWatcher(path string) {
+	if Config.DiscordWebhook == "" { // No WebHook no cry
 		return
 	}
-	webhookUrl = webhook
 
 	var err error
 	watcher, err = fsnotify.NewWatcher()
