@@ -44,7 +44,6 @@ func sendDiscord(jsonData DiscordMessage) {
 	_ = resp.Body.Close()
 }
 
-
 func notify(items []interface{}) {
 	uniqueUrls := make(map[string]int)
 	for i, item := range items {
@@ -99,17 +98,11 @@ func startFsWatcher(path string) {
 				}
 				//logger.Print("event:", event)
 				if event.Op&fsnotify.Create == fsnotify.Create {
-					newStat, _ := os.Stat(event.Name)
-					if newStat.Size() == 0 { // We want bytes, not just names
-						break
-					}
 					eventBuffer.Put(event.Name)
+					newStat, _ := os.Stat(event.Name)
 					if newStat.IsDir() {
-						go func() { // Watch in new folders, but wait first
-							time.Sleep(2 * time.Second)
-							_ = watcher.Add(event.Name)
-							logger.Printf("Watching for new files in %v", event.Name)
-						}()
+						_ = watcher.Add(event.Name)
+						logger.Printf("Watching for new files in %v", event.Name)
 					}
 				}
 				// CRASHES:
