@@ -91,6 +91,15 @@ Setting up service on Freebsd
 1. `service foldergal start`
 1. you can check the logs in `FOLDERGAL_HOME` foldergal.log
 
+Service on linux
+--
+
+Create `/etc/systemd/system/foldergal.service` similar to 
+`systemd-example.service`. Change paths, user and don't forget to 
+edit your `config.json`.
+
+After `sudo systemctl daemon-reload` you can `sudo service foldergal start`.
+
 TODO
 ---
 
