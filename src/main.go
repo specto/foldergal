@@ -254,19 +254,26 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		childPath := filepath.Join(UrlPrefix, folderPath, child.Name())
 		childPath = filepath.ToSlash(childPath)
 		thumb := UrlPrefix + "/static?folder"
+		class := "folder"
 		if !child.IsDir() {
 			thumb = filepath.Join(folderPath, child.Name()+"?thumb")
+			class = "media"
 		}
 		children = append(children, templates.ListItem{
 			Url:   childPath,
 			Name:  child.Name(),
 			Thumb: thumb,
+			Class: class,
 			W:     ThumbWidth,
 			H:     ThumbHeight,
 		})
 	}
 	crumbs := splitUrlToBreadCrumbs(r.URL)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
+	itemCount := ""
+	if folderPath != "/" && folderPath != "" && len(children) > 0 {
+		itemCount = fmt.Sprintf("%v ", len(children))
+	}
 	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
@@ -274,6 +281,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 			BreadCrumbs:  crumbs,
+			ItemCount:    itemCount,
 		},
 		ParentUrl: parentUrl,
 		Items:     children,

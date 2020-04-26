@@ -15,6 +15,7 @@ type Page struct {
 	Prefix       string
 	AppVersion   string
 	AppBuildTime string
+	ItemCount    string
 	BreadCrumbs  []BreadCrumb
 }
 
@@ -22,6 +23,7 @@ type ListItem struct {
 	Url   string
 	Name  string
 	Thumb string
+	Class string
 	W     int
 	H     int
 }
@@ -75,8 +77,8 @@ func init() {
             <h1>
                 {{ range .BreadCrumbs -}}
                     <a href="{{ .Url }}" title="{{ .Title }}">{{ .Title }}</a>
-                {{- end }}
-                <span>&gt;</span>
+                {{- end -}}
+				<span>{{ .ItemCount }}&gt;</span>
             </h1>
         </nav>
     </header>
@@ -85,15 +87,14 @@ func init() {
         {{ if .ParentUrl }}
             <li>
                 <a class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ .Prefix }}/static?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
-                    <span class="title clear">..</span>
+                    <span><img src="{{ .Prefix }}/static?up" alt=".." title="{{ .ParentUrl }}" /></span>
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li><a class="title-container" href="{{- .Url -}}" title="{{ .Name }}">
+            <li class="{{ .Class }}"><a class="title-container" href="{{- .Url -}}" title="{{ .Name }}">
                 <span>
                     {{ if .Thumb -}}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}" />
+                        <img src="{{ .Thumb }}" alt="{{ .Name }}" width="10em" />
                     {{- end }}
 
                     <span class="title">{{- .Name -}}</span>
