@@ -413,7 +413,7 @@ func init() {
 	Config.TlsKey = getEnvWithDefault("FOLDERGAL_KEY", "")
 	Config.Http2, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
 	envCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
-		"FOLDERGAL_CACHE_EXPIRES_AFTER", "6h"))
+		"FOLDERGAL_CACHE_EXPIRES_AFTER", "0"))
 	Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
 	Config.DiscordWebhook = getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
 	Config.PublicHost = getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
@@ -476,25 +476,32 @@ func main() {
 	if !Config.Quiet {
 		log.Printf("Serving files from: %v", Config.Root)
 	}
-	base := afero.NewOsFs()
-	layer := afero.NewMemMapFs()
-	RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
+	if Config.CacheExpiresAfter == 0 {
+		RootFs = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), Config.Root))
+	} else {
+		base := afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), Config.Root))
+		layer := afero.NewMemMapFs()
+		RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
+	}
 
 	// Set up caching folder
 	CacheFolder = filepath.Join(Config.Home, cacheFolderName)
 	err = os.MkdirAll(CacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if !Config.Quiet {
+		log.Printf("Cache folder is: %s\n", CacheFolder)
+	}
+	logger.Printf("Cache folder is: %s", CacheFolder)
+	if Config.CacheExpiresAfter == 0 {
+		CacheFs = afero.NewBasePathFs(afero.NewOsFs(), CacheFolder)
 	} else {
-		if !Config.Quiet {
-			log.Printf("Cache folder is: %s\n", CacheFolder)
-		}
-		logger.Printf("Cache folder is: %s", CacheFolder)
 		base := afero.NewBasePathFs(afero.NewOsFs(), CacheFolder)
 		layer := afero.NewMemMapFs()
 		CacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
+		logger.Printf("Cache in-memory expiration after %v", time.Duration(Config.CacheExpiresAfter))
 	}
-	logger.Printf("Cache in-memory expiration after %v", time.Duration(Config.CacheExpiresAfter))
 
 	// Routing
 	httpmux := http.NewServeMux()
