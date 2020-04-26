@@ -54,7 +54,7 @@ func init() {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="shortcut icon" href="{{ .Prefix }}static?favicon" />
+    <link rel="shortcut icon" href="{{ .Prefix }}/static?favicon" />
     <title>{{ if .Title -}}
         {{- .Title -}}
     {{- else -}}
@@ -68,7 +68,7 @@ func init() {
 </body>
 </html>
 {{end}}`,
-		`{{ define "head" }}<link rel="stylesheet" type="text/css" href="{{ .Prefix }}static?css" />{{end}}`,
+		`{{ define "head" }}<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />{{end}}`,
 		`{{ define "body" }}
     <header>
         <nav>
@@ -85,7 +85,7 @@ func init() {
         {{ if .ParentUrl }}
             <li>
                 <a class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ .Prefix }}static?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
+                    <span><img src="{{ .Prefix }}/static?up" alt="{{ .ParentUrl }}" title="{{ .ParentUrl }}" /></span>
                     <span class="title clear">..</span>
                 </a></li>
         {{ end }}

@@ -48,7 +48,7 @@ var (
 	RootFs          afero.Fs
 	PublicUrl       string
 	cacheFolderName = "_foldergal_cache"
-	UrlPrefix       = "/"
+	UrlPrefix       = ""
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
 	BuildTime       time.Time
@@ -118,7 +118,7 @@ func sanitizePath(path string) string {
 
 // Serve image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(Config.Root, r.URL.Path)
+	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	ext := filepath.Ext(fullPath)
 	mimeType := mime.TypeByExtension(ext)
 	var f media
@@ -167,16 +167,16 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
-	deepcrumb := UrlPrefix
+	deepcrumb := UrlPrefix + "/"
+	currentUrl := strings.TrimPrefix(pageUrl.Path, UrlPrefix)
 	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
-	enslavedPath, _ := url.PathUnescape(pageUrl.Path)
-	for _, br := range strings.Split(enslavedPath, "/") {
-		if br == "" {
+	for _, name := range strings.Split(currentUrl, "/") {
+		if name == "" {
 			continue
 		}
 		crumbs = append(crumbs,
-			templates.BreadCrumb{Url: deepcrumb + br, Title: br})
-		deepcrumb += br + "/"
+			templates.BreadCrumb{Url: deepcrumb + name, Title: name})
+		deepcrumb += name + "/"
 	}
 	return
 }
@@ -229,18 +229,18 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err       error
 		contents  []os.FileInfo
 	)
-	folderPath := filepath.Join(Config.Root, r.URL.Path)
+	folderPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	contents, err = afero.ReadDir(RootFs, folderPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
 	folderInfo, _ := RootFs.Stat(folderPath)
-	if folderPath != Config.Root {
+	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
-		if r.URL.Path != "" {
-			parentUrl = path.Join(UrlPrefix, r.URL.Path, "..")
-		}
+		parentUrl = path.Join(r.URL.Path, "..")
+	} else if Config.PublicHost != "" {
+		title = Config.PublicHost
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -250,15 +250,14 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if !child.IsDir() && !validMedia(child.Name()) {
 			continue
 		}
-		childPath, _ := filepath.Rel(Config.Root,
-			filepath.Join(folderPath, child.Name()))
+		childPath := filepath.Join(UrlPrefix, folderPath, child.Name())
 		childPath = filepath.ToSlash(childPath)
-		thumb := UrlPrefix + "static?folder"
+		thumb := UrlPrefix + "/static?folder"
 		if !child.IsDir() {
-			thumb = fmt.Sprintf("%s%s?thumb", UrlPrefix, childPath)
+			thumb = filepath.Join(folderPath, child.Name()+"?thumb")
 		}
 		children = append(children, templates.ListItem{
-			Url:   UrlPrefix + childPath,
+			Url:   childPath,
 			Name:  child.Name(),
 			Thumb: thumb,
 			W:     ThumbWidth,
@@ -290,7 +289,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	fullPath := filepath.Join(Config.Root, r.URL.Path)
+	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
 	m := mediaFile{
@@ -354,7 +353,7 @@ func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
 //
 // Otherwise we show an html page for folders and serve files.
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := filepath.Join(Config.Root, r.URL.Path)
+	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	q := r.URL.Query()
 	// We use query string parameters for internal resources. Isn't that novel!
 	if _, ok := q["thumb"]; ok {
@@ -500,7 +499,7 @@ func main() {
 	// Routing
 	httpmux := http.NewServeMux()
 	if Config.Prefix != "" {
-		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(Config.Prefix, "/"))
+		UrlPrefix = fmt.Sprintf("/%s", strings.Trim(Config.Prefix, "/"))
 		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
