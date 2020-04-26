@@ -51,7 +51,7 @@ var (
 	UrlPrefix       = "/"
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
-	BuildTime		time.Time
+	BuildTime       time.Time
 	startTime       time.Time
 )
 
@@ -443,8 +443,14 @@ func init() {
 func main() {
 	configFile := flag.String("config", "",
 		"json file to get all the parameters from")
+	showVersion := flag.Bool("version", false, "show program version and build time")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("foldergal %v, built on %v\n", BuildVersion, BuildTime.In(time.Local))
+		os.Exit(0)
+	}
 
 	if err := Config.FromFile(*configFile); *configFile != "" && err != nil {
 		log.Fatalf("error: invalid config %v", err)
@@ -497,7 +503,7 @@ func main() {
 		UrlPrefix = fmt.Sprintf("/%s/", strings.Trim(Config.Prefix, "/"))
 		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
-	httpmux.Handle("/favicon.ico", http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile(w, r, faviconImage, "", BuildTime)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
