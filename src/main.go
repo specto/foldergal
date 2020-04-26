@@ -65,6 +65,7 @@ type configuration struct {
 	TlsKey            string
 	Http2             bool
 	CacheExpiresAfter jsonDuration
+	NotifyAfter       jsonDuration
 	DiscordWebhook    string
 	PublicHost        string
 	Quiet             bool
@@ -415,6 +416,9 @@ func init() {
 	envCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
 		"FOLDERGAL_CACHE_EXPIRES_AFTER", "0"))
 	Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
+	envNotifyAfter, _ := time.ParseDuration(getEnvWithDefault(
+		"FOLDERGAL_NOTIFY_AFTER", "30s"))
+	Config.NotifyAfter = jsonDuration(envNotifyAfter)
 	Config.DiscordWebhook = getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
 	Config.PublicHost = getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
 	Config.Quiet, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_QUIET", ""))
@@ -433,6 +437,9 @@ func init() {
 	flag.DurationVar((*time.Duration)(&Config.CacheExpiresAfter), "cache-expires-after",
 		time.Duration(Config.CacheExpiresAfter),
 		"duration to keep cached resources in memory")
+	flag.DurationVar((*time.Duration)(&Config.NotifyAfter), "notify-after",
+		time.Duration(Config.NotifyAfter),
+		"duration to delay notifications and combine them in one")
 	flag.StringVar(&Config.DiscordWebhook, "discord", Config.DiscordWebhook,
 		"webhook URL to receive notifications when new media appears")
 	flag.StringVar(&Config.PublicHost, "pub-host", Config.PublicHost,
@@ -532,9 +539,9 @@ func main() {
 		}
 	}()
 	if Config.PublicHost != "" {
-		PublicUrl = strings.Trim(Config.PublicHost, "/") + UrlPrefix
+		PublicUrl = strings.Trim(Config.PublicHost, "/") + UrlPrefix + "/"
 	} else {
-		PublicUrl = bind + UrlPrefix
+		PublicUrl = bind + UrlPrefix + "/"
 	}
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{}

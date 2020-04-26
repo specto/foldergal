@@ -17,11 +17,9 @@ import (
 var (
 	watcher           *fsnotify.Watcher
 	notificationFlush = 100
-	notificationDelay = 6 * time.Minute
 	watchedFolders    = 0
 )
 
-//noinspection GoSnakeCaseUsage
 type DiscordMessage struct {
 	Username string `json:"username"`
 	Content  string `json:"content"`
@@ -37,6 +35,7 @@ func sendDiscord(jsonData DiscordMessage) {
 		"application/json; charset=utf-8", jsonBuf)
 	if errp != nil {
 		logger.Printf("error: cannot send discord notification: %v", errp)
+		return
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		logger.Printf("error: discord response: %v", resp)
@@ -49,12 +48,13 @@ func notify(items []interface{}) {
 	for i, item := range items {
 		if path, err := filepath.Rel(Config.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
-			if dirPath == "" {
-				uniqueUrls[PublicUrl] = i
+			var urlPage *url.URL
+			if dirPath == "." {
+				urlPage, _ = url.Parse(PublicUrl)
 			} else {
-				urlPage, _ := url.Parse(PublicUrl + filepath.ToSlash(dirPath))
-				uniqueUrls[urlPage.String()] = i
+				urlPage, _ = url.Parse(PublicUrl + filepath.ToSlash(dirPath))
 			}
+			uniqueUrls[urlPage.String()] = i
 		}
 	}
 	urlStrings := make([]string, 0, len(uniqueUrls))
@@ -84,8 +84,9 @@ func startFsWatcher(path string) {
 	}
 	defer func() { _ = watcher.Close() }()
 
-	logger.Printf("Monitoring for filesystem changes with delay %v", notificationDelay)
-	eventBuffer := timedbuf.New(notificationFlush, notificationDelay, notify)
+	notifyAfter := time.Duration(Config.NotifyAfter)
+	logger.Printf("Monitoring for filesystem changes with delay %v", notifyAfter)
+	eventBuffer := timedbuf.New(notificationFlush, notifyAfter, notify)
 	defer eventBuffer.Close()
 
 	done := make(chan bool)
