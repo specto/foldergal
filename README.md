@@ -122,6 +122,10 @@ TODO
 * [x] Enable support for http2 (with tls) and fall back to http1
 * [x] Embed favicon and serve it
 * [x] Use and show app version
-* [ ] Notifications for new files via web e.g. discord webhook.
+* [x] Notifications for new files via web e.g. discord webhook.
+* [ ] Show number of files in folder
 * [ ] Call ffmpeg binary to generate video thumbnail
+* [ ] RSS feed
+* [ ] In-browser notifications for new uploads
+* [ ] Flag to turn off in-memory cache
 
