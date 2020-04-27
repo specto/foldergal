@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -69,6 +70,7 @@ type configuration struct {
 	DiscordWebhook    string
 	PublicHost        string
 	Quiet             bool
+	Ffmpeg            string
 }
 
 type jsonDuration time.Duration
@@ -124,8 +126,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	mimeType := mime.TypeByExtension(ext)
 	var f media
 	// All thumbnails are jpeg... most of the time
-	thumbPath := strings.TrimSuffix(sanitizePath(fullPath),
-		filepath.Ext(fullPath)) + ".jpg"
+	thumbPath := sanitizePath(fullPath) + ".jpg"
 	contentType := "image/jpeg"
 
 	if strings.HasPrefix(mimeType, "image/svg") {
@@ -138,7 +139,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		f = &audioFile{mediaFile{fullPath: fullPath}}
 	} else if strings.HasPrefix(mimeType, "video/") {
 		contentType = "image/svg+xml"
-		f = &videoFile{mediaFile{fullPath: fullPath}}
+		f = &videoFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "application/pdf") {
 		contentType = "image/svg+xml"
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
@@ -163,7 +164,9 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
 		return
 	}
-	w.Header().Set("Content-Type", contentType)
+	if !strings.HasSuffix(f.media().thumbInfo.Name(), ".jpg") {
+		w.Header().Set("Content-Type", contentType)
+	}
 	http.ServeContent(w, r, f.media().thumbPath, f.media().thumbInfo.ModTime(), *thumb)
 }
 
@@ -531,6 +534,13 @@ func main() {
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
+
+	if Config.Ffmpeg == "" {
+		if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
+			Config.Ffmpeg = ffmpegPath
+			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
+		}
+	}
 
 	// Server start sequence
 	if Config.Port == 0 {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/spf13/afero"
 	"image"
@@ -11,10 +12,13 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"math"
 	"mime"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -233,11 +237,28 @@ type videoFile struct {
 }
 
 func (f *videoFile) thumb() *afero.File {
-	thumb, _ := memoryFs.Open("video.svg")
-	return &thumb
+	if !f.thumbExists() {
+		return nil
+	}
+	if Config.Ffmpeg == "" {
+		thumb, _ := memoryFs.Open("video.svg")
+		return &thumb
+	}
+	file, err := CacheFs.Open(f.thumbPath)
+	if err != nil {
+		return nil
+	}
+	return &file
 }
 
 func (f *videoFile) thumbExists() (exists bool) {
+	if Config.Ffmpeg != "" { // Check if we generated thumbnail already
+		exists, _ = afero.Exists(CacheFs, f.thumbPath)
+		// Ensure we refresh thumb stat
+		f.media().thumbInfo, _ = CacheFs.Stat(f.thumbPath)
+		return
+	}
+	// Using internal images
 	var err error
 	exists, err = afero.Exists(memoryFs, "video.svg")
 	if err != nil {
@@ -251,13 +272,48 @@ func (f *videoFile) thumbExists() (exists bool) {
 }
 
 func (f *videoFile) thumbExpired() (expired bool) {
-	return true
+	if !f.thumbExists() {
+		return true
+	}
+	m := f.media()
+	diff := m.thumbInfo.ModTime().Sub(m.fileInfo.ModTime())
+	return diff < 0*time.Second
 }
 
 func (f *videoFile) thumbGenerate() (err error) {
-	if !f.thumbExists() {
-		return errors.New("no video thumbnail")
+	if Config.Ffmpeg == "" { // No ffmpeg no thumbnail
+		return
 	}
+	//var file afero.File
+	//file, err = RootFs.Open(f.fullPath)
+	//defer func() { _ = file.Close() }()
+	//if err != nil {
+	//	return
+	//}
+
+	movieFile := filepath.Join(Config.Root, f.fullPath)
+	thumbFile := filepath.Join(CacheFolder, f.thumbPath)
+
+	// Get the duration of the movie
+	cmd := exec.Command(Config.Ffmpeg, "-hide_banner", //"-loglevel", "quiet",
+		"-i", movieFile)
+	out, _ := cmd.CombinedOutput()
+	re := regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
+	match := re.FindSubmatch(out)
+	if len(match) < 2 {
+		return errors.New("error: cannot find video duration: " + f.fullPath)
+	}
+	// Target the middle of the movie
+	targetTime := toTimeCode(fromTimeCode(match[1])/2)
+
+	// Save the thumbnail
+	cmd2 := exec.Command(Config.Ffmpeg,
+		"-hide_banner", "-loglevel", "quiet", "-y", "-noaccurate_seek",
+		"-ss", targetTime, "-i", movieFile,
+		"-vf", "scale=200x200:flags=lanczos:force_original_aspect_ratio=decrease",
+		thumbFile)
+	logger.Print(cmd2)
+	_ = cmd2.Run()
 	return
 }
 
@@ -315,6 +371,25 @@ func validMedia(name string) bool {
 	match := mimePrefixes.FindStringSubmatch(contentType)
 	return match != nil
 }
+
+type videoDuration time.Duration
+// duration -> 00:00:00
+func toTimeCode(d time.Duration) string {
+	h := int64(math.Mod(d.Hours(), 24))
+	m := int64(math.Mod(d.Minutes(), 60))
+	s := int64(math.Mod(d.Seconds(), 60))
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+// 00:00:00 -> duration
+func fromTimeCode(timecode []byte) (d time.Duration) {
+	m1, m2, m3 := 0, 0, 0
+	m1, _ = strconv.Atoi(string(timecode[0:2]))
+	m2, _ = strconv.Atoi(string(timecode[3:5]))
+	m3, _ = strconv.Atoi(string(timecode[6:8]))
+	d, _ = time.ParseDuration(fmt.Sprintf("%dh%dm%ds", m1, m2, m3))
+	return
+}
+////////////////////////////////////////////////////////////////////////////////
 
 type embeddedFileId int
 
