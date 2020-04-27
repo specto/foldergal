@@ -1,10 +1,15 @@
-Web Gallery from Folders
+Web Gallery from a Folder
 ===
 
 A web server that displays folders of images, video and audio.
 
-Just browse media files as web pages. No editing or uploading.
+Simple browsing of media files as web pages. No editing or uploading.
 Limited only to the folder you want.
+
+Produces a standalone executable. The only optional external 
+dependency is `ffmpeg` for video thumbnails.
+
+Supports TLS and http2.
 
 Usage
 ---
