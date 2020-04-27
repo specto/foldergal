@@ -469,6 +469,8 @@ func main() {
 	if err := Config.FromFile(*configFile); *configFile != "" && err != nil {
 		log.Fatalf("error: invalid config %v", err)
 	}
+	Config.Home, _ = filepath.Abs(Config.Home)
+	Config.Root, _ = filepath.Abs(Config.Root)
 
 	// Set up log file
 	logFile := filepath.Join(Config.Home, "foldergal.log")
