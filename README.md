@@ -3,6 +3,9 @@ Web Gallery from Folders
 
 A web server that displays folders of images, video and audio.
 
+Just browse media files as web pages. No editing or uploading.
+Limited only to the folder you want.
+
 Usage
 ---
 
@@ -70,6 +73,8 @@ you might see some erroneous thumbnails.
 Developer notes
 ---
 
+Developed using go version 1.14.2.
+
 When building use these flags to set the build time and version:
 ```
 go build -ldflags="-X 'main.BuildTimestamp=TIME' -X 'main.BuildVersion=VERSION'"
@@ -77,6 +82,8 @@ go build -ldflags="-X 'main.BuildTimestamp=TIME' -X 'main.BuildVersion=VERSION'"
 Where TIME must be an RFC3339 string.
 
 Package fsnotify requires `go get -u golang.org/x/sys/...`
+
+Use the [Makefile]().
 
 Setting up service on Freebsd
 ---
@@ -96,7 +103,7 @@ Important: in order for file type detection to work you will need to have
 One solution is to install apache and symlink to it's mime.types.
 Ugly, yes, but foldergal will not see your videos otherwise.
 
-Service on linux
+Service on Debian
 --
 
 Create `/etc/systemd/system/foldergal.service` similar to 
