@@ -17,7 +17,7 @@ clean:
 	rm -rf $(DEST_DIR)/*
 
 run: build
-	@. .env; ./$(DEST_DIR)/$(PRODUCT)
+	./$(DEST_DIR)/$(PRODUCT) --config config.json
 
 build-all:
 	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $(DEST_DIR)/$(PRODUCT)-mac $(SRC_DIR)/*.go

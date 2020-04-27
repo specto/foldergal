@@ -251,7 +251,8 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		if containsDotFile(child.Name()) {
 			continue
 		}
-		if !child.IsDir() && !validMedia(child.Name()) {
+		mediaClass := getMediaClass(child.Name())
+		if !child.IsDir() && mediaClass == "" {
 			continue
 		}
 		childPath := filepath.Join(UrlPrefix, folderPath, child.Name())
@@ -260,7 +261,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		class := "folder"
 		if !child.IsDir() {
 			thumb = filepath.Join(folderPath, child.Name()+"?thumb")
-			class = "media"
+			class = mediaClass
 		}
 		children = append(children, templates.ListItem{
 			Url:   childPath,

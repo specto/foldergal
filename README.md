@@ -125,8 +125,8 @@ TODO
 * [x] Use and show app version
 * [x] Notifications for new files via web e.g. discord webhook.
 * [x] Show number of items in folder
-* [ ] Call ffmpeg binary to generate video thumbnail
+* [x] Flag to turn off in-memory cache
+* [x] Call ffmpeg binary to generate video thumbnail
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
-* [ ] Flag to turn off in-memory cache
 
