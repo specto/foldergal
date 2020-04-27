@@ -1,0 +1,14 @@
+# Contents of /etc/systemd/system/foldergal.service
+[Unit]
+Description=Web gallery from a folder
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/foldergal
+ExecStart=/home/pi/foldergal/foldergal-pi --config ./config.json
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

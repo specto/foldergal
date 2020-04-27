@@ -1,0 +1,15 @@
+{
+    "host": "localhost",
+    "port": 8080,
+    "home": ".",
+    "root": ".",
+    "prefix": "",
+    "crt": "",
+    "key": "",
+    "http2": false,
+    "cacheExpiresAfter": "0",
+    "notifyAfter": "30s",
+    "discordWebhook": "",
+    "publicHost": "",
+    "quiet": false
+}

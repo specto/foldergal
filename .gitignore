@@ -1,8 +1,7 @@
-/_env
-__pycache__
+/foldergal.log
+/config.json
+/.env
+/_foldergal_cache
 /.idea
-/cache/*
-!/cache/broken.svg
-/log/*
-!/log/README
-/foldergal.local.cfg
+/tags
+/dist

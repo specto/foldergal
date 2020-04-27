@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{site_title}}</title>
+  <link rel="self" type="application/atom+xml" href="{{feed_url}}" />
+  <id>{{site_url}}</id>
+  <updated>{{last_date}}</updated>
+
+  {% for item in items %}
+  <entry>
+	<title>{{item.title}}</title>
+	<link href="{{item.url}}" />
+	<id>{{item.id}}</id>
+	<published>{{item.cdate}}</published>
+	<updated>{{item.mdate}}</updated>
+	<content><![CDATA[
+	    <img src="{{ item.url }}" />
+	]]></content>
+	{%- if item.author %}
+	<author>
+	  <name>{{item.author}}</name>
+	</author>
+	{% endif%}
+  </entry>
+  {% endfor %}
+</feed>
+
+
+
+{#
+
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+<channel>
+<title>{{site_title}}</title>
+<link>{{site_url}}</link>
+<description>{{site_description}}</description>
+<lastBuildDate>{{last_date}}</lastBuildDate>
+
+{% for item in items %}
+<item>
+<title>{{item.title}}</title>
+<link>{{item.url}}</link>
+<guid>{{item.guid}}</guid>
+<description>{{item.description}}</description>
+<pubDate>{{item.date}}</pubDate>
+</item>
+{% endfor %}
+
+</channel>
+</rss>
+
+#}
