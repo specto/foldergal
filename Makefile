@@ -2,7 +2,7 @@ SRC_DIR := src
 DEST_DIR := dist
 RES_DIR := res
 PRODUCT := foldergal
-VERSION:="2.0.0"
+VERSION:="2.0.1"
 TIME:=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS:=-ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
