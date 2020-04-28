@@ -131,6 +131,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(mimeType, "image/svg") {
 		contentType = mimeType
+		thumbPath = fullPath // SVG are their own thumbnails
 		f = &svgFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "image/") {
 		f = &imageFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}

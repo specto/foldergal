@@ -33,7 +33,7 @@ rebuild: clean build
 compress-all: $(DEST_DIR)/$(PRODUCT)-mac $(DEST_DIR)/$(PRODUCT).exe $(DEST_DIR)/$(PRODUCT)-linux $(DEST_DIR)/$(PRODUCT)-pi $(DEST_DIR)/$(PRODUCT)-freebsd
 	upx --brute $?
 
-zip-all:
+zip-all: build-all
 	cd ${DEST_DIR}; find . -type f -not -name "*.zip" -and -not -name ".*" -exec zip "{}.zip" "{}" \;
 
 $(RES_DIR)/favicon.png: $(RES_DIR)/favicon.svg
