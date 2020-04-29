@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"html/template"
+	"time"
 )
 
 type BreadCrumb struct {
@@ -17,15 +18,17 @@ type Page struct {
 	AppBuildTime string
 	ItemCount    string
 	BreadCrumbs  []BreadCrumb
+	SortedBy     string
 }
 
 type ListItem struct {
-	Url   string
-	Name  string
-	Thumb string
-	Class string
-	W     int
-	H     int
+	Url     string
+	Name    string
+	Thumb   string
+	ModTime time.Time
+	Class   string
+	W       int
+	H       int
 }
 
 type List struct {
@@ -72,14 +75,23 @@ func init() {
 {{end}}`,
 		`{{ define "head" }}<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />{{end}}`,
 		`{{ define "body" }}
+	
     <header>
         <nav>
-            <h1>
+            <h1 class="path">
                 {{ range .BreadCrumbs -}}
                     <a href="{{ .Url }}" title="{{ .Title }}">{{ .Title }}</a>
                 {{- end -}}
 				<span>{{ .ItemCount }}&gt;</span>
             </h1>
+			<div class="toolbar">
+				<span class="title">order by:</span>
+				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
+					class="current"
+				{{- end }} href="?by-name">name</a><a {{ if eq .SortedBy "date" -}}
+					class="current"
+				{{- end }} href="?by-date">date</a></span>
+			</div>
         </nav>
     </header>
     <main>
@@ -91,7 +103,7 @@ func init() {
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li class="{{ .Class }}"><a class="title-container" href="{{- .Url -}}" title="{{ .Name }}">
+            <li class="{{ .Class }}"><a class="title-container" href="{{- .Url -}}" title="{{ .Name }} [{{ .ModTime }}]">
                 <span>
                     {{ if .Thumb -}}
                         <img src="{{ .Thumb }}" alt="{{ .Name }}" width="10em" />

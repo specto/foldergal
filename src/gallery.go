@@ -594,7 +594,7 @@ func init() {
         color: cornflowerblue;
     }
 
-    body > header a
+    nav .path a
     {
         color: black;
         display: inline-block;
@@ -608,7 +608,8 @@ func init() {
 		white-space: nowrap;
  		text-overflow: ellipsis;
     }
-	body > header span {
+	nav .path a:active {color: cornflowerblue;}
+	nav .path span {
 		overflow: hidden;
 		display: inline-block;
 		white-space: nowrap;
@@ -618,23 +619,23 @@ func init() {
         border-bottom-color: transparent;
 	}
 
-    body > header a:hover
+    nav .path a:hover
     {
         border-bottom-color: black;
         background: none;
     }
 
-    body > header a:active { border-bottom-color: cornflowerblue; }
+    nav .path a:active { border-bottom-color: cornflowerblue; }
 
-    body > header a::after
+    nav .path a::after
     {
         content: ' \005C';
         display: inline-block;
         padding-left: 0.2em;
     }
-	body > header a:only-of-type { color: silver; }
-    body > header a:first-child::after,
-	body > header a:last-of-type::after { content: ''; }
+	nav .path a:only-of-type { color: silver; }
+    nav .path a:first-child::after,
+	nav .path a:last-of-type::after { content: ''; }
 
     body > footer
     {
@@ -753,6 +754,40 @@ func init() {
         display: block;
 		color: black;
 		font-size: 2em;
+	}
+	header nav {
+		display: flex;
+		justify-content: space-between;
+	}
+	.toolbar {
+		color: gray;
+		font-size: 0.8em; 
+		margin-right: 1em; 
+		text-align: right; 
+	}
+	.toolbar a {
+		display: inline-block; 
+		color: black;
+		background-color: silver;
+		border: none;
+		margin: 0; 
+		padding: 0.5em 0.4em; 
+	}
+	.toolbar a:hover {background-color: #D6D6D6;}
+	.toolbar a:active
+    {
+        background-color: #D1DDF0;
+        color: cornflowerblue;
+    }
+	.toolbar a.current { background-color: gray; color: white; }
+	.toolbar .buttons {white-space: nowrap;}
+	.toolbar .buttons a:first-child {
+		padding-left:0.5em;
+		border-radius: 0.5em 0 0 0.5em;
+	}
+	.toolbar .buttons a:last-child {
+		padding-right: 0.5em;
+		border-radius: 0 0.5em 0.5em 0;
 	}
 	`)
 

@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -223,7 +224,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Prepare list of files
-func listHandler(w http.ResponseWriter, r *http.Request) {
+func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 	if containsDotFile(r.URL.Path) {
 		http.NotFound(w, r)
 		return
@@ -265,12 +266,22 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			class = mediaClass
 		}
 		children = append(children, templates.ListItem{
-			Url:   childPath,
-			Name:  child.Name(),
-			Thumb: thumb,
-			Class: class,
-			W:     ThumbWidth,
-			H:     ThumbHeight,
+			ModTime: child.ModTime(),
+			Url:     childPath,
+			Name:    child.Name(),
+			Thumb:   thumb,
+			Class:   class,
+			W:       ThumbWidth,
+			H:       ThumbHeight,
+		})
+	}
+	if sortBy == "date" {
+		sort.Slice(children, func(i, j int) bool {
+			return children[i].ModTime.After(children[j].ModTime)
+		})
+	} else { // Sort by name
+		sort.Slice(children, func(i, j int) bool {
+			return strings.ToLower(children[i].Name) < strings.ToLower(children[j].Name)
 		})
 	}
 	crumbs := splitUrlToBreadCrumbs(r.URL)
@@ -287,6 +298,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			AppBuildTime: BuildTimestamp,
 			BreadCrumbs:  crumbs,
 			ItemCount:    itemCount,
+			SortedBy:     sortBy,
 		},
 		ParentUrl: parentUrl,
 		Items:     children,
@@ -348,6 +360,9 @@ func embeddedFileHandler(q url.Values, w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["status"]; ok {
 		statusHandler(w, r)
 		return
+	} else {
+		http.NotFound(w, r)
+		return
 	}
 	renderEmbeddedFile(w, r, embeddedFile, contentType, BuildTime)
 }
@@ -369,10 +384,20 @@ func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	q := r.URL.Query()
+	sortBy := "name"
+	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
+		sortBy = sorted.Value
+	}
 	// We use query string parameters for internal resources. Isn't that novel!
 	if _, ok := q["thumb"]; ok {
 		previewHandler(w, r)
 		return
+	} else if _, ok := q["by-date"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "date", MaxAge: 3e6})
+		sortBy = "date"
+	} else if _, ok := q["by-name"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1})
+		sortBy = "name"
 	} else if len(q) > 0 {
 		embeddedFileHandler(q, w, r)
 		return
@@ -384,7 +409,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if stat.IsDir() { // Prepare and render folder contents
-		listHandler(w, r)
+		listHandler(w, r, sortBy)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}

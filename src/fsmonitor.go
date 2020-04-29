@@ -52,7 +52,7 @@ func notify(items []interface{}) {
 			if dirPath == "." {
 				urlPage, _ = url.Parse(PublicUrl)
 			} else {
-				urlPage, _ = url.Parse(PublicUrl + filepath.ToSlash(dirPath))
+				urlPage, _ = url.Parse(PublicUrl + filepath.ToSlash(dirPath) + "?by-date")
 			}
 			uniqueUrls[urlPage.String()] = i
 		}

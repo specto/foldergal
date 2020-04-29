@@ -129,6 +129,7 @@ TODO
 * [x] Show number of items in folder
 * [x] Flag to turn off in-memory cache
 * [x] Call ffmpeg binary to generate video thumbnail
+* [x] Sort list by name or date 
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
 
