@@ -130,6 +130,8 @@ TODO
 * [x] Flag to turn off in-memory cache
 * [x] Call ffmpeg binary to generate video thumbnail
 * [x] Sort list by name or date 
+* [ ] Fix gosec issues
+* [ ] Use go:generate for embedded resources
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
 
