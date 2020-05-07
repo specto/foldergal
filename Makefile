@@ -15,7 +15,7 @@ build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 $(DEST_DIR):
 	mkdir $(DEST_DIR)
 
-$(DEST_DIR)/$(PRODUCT): $(DEST_DIR) $(SRC_DIR)/*.go
+$(DEST_DIR)/$(PRODUCT): $(SRC_DIR)/*.go
 	go build -v $(FLAGS) -o $@ $^
 
 clean: $(DEST_DIR)
