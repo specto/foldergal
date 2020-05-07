@@ -1,7 +1,8 @@
 package main
 
+//go:generate go run embed.go
+
 import (
-	"./templates"
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
@@ -9,6 +10,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	//"foldergal/embedded"
+	"foldergal/templates"
 	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
@@ -532,6 +535,9 @@ func main() {
 		layer := afero.NewMemMapFs()
 		RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
 	}
+
+	//stat, _ := embedded.Resources.Stat("asdf.svg")
+	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
 	CacheFolder = filepath.Join(Config.Home, cacheFolderName)

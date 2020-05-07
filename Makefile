@@ -1,4 +1,5 @@
-SRC_DIR = src
+SRC_DIR = .
+SOURCES = $(shell find $(SRC_DIR) -name '*.go')
 DEST_DIR = dist
 RES_DIR = res
 PRODUCT = foldergal
@@ -13,10 +14,11 @@ FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERS
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
 $(DEST_DIR):
-	mkdir $(DEST_DIR)
+	test -d $@ || mkdir $@
 
-$(DEST_DIR)/$(PRODUCT): $(SRC_DIR)/*.go
-	go build -v $(FLAGS) -o $@ $^
+$(DEST_DIR)/$(PRODUCT): $(SOURCES)
+	go generate
+	go build -v $(FLAGS) -o $@
 
 clean: $(DEST_DIR)
 	rm -rf $(DEST_DIR)/*
@@ -26,16 +28,21 @@ run: build
 
 build-all: $(DEST_DIR) $(PRODUCT_FILES)
 
-$(DEST_DIR)/$(PRODUCT)-mac: $(SRC_DIR)/*.go
-	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
-$(DEST_DIR)/$(PRODUCT).exe: $(SRC_DIR)/*.go
-	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
-$(DEST_DIR)/$(PRODUCT)-linux: $(SRC_DIR)/*.go
-	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
-$(DEST_DIR)/$(PRODUCT)-freebsd: $(SRC_DIR)/*.go
-	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
-$(DEST_DIR)/$(PRODUCT)-pi: $(SRC_DIR)/*.go
-	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@ $^
+$(DEST_DIR)/$(PRODUCT)-mac: $(SOURCES)
+	go generate
+	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@
+$(DEST_DIR)/$(PRODUCT).exe: $(SOURCES)
+	go generate
+	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@
+$(DEST_DIR)/$(PRODUCT)-linux: $(SOURCES)
+	go generate
+	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@
+$(DEST_DIR)/$(PRODUCT)-freebsd: $(SOURCES)
+	go generate
+	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@
+$(DEST_DIR)/$(PRODUCT)-pi: $(SOURCES)
+	go generate
+	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@
 
 rerun: clean run
 
