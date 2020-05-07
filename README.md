@@ -132,6 +132,7 @@ TODO
 * [x] Sort list by name or date 
 * [x] Fix gosec issues
 * [ ] Use go:generate for embedded resources
+* [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
 
