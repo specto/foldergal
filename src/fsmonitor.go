@@ -97,7 +97,6 @@ func startFsWatcher(path string) {
 				if !ok {
 					return
 				}
-				//logger.Print("event:", event)
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					eventBuffer.Put(event.Name)
 					newStat, _ := os.Stat(event.Name)
@@ -106,13 +105,6 @@ func startFsWatcher(path string) {
 						logger.Printf("Watching for new files in %v", event.Name)
 					}
 				}
-				// CRASHES:
-				//if event.Op&fsnotify.Remove == fsnotify.Remove {
-				//	newStat, _ := os.Stat(event.Name)
-				//	if newStat.IsDir() { // Stop watching the removed folders
-				//		_ = watcher.Remove(event.Name)
-				//	}
-				//}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return

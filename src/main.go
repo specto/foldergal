@@ -339,34 +339,6 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
 }
 
-func embeddedFileHandler(q url.Values, w http.ResponseWriter, r *http.Request) {
-	var embeddedFile embeddedFileId
-	var contentType string
-	if _, ok := q["broken"]; ok {
-		embeddedFile = brokenImage
-		contentType = "image/svg+xml"
-	} else if _, ok := q["up"]; ok {
-		embeddedFile = upImage
-		contentType = "image/svg+xml"
-	} else if _, ok := q["folder"]; ok {
-		embeddedFile = folderImage
-		contentType = "image/svg+xml"
-	} else if _, ok := q["favicon"]; ok {
-		embeddedFile = faviconImage
-		contentType = "" // Expecting ServeContent to put the correct image/x-icon
-	} else if _, ok := q["css"]; ok {
-		embeddedFile = css
-		contentType = "text/css"
-	} else if _, ok := q["status"]; ok {
-		statusHandler(w, r)
-		return
-	} else {
-		http.NotFound(w, r)
-		return
-	}
-	renderEmbeddedFile(w, r, embeddedFile, contentType, BuildTime)
-}
-
 func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
 	id embeddedFileId, contentType string, modTime time.Time) {
 	if contentType != "" {
@@ -380,16 +352,23 @@ func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
 // Since we are mapping URLs to file system resources we cannot use any names
 // for our internal resources.
 //
-// Otherwise we show an html page for folders and serve files.
+// Three types of content are served:
+//    * internal resource (image, css, etc.)
+//    * html to show folder lists
+//    * media file (thumbnail or larger file)
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
 	q := r.URL.Query()
+	// Retrieve sort order from cookie
 	sortBy := "name"
 	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
 		sortBy = sorted.Value
 	}
 	// We use query string parameters for internal resources. Isn't that novel!
-	if _, ok := q["thumb"]; ok {
+	if _, ok := q["status"]; ok {
+		statusHandler(w, r)
+		return
+	} else if _, ok := q["thumb"]; ok {
 		previewHandler(w, r)
 		return
 	} else if _, ok := q["by-date"]; ok {
@@ -398,13 +377,29 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["by-name"]; ok {
 		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1})
 		sortBy = "name"
+	} else if _, ok := q["broken"]; ok {
+		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+		return
+	} else if _, ok := q["up"]; ok {
+		renderEmbeddedFile(w, r, upImage, "image/svg+xml", BuildTime)
+		return
+	} else if _, ok := q["folder"]; ok {
+		renderEmbeddedFile(w, r, folderImage, "image/svg+xml", BuildTime)
+		return
+	} else if _, ok := q["favicon"]; ok {
+		// ServeContent will put the correct content-type for favicons
+		renderEmbeddedFile(w, r, faviconImage, "", BuildTime)
+		return
+	} else if _, ok := q["css"]; ok {
+		renderEmbeddedFile(w, r, css, "test/css", BuildTime)
+		return
 	} else if len(q) > 0 {
-		embeddedFileHandler(q, w, r)
+		http.NotFound(w, r)
 		return
 	}
 
-	stat, err := RootFs.Stat(fullPath) // Check for existing resource
-	if err != nil {
+	stat, err := RootFs.Stat(fullPath)
+	if err != nil { // Non-existing resource was requested
 		http.NotFound(w, r)
 		return
 	}
@@ -496,6 +491,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Config file variables override all others
 	if err := Config.FromFile(*configFile); *configFile != "" && err != nil {
 		log.Fatalf("error: invalid config %v", err)
 	}
@@ -504,7 +500,8 @@ func main() {
 
 	// Set up log file
 	logFile := filepath.Join(Config.Home, "foldergal.log")
-	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0644) // #nosec Permit everybody to read the log file
 	if err != nil {
 		log.Print("Error: Log file cannot be created.")
 		log.Fatal(err)

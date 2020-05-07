@@ -288,8 +288,8 @@ func (f *videoFile) thumbGenerate() (err error) {
 	movieFile := filepath.Join(Config.Root, f.fullPath)
 
 	// Get the duration of the movie
-	cmd := exec.Command(Config.Ffmpeg, "-hide_banner",
-		"-i", movieFile)
+	cmd := exec.Command(Config.Ffmpeg, "-hide_banner", "-i",
+		movieFile) // #nosec Config is provided by the admin
 	out, _ := cmd.CombinedOutput()
 	re := regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
 	match := re.FindSubmatch(out)
@@ -308,7 +308,7 @@ func (f *videoFile) thumbGenerate() (err error) {
 		"-ss", targetTime, "-i", movieFile,
 		"-vf", "scale="+thumbSize+":flags=lanczos:force_original_aspect_ratio=decrease",
 		"-vframes", "1",
-		"-f", "image2pipe", "-")
+		"-f", "image2pipe", "-") // #nosec Config is provided by the admin
 	outThumb, _ := thumbCmd.Output()
 	if len(outThumb) == 0 { // Failed thumbnail
 		return errors.New("error: empty thumbnail: " + f.thumbPath)
@@ -444,7 +444,7 @@ func unzip(data []byte) (out []byte, err error) {
 	if err != nil {
 		return
 	}
-	_, err = io.Copy(&buf, gz)
+	_, err = io.Copy(&buf, gz) // #nosec
 	if err != nil {
 		return
 	}
@@ -761,17 +761,17 @@ func init() {
 	}
 	.toolbar {
 		color: gray;
-		font-size: 0.8em; 
-		margin-right: 1em; 
-		text-align: right; 
+		font-size: 0.8em;
+		margin-right: 1em;
+		text-align: right;
 	}
 	.toolbar a {
-		display: inline-block; 
+		display: inline-block;
 		color: black;
 		background-color: silver;
 		border: none;
-		margin: 0; 
-		padding: 0.5em 0.4em; 
+		margin: 0;
+		padding: 0.5em 0.4em;
 	}
 	.toolbar a:hover {background-color: #D6D6D6;}
 	.toolbar a:active
