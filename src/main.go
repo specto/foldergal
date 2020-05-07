@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -32,14 +33,6 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return true
-}
-
-func getEnvWithDefault(key string, defaultValue string) string {
-	if envValue := os.Getenv(key); envValue != "" {
-		return envValue
-	} else {
-		return defaultValue
-	}
 }
 
 var (
@@ -72,6 +65,59 @@ type configuration struct {
 	PublicHost        string
 	Quiet             bool
 	Ffmpeg            string
+}
+
+func (c *configuration) FromFile(configFile string) (err error) {
+	if !fileExists(configFile) {
+		return errors.New("missing " + configFile)
+	}
+	var file *os.File
+	/* #nosec */
+	if file, err = os.Open(configFile); err != nil {
+		return
+	}
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&c)
+	return
+}
+
+func (c *configuration) fromEnvString(key string, envkey string, defaultValue string) {
+	rv := reflect.ValueOf(c)
+	field := rv.FieldByName(key)
+	if envValue := os.Getenv(envkey); envValue != "" {
+		field.SetString(envValue)
+	}
+	field.SetString(defaultValue)
+}
+
+func (c *configuration) fromEnvInt(key string, envkey string, defaultValue int) {
+	rv := reflect.ValueOf(c)
+	field := rv.FieldByName(key)
+	if envValue := os.Getenv(envkey); envValue != "" {
+		intValue, _ := strconv.Atoi(envValue)
+		field.SetInt(int64(intValue))
+	}
+	field.SetInt(int64(defaultValue))
+}
+
+func (c *configuration) fromEnvBool(key string, envkey string, defaultValue bool) {
+	rv := reflect.ValueOf(c)
+	field := rv.FieldByName(key)
+	if envValue := os.Getenv(envkey); envValue != "" {
+		boolValue, _ := strconv.ParseBool(envValue)
+		field.SetBool(boolValue)
+	}
+	field.SetBool(defaultValue)
+}
+
+func (c *configuration) fromEnvDuration(key string, envkey string, defaultValue time.Duration) {
+	rv := reflect.ValueOf(c)
+	field := rv.FieldByName(key)
+	if envValue := os.Getenv(envkey); envValue != "" {
+		durValue, _ := time.ParseDuration(envValue)
+		field.Set(reflect.ValueOf(jsonDuration(durValue)))
+	}
+	field.Set(reflect.ValueOf(jsonDuration(defaultValue)))
 }
 
 type jsonDuration time.Duration
@@ -410,19 +456,6 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *configuration) FromFile(configFile string) (err error) {
-	if !fileExists(configFile) {
-		return errors.New("missing " + configFile)
-	}
-	var file *os.File
-	if file, err = os.Open(configFile); err != nil {
-		return
-	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&c)
-	return
-}
-
 func init() {
 	startTime = time.Now()
 	var errTime error
@@ -438,23 +471,19 @@ func init() {
 	}
 
 	// Environment variables
-	Config.Host = getEnvWithDefault("FOLDERGAL_HOST", "localhost")
-	Config.Port, _ = strconv.Atoi(getEnvWithDefault("FOLDERGAL_PORT", "8080"))
-	Config.Home = getEnvWithDefault("FOLDERGAL_HOME", execFolder)
-	Config.Root = getEnvWithDefault("FOLDERGAL_ROOT", execFolder)
-	Config.Prefix = getEnvWithDefault("FOLDERGAL_PREFIX", "")
-	Config.TlsCrt = getEnvWithDefault("FOLDERGAL_CRT", "")
-	Config.TlsKey = getEnvWithDefault("FOLDERGAL_KEY", "")
-	Config.Http2, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_HTTP2", ""))
-	envCacheExpires, _ := time.ParseDuration(getEnvWithDefault(
-		"FOLDERGAL_CACHE_EXPIRES_AFTER", "0"))
-	Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
-	envNotifyAfter, _ := time.ParseDuration(getEnvWithDefault(
-		"FOLDERGAL_NOTIFY_AFTER", "30s"))
-	Config.NotifyAfter = jsonDuration(envNotifyAfter)
-	Config.DiscordWebhook = getEnvWithDefault("FOLDERGAL_DISCORD_WEBHOOK", "")
-	Config.PublicHost = getEnvWithDefault("FOLDERGAL_PUBLIC_HOST", "")
-	Config.Quiet, _ = strconv.ParseBool(getEnvWithDefault("FOLDERGAL_QUIET", ""))
+	Config.fromEnvString("Host", "FOLDERGAL_HOST", "localhost")
+	Config.fromEnvInt("Port", "FOLDERGAL_PORT", 8080)
+	Config.fromEnvString("Home", "FOLDERGAL_HOME", execFolder)
+	Config.fromEnvString("Root", "FOLDERGAL_ROOT", execFolder)
+	Config.fromEnvString("Prefix", "FOLDERGAL_PREFIX", "")
+	Config.fromEnvString("TlsCrt", "FOLDERGAL_CRT", "")
+	Config.fromEnvString("TlsKey", "FOLDERGAL_KEY", "")
+	Config.fromEnvBool("Http2", "FOLDERGAL_HTTP2", false)
+	Config.fromEnvDuration("CacheExpiresAfter", "FOLDERGAL_CACHE_EXPIRES_AFTER", 0)
+	Config.fromEnvDuration("NotifyAfter", "FOLDERGAL_NOTIFY_AFTER", 30*time.Second)
+	Config.fromEnvString("DiscordWebhook", "FOLDERGAL_DISCORD_WEBHOOK", "")
+	Config.fromEnvString("PublicHost", "FOLDERGAL_PUBLIC_HOST", "")
+	Config.fromEnvBool("Quiet", "FOLDERGAL_QUIET", false)
 
 	// Command line arguments (they override env)
 	flag.StringVar(&Config.Host, "host", Config.Host, "host address to bind to")
