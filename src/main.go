@@ -19,7 +19,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -79,45 +78,6 @@ func (c *configuration) FromFile(configFile string) (err error) {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&c)
 	return
-}
-
-func (c *configuration) fromEnvString(key string, envkey string, defaultValue string) {
-	rv := reflect.ValueOf(c)
-	field := rv.FieldByName(key)
-	if envValue := os.Getenv(envkey); envValue != "" {
-		field.SetString(envValue)
-	}
-	field.SetString(defaultValue)
-}
-
-func (c *configuration) fromEnvInt(key string, envkey string, defaultValue int) {
-	rv := reflect.ValueOf(c)
-	field := rv.FieldByName(key)
-	if envValue := os.Getenv(envkey); envValue != "" {
-		intValue, _ := strconv.Atoi(envValue)
-		field.SetInt(int64(intValue))
-	}
-	field.SetInt(int64(defaultValue))
-}
-
-func (c *configuration) fromEnvBool(key string, envkey string, defaultValue bool) {
-	rv := reflect.ValueOf(c)
-	field := rv.FieldByName(key)
-	if envValue := os.Getenv(envkey); envValue != "" {
-		boolValue, _ := strconv.ParseBool(envValue)
-		field.SetBool(boolValue)
-	}
-	field.SetBool(defaultValue)
-}
-
-func (c *configuration) fromEnvDuration(key string, envkey string, defaultValue time.Duration) {
-	rv := reflect.ValueOf(c)
-	field := rv.FieldByName(key)
-	if envValue := os.Getenv(envkey); envValue != "" {
-		durValue, _ := time.ParseDuration(envValue)
-		field.Set(reflect.ValueOf(jsonDuration(durValue)))
-	}
-	field.Set(reflect.ValueOf(jsonDuration(defaultValue)))
 }
 
 type jsonDuration time.Duration
@@ -471,19 +431,35 @@ func init() {
 	}
 
 	// Environment variables
-	Config.fromEnvString("Host", "FOLDERGAL_HOST", "localhost")
-	Config.fromEnvInt("Port", "FOLDERGAL_PORT", 8080)
-	Config.fromEnvString("Home", "FOLDERGAL_HOME", execFolder)
-	Config.fromEnvString("Root", "FOLDERGAL_ROOT", execFolder)
-	Config.fromEnvString("Prefix", "FOLDERGAL_PREFIX", "")
-	Config.fromEnvString("TlsCrt", "FOLDERGAL_CRT", "")
-	Config.fromEnvString("TlsKey", "FOLDERGAL_KEY", "")
-	Config.fromEnvBool("Http2", "FOLDERGAL_HTTP2", false)
-	Config.fromEnvDuration("CacheExpiresAfter", "FOLDERGAL_CACHE_EXPIRES_AFTER", 0)
-	Config.fromEnvDuration("NotifyAfter", "FOLDERGAL_NOTIFY_AFTER", 30*time.Second)
-	Config.fromEnvString("DiscordWebhook", "FOLDERGAL_DISCORD_WEBHOOK", "")
-	Config.fromEnvString("PublicHost", "FOLDERGAL_PUBLIC_HOST", "")
-	Config.fromEnvBool("Quiet", "FOLDERGAL_QUIET", false)
+	if Config.Host = os.Getenv("FOLDERGAL_HOST"); Config.Host == "" {
+		Config.Host = "localhost"
+	}
+	if Config.Port, _ = strconv.Atoi(os.Getenv("FOLDERGAL_HOST")); Config.Port == 0 {
+		Config.Port = 8080
+	}
+	if Config.Home = os.Getenv("FOLDERGAL_HOME"); Config.Home == "" {
+		Config.Home = execFolder
+	}
+	if Config.Root = os.Getenv("FOLDERGAL_ROOT"); Config.Root == "" {
+		Config.Root = execFolder
+	}
+	Config.Prefix = os.Getenv("FOLDERGAL_PREFIX")
+	Config.TlsCrt = os.Getenv("FOLDERGAL_CRT")
+	Config.TlsKey = os.Getenv("FOLDERGAL_KEY")
+	Config.Http2, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_HTTP2"))
+	if envValue := os.Getenv("FOLDERGAL_CACHE_EXPIRES_AFTER"); envValue != "" {
+		envCacheExpires, _ := time.ParseDuration(envValue)
+		Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
+	}
+	if envValue := os.Getenv("FOLDERGAL_NOTIFY_AFTER"); envValue != "" {
+		envNotifyAfter, _ := time.ParseDuration(envValue)
+		Config.NotifyAfter = jsonDuration(envNotifyAfter)
+	} else {
+		Config.NotifyAfter = jsonDuration(30 * time.Second)
+	}
+	Config.DiscordWebhook = os.Getenv("FOLDERGAL_DISCORD_WEBHOOK")
+	Config.PublicHost = os.Getenv("FOLDERGAL_PUBLIC_HOST")
+	Config.Quiet, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_QUIET"))
 
 	// Command line arguments (they override env)
 	flag.StringVar(&Config.Host, "host", Config.Host, "host address to bind to")
@@ -594,11 +570,8 @@ func main() {
 			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
 		}
 	}
-
+	
 	// Server start sequence
-	if Config.Port == 0 {
-		log.Fatalf("Error: misconfigured port %d", Config.Port)
-	}
 	useTls := false
 	if fileExists(Config.TlsCrt) && fileExists(Config.TlsKey) {
 		useTls = true
