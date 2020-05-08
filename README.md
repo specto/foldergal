@@ -78,6 +78,15 @@ you might see some erroneous thumbnails.
 Developer notes
 ---
 
+
+1. `go generate`
+1. `go build`
+1. ... run from `dist`
+
+Use the [Makefile]().
+
+Foldergal uses go modules.
+
 Developed using go version 1.14.2.
 
 When building use these flags to set the build time and version:
@@ -87,8 +96,6 @@ go build -ldflags="-X 'main.BuildTimestamp=TIME' -X 'main.BuildVersion=VERSION'"
 Where TIME must be an RFC3339 string.
 
 Package fsnotify requires `go get -u golang.org/x/sys/...`
-
-Use the [Makefile]().
 
 Setting up service on Freebsd
 ---
@@ -131,7 +138,7 @@ TODO
 * [x] Call ffmpeg binary to generate video thumbnail
 * [x] Sort list by name or date 
 * [x] Fix gosec issues
-* [ ] Use go:generate for embedded resources
+* [x] Use go:generate for embedded resources
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads

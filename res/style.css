@@ -1,0 +1,215 @@
+body
+{
+	font-family: sans-serif;
+	color: black;
+	background: #EDEDED;
+}
+
+a
+{
+	text-decoration: none;
+	border-radius: 0.5em;
+}
+
+a.media { background: white; }
+a:hover { background-color: #D6D6D6; }
+
+a:active
+{
+	background-color: #D1DDF0;
+	color: cornflowerblue;
+}
+
+nav .path a
+{
+	color: black;
+	display: inline-block;
+	border-radius: 0;
+	border-bottom-width: 2px;
+	border-bottom-style: dotted;
+	border-bottom-color: transparent;
+	padding-right: 0.2em;
+	max-width: 18em;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+nav .path a:active {color: cornflowerblue;}
+nav .path span {
+	overflow: hidden;
+	display: inline-block;
+	white-space: nowrap;
+	color: silver;
+	border-bottom-width: 2px;
+	border-bottom-style: dotted;
+	border-bottom-color: transparent;
+}
+
+nav .path a:hover
+{
+	border-bottom-color: black;
+	background: none;
+}
+
+nav .path a:active { border-bottom-color: cornflowerblue; }
+
+nav .path a::after
+{
+	content: ' \005C';
+	display: inline-block;
+	padding-left: 0.2em;
+}
+nav .path a:only-of-type { color: silver; }
+nav .path a:first-child::after,
+nav .path a:last-of-type::after { content: ''; }
+
+body > footer
+{
+	margin: 2em 1em;
+	padding-top: 0.5em;
+	color: gray;
+	font-size: 0.8em;
+	text-align: right;
+}
+
+body > footer::before
+{
+	content: '…(˶‾᷄ ⁻̫ ‾᷅˵)…';
+	display: block;
+}
+
+main ul
+{
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	flex-direction: row;
+	padding: 0;
+	margin: 0;
+}
+
+main li
+{
+	display: flex;
+	padding: 0.25em;
+	margin: 0;
+	list-style: none;
+	align-items: center;
+}
+
+main a
+{
+	width: 10em;
+	min-height: 7em;
+	display: flex;
+	padding: 0.5em;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	color: black;
+}
+
+main a span
+{
+	display: flex;
+	flex-grow: 1;
+	overflow-wrap: break-word;
+	word-break: break-all;
+	text-align: center;
+	align-items: center;
+	justify-content: center;
+}
+
+main a img
+{
+	max-height: 10em;
+	width: 10em;
+	object-fit: contain;
+	object-position: center top;
+	display: inline-block;
+}
+
+main .title-container { position: relative; }
+
+main .title
+{
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	color: white;
+	font-size: 0.8em;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+main .title
+{
+	left: 0;
+	padding-right: 0.4em;
+	padding-left: 0.4em;
+	width: 13em;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 0 0 0.5em 0.5em;
+	text-align: left;
+	z-index: 5;
+}
+
+main .folder .title
+{
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	height: 90%;
+
+	background: none;
+	color: black;
+	font-weight: bold;
+	padding: 0 3em;
+	width: auto;
+	white-space: normal;
+}
+main .video a > span::before {
+	content: "🎥";
+	display: block;
+	position: absolute;
+	left: 0.2em;
+	bottom: 0.5em;
+	color: black;
+	font-size: 2em;
+}
+header nav {
+	display: flex;
+	justify-content: space-between;
+}
+.toolbar {
+	color: gray;
+	font-size: 0.8em;
+	margin-right: 1em;
+	text-align: right;
+}
+.toolbar a {
+	display: inline-block;
+	color: black;
+	background-color: silver;
+	border: none;
+	margin: 0;
+	padding: 0.5em 0.4em;
+}
+.toolbar a:hover {background-color: #D6D6D6;}
+.toolbar a:active
+{
+	background-color: #D1DDF0;
+	color: cornflowerblue;
+}
+.toolbar a.current { background-color: gray; color: white; }
+.toolbar .buttons {white-space: nowrap;}
+.toolbar .buttons a:first-child {
+	padding-left:0.5em;
+	border-radius: 0.5em 0 0 0.5em;
+}
+.toolbar .buttons a:last-child {
+	padding-right: 0.5em;
+	border-radius: 0 0.5em 0.5em 0;
+}

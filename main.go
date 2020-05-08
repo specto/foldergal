@@ -3,14 +3,13 @@ package main
 //go:generate go run embed.go
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	//"foldergal/embedded"
+	"foldergal/embedded"
 	"foldergal/templates"
 	"github.com/spf13/afero"
 	"io/ioutil"
@@ -155,24 +154,24 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		contentType = "image/svg+xml"
 		f = &pdfFile{mediaFile{fullPath: fullPath}}
 	} else {
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
 	if !f.fileExists() {
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
 	if f.thumbExpired() {
 		err := f.thumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+			renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 			return
 		}
 	}
 	thumb := f.thumb()
 	if thumb == nil || *thumb == nil {
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
 	if !strings.HasSuffix(f.media().thumbInfo.Name(), ".jpg") {
@@ -348,12 +347,17 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
 }
 
-func renderEmbeddedFile(w http.ResponseWriter, r *http.Request,
-	id embeddedFileId, contentType string, modTime time.Time) {
+func renderEmbeddedFile(resFile string, contentType string,
+	w http.ResponseWriter, r *http.Request) {
+	f, err := embedded.Fs.Open(resFile)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
 	if contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
-	http.ServeContent(w, r, r.URL.Path, modTime, bytes.NewReader(embeddedFiles[id]))
+	http.ServeContent(w, r, r.URL.Path, BuildTime, f)
 }
 
 // A secondary router.
@@ -387,20 +391,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1})
 		sortBy = "name"
 	} else if _, ok := q["broken"]; ok {
-		renderEmbeddedFile(w, r, brokenImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	} else if _, ok := q["up"]; ok {
-		renderEmbeddedFile(w, r, upImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/up.svg", "image/svg+xml", w, r)
 		return
 	} else if _, ok := q["folder"]; ok {
-		renderEmbeddedFile(w, r, folderImage, "image/svg+xml", BuildTime)
+		renderEmbeddedFile("res/folder.svg", "image/svg+xml", w, r)
 		return
 	} else if _, ok := q["favicon"]; ok {
-		// ServeContent will put the correct content-type for favicons
-		renderEmbeddedFile(w, r, faviconImage, "", BuildTime)
+		renderEmbeddedFile("res/favicon.ico", "", w, r)
 		return
 	} else if _, ok := q["css"]; ok {
-		renderEmbeddedFile(w, r, css, "test/css", BuildTime)
+		renderEmbeddedFile("res/style.css", "text/css", w, r)
 		return
 	} else if len(q) > 0 {
 		http.NotFound(w, r)
@@ -536,7 +539,7 @@ func main() {
 		RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
 	}
 
-	//stat, _ := embedded.Resources.Stat("asdf.svg")
+	//stat, _ := embedded.Fs.Stat("asdf.svg")
 	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
@@ -565,7 +568,7 @@ func main() {
 		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		renderEmbeddedFile(w, r, faviconImage, "", BuildTime)
+		renderEmbeddedFile("res/favicon.ico", "", w, r)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)

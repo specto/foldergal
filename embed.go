@@ -3,36 +3,88 @@
 package main
 
 import (
+	"encoding/hex"
+	"io/ioutil"
 	"os"
-	"text/template"
+	"path/filepath"
+	"strings"
 	"time"
 )
+
 
 func main() {
 	f, err := os.Create("embedded/generated.go")
 	defer f.Close()
-	genTemplate.Execute(f, struct {
-		Timestamp time.Time
-		Contents  string
-	}{
-		Timestamp: time.Now(),
-		Contents: `
-			Files["asdf.svg"] = []byte("well ....")
-		`,
-	})
 	if err != nil {
-		panic("Failed to generate file")
+		panic(err)
 	}
-}
 
-var genTemplate = template.Must(template.New("").Parse(`// Code generated automatically DO NOT EDIT.
-// Last modified: {{ .Timestamp }}
+	containsDotFile := func (name string) bool {
+		parts := strings.Split(name, "/")
+		for _, part := range parts {
+			if strings.HasPrefix(part, ".") {
+				return true
+			}
+		}
+		return false
+	}
+
+	processFilesfunc := func (walkPath string, info os.FileInfo, err error) error {
+		name := walkPath
+		if info.IsDir() || containsDotFile(walkPath) {
+			return nil
+		}
+		f.WriteString(`
+	func () {
+		content := []byte("`)
+
+		fileBytes, err := ioutil.ReadFile(walkPath)
+		if err != nil {
+			panic(err)
+		}
+		hexBytes := make([]byte, hex.EncodedLen(len(fileBytes)))
+		hex.Encode(hexBytes, fileBytes)
+		f.WriteString(string(hexBytes))
+
+
+		f.WriteString(`")
+		decoded := make([]byte, hex.DecodedLen(len(content)))
+		_, err := hex.Decode(decoded, content)
+		if err != nil { panic(err) }`)
+		f.WriteString("\n")
+
+		f.WriteString("\t\t")
+		f.WriteString(`files["`)
+		f.WriteString(name)
+		f.WriteString(`"] = decoded`)
+		f.WriteString("\n")
+		f.WriteString(`
+	}()
+`)
+		return nil
+	}
+
+////////////////////////////////////////////////////////////////////////////////
+
+	f.WriteString(`// Code generated automatically DO NOT EDIT.
+// Last modified: `)
+	f.WriteString(time.Now().String())
+	f.WriteString(`
 
 package embedded
 
-var Files = make(map[string][]byte)
+import "encoding/hex"
+
+var files = make(map[string][]byte)
 
 func init() {
-{{ .Contents }}
+`)
+	err = filepath.Walk("res", processFilesfunc)
+	if err != nil {
+		panic(err)
+	}
+
+	f.WriteString(`
+}`)
+
 }
-`))

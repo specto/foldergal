@@ -2,7 +2,9 @@ package templates
 
 import (
 	"fmt"
+	"foldergal/embedded"
 	"html/template"
+	"io/ioutil"
 	"time"
 )
 
@@ -52,74 +54,15 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 }
 func init() {
 	var err error
-	ListTpl, err = parseTemplates(
-		`{{ define "layout" }}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="shortcut icon" href="{{ .Prefix }}/static?favicon" />
-    <title>{{ if .Title -}}
-        {{- .Title -}}
-    {{- else -}}
-            Foldergal
-        {{- end }}</title>
-    {{template "head" .}}
-</head>
-<body>
-    {{template "body" .}}
-    {{template "footer" .}}
-</body>
-</html>
-{{end}}`,
-		`{{ define "head" }}<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />{{end}}`,
-		`{{ define "body" }}
-	
-    <header>
-        <nav>
-            <h1 class="path">
-                {{ range .BreadCrumbs -}}
-                    <a href="{{ .Url }}" title="{{ .Title }}">{{ .Title }}</a>
-                {{- end -}}
-				<span>{{ .ItemCount }}&gt;</span>
-            </h1>
-			<div class="toolbar">
-				<span class="title">order by:</span>
-				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
-					class="current"
-				{{- end }} href="?by-name">name</a><a {{ if eq .SortedBy "date" -}}
-					class="current"
-				{{- end }} href="?by-date">date</a></span>
-			</div>
-        </nav>
-    </header>
-    <main>
-    <ul>
-        {{ if .ParentUrl }}
-            <li>
-                <a class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ .Prefix }}/static?up" alt=".." title="{{ .ParentUrl }}" /></span>
-                </a></li>
-        {{ end }}
-        {{ range .Items }}
-            <li class="{{ .Class }}"><a class="title-container" href="{{- .Url -}}" title="{{ .Name }} [{{ .ModTime }}]">
-                <span>
-                    {{ if .Thumb -}}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}" width="10em" />
-                    {{- end }}
 
-                    <span class="title">{{- .Name -}}</span>
-                </span></a></li>
-        {{ end }}
-    </ul>
-    </main>
-{{ end }}`,
-		`{{define "footer"}}
-<footer>
-    foldergal v:{{ .AppVersion }}
-</footer>
-{{end}}`,
+	listFile, _ := embedded.Fs.Open("res/templates/list.html")
+	listBytes, _ := ioutil.ReadAll(listFile)
+
+	footFile, _ := embedded.Fs.Open("res/templates/footer.html")
+	footBytes, _ := ioutil.ReadAll(footFile)
+	ListTpl, err = parseTemplates(
+		string(listBytes),
+		string(footBytes),
 	)
 	if err != nil {
 		panic(err)
