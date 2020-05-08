@@ -18,9 +18,6 @@ type Page struct {
 	Prefix       string
 	AppVersion   string
 	AppBuildTime string
-	ItemCount    string
-	BreadCrumbs  []BreadCrumb
-	SortedBy     string
 }
 
 type ListItem struct {
@@ -34,18 +31,31 @@ type ListItem struct {
 }
 
 type List struct {
-	ParentUrl string
-	Items     []ListItem
+	ParentUrl   string
+	ItemCount   string
+	SortedBy    string
+	Items       []ListItem
+	BreadCrumbs []BreadCrumb
 	Page
 }
 
-var ListTpl *template.Template
+type ErrorPage struct {
+	Page
+	Message string
+}
+
+var Tpl *template.Template
 
 func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
 
 	for i, templ := range templs {
-		if _, err = t.New(fmt.Sprint("_", i)).Parse(templ); err != nil {
+		listFile, errF := embedded.Fs.Open(templ)
+		if errF != nil {
+			panic(errF)
+		}
+		listBytes, _ := ioutil.ReadAll(listFile)
+		if _, err = t.New(fmt.Sprint("_", i)).Parse(string(listBytes)); err != nil {
 			return
 		}
 	}
@@ -55,21 +65,11 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 
 func Initialize() {
 	var err error
-
-	listFile, errF := embedded.Fs.Open("res/templates/list.html")
-	if errF != nil {
-		panic(errF)
-	}
-	listBytes, _ := ioutil.ReadAll(listFile)
-
-	footFile, errF := embedded.Fs.Open("res/templates/footer.html")
-	if errF != nil {
-		panic(errF)
-	}
-	footBytes, _ := ioutil.ReadAll(footFile)
-	ListTpl, err = parseTemplates(
-		string(listBytes),
-		string(footBytes),
+	Tpl, err = parseTemplates(
+		"res/templates/list.html",
+		"res/templates/footer.html",
+		"res/templates/error.html",
+		"res/templates/layout.html",
 	)
 	if err != nil {
 		panic(err)

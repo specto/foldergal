@@ -1,0 +1,29 @@
+{{ define "layout_start" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" href="{{ .Prefix }}/static?favicon" />
+    <title>{{ if .Title -}}
+            {{- .Title -}}
+        {{- else -}}
+            Foldergal
+        {{- end }}</title>
+    {{template "head" .}}
+</head>
+<body>
+{{ end }}
+
+{{ define "layout_end" }}
+</body>
+</html>
+{{ end }}
+
+
+{{ define "layout" }}
+    {{template "layout_start" .}}
+    {{template "body" .}}
+    {{template "footer" .}}
+    {{template "layout_end" .}}
+{{end}}

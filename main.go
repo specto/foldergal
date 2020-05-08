@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"crypto/tls"
 	"crypto/x509"
@@ -29,7 +28,6 @@ import (
 )
 
 //go:generate go run embedded/embed.go
-
 
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
@@ -111,9 +109,37 @@ func (d *jsonDuration) UnmarshalJSON(b []byte) error {
 	}
 }
 
+func fail404(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusNotFound)
+	page := templates.ErrorPage{
+		Page: templates.Page{
+			Title:        "404 not found",
+			Prefix:       UrlPrefix,
+			AppVersion:   BuildVersion,
+			AppBuildTime: BuildTimestamp,
+		},
+		Message: r.URL.String(),
+	}
+	_ = templates.Tpl.ExecuteTemplate(w, "error", &page)
+}
+
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	logger.Print(err)
-	http.Error(w, "500 internal server error", http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusInternalServerError)
+	page := templates.ErrorPage{
+		Page: templates.Page{
+			Title:        "500 internal server error",
+			Prefix:       UrlPrefix,
+			AppVersion:   BuildVersion,
+			AppBuildTime: BuildTimestamp,
+		},
+		Message: "see the logs for error details",
+	}
+	_ = templates.Tpl.ExecuteTemplate(w, "error", &page)
 }
 
 var dangerousPathSymbols = regexp.MustCompile("[:]")
@@ -236,7 +262,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 	if containsDotFile(r.URL.Path) {
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 	var (
@@ -300,19 +326,20 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
-	err = templates.ListTpl.ExecuteTemplate(w, "layout", &templates.List{
+	list := templates.List{
 		Page: templates.Page{
 			Title:        title,
 			Prefix:       UrlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
-			BreadCrumbs:  crumbs,
-			ItemCount:    itemCount,
-			SortedBy:     sortBy,
 		},
-		ParentUrl: parentUrl,
-		Items:     children,
-	})
+		BreadCrumbs: crumbs,
+		ItemCount:   itemCount,
+		SortedBy:    sortBy,
+		ParentUrl:   parentUrl,
+		Items:       children,
+	}
+	err = templates.Tpl.ExecuteTemplate(w, "layout", &list)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -322,7 +349,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
 	if containsDotFile(r.URL.Path) {
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
@@ -338,12 +365,12 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if m.fileInfo.IsDir() || !validMedia(fullPath) {
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 	contents := m.file()
 	if contents == nil {
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
@@ -408,13 +435,13 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile("res/style.css", "text/css", w, r)
 		return
 	} else if len(q) > 0 {
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 
 	stat, err := RootFs.Stat(fullPath)
 	if err != nil { // Non-existing resource was requested
-		http.NotFound(w, r)
+		fail404(w, r)
 		return
 	}
 	if stat.IsDir() { // Prepare and render folder contents
@@ -585,7 +612,7 @@ func main() {
 			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
 		}
 	}
-	
+
 	// Server start sequence
 	useTls := false
 	if fileExists(Config.TlsCrt) && fileExists(Config.TlsKey) {

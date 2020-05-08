@@ -1,1 +1,12 @@
-ERROR ??? !
+{{define "error"}}
+    {{template "layout_start" .}}
+    <header><h1>{{ .Title }}</h1></header>
+    <main>
+    <p class="error">
+        <img src="/?broken" width="100" alt="error" />
+        <span>{{ .Message }}</span>
+    </p>
+    </main>
+    {{template "footer" .}}
+    {{template "layout_end" .}}
+{{end}}
