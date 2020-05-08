@@ -52,13 +52,20 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 
 	return
 }
-func init() {
+
+func Initialize() {
 	var err error
 
-	listFile, _ := embedded.Fs.Open("res/templates/list.html")
+	listFile, errF := embedded.Fs.Open("res/templates/list.html")
+	if errF != nil {
+		panic(errF)
+	}
 	listBytes, _ := ioutil.ReadAll(listFile)
 
-	footFile, _ := embedded.Fs.Open("res/templates/footer.html")
+	footFile, errF := embedded.Fs.Open("res/templates/footer.html")
+	if errF != nil {
+		panic(errF)
+	}
 	footBytes, _ := ioutil.ReadAll(footFile)
 	ListTpl, err = parseTemplates(
 		string(listBytes),

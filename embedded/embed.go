@@ -34,6 +34,7 @@ func main() {
 		if info.IsDir() || containsDotFile(walkPath) {
 			return nil
 		}
+
 		f.WriteString(`
 	func () {
 		content := []byte("`)
@@ -54,13 +55,14 @@ func main() {
 		f.WriteString("\n")
 
 		f.WriteString("\t\t")
-		f.WriteString(`files["`)
+		f.WriteString(`generatedFiles["`)
 		f.WriteString(name)
 		f.WriteString(`"] = decoded`)
 		f.WriteString("\n")
 		f.WriteString(`
 	}()
 `)
+		//fmt.Printf("Packaged: %v\n", walkPath)
 		return nil
 	}
 
@@ -75,7 +77,7 @@ package embedded
 
 import "encoding/hex"
 
-var files = make(map[string][]byte)
+var generatedFiles = make(map[string][]byte)
 
 func init() {
 `)

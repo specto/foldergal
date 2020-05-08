@@ -1,6 +1,5 @@
 package main
 
-//go:generate go run embed.go
 
 import (
 	"crypto/tls"
@@ -28,6 +27,9 @@ import (
 	"strings"
 	"time"
 )
+
+//go:generate go run embedded/embed.go
+
 
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
@@ -488,6 +490,10 @@ func init() {
 		"webhook URL to receive notifications when new media appears")
 	flag.StringVar(&Config.PublicHost, "pub-host", Config.PublicHost,
 		"the public name for the machine")
+
+	// The following order is important
+	embedded.Intialize()
+	templates.Initialize()
 }
 
 func main() {
