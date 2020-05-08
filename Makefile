@@ -3,7 +3,7 @@ SOURCES = $(shell find $(SRC_DIR) -name '*.go')
 DEST_DIR = dist
 RES_DIR = res
 PRODUCT = foldergal
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 PLATFORMS = -mac .exe -linux -freebsd -pi
 PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')

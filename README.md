@@ -81,7 +81,7 @@ Developer notes
 
 1. `go generate`
 1. `go build`
-1. ... run from `dist`
+1. ... run
 
 Use the [Makefile]().
 
