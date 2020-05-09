@@ -3,11 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"foldergal/embedded"
+	"foldergal/gallery"
 	"foldergal/templates"
 	"github.com/spf13/afero"
 	"io/ioutil"
@@ -38,76 +37,18 @@ func fileExists(filename string) bool {
 
 var (
 	logger          *log.Logger
-	Config          configuration
-	CacheFolder     string
-	CacheFs         afero.Fs
-	RootFs          afero.Fs
-	PublicUrl       string
+	config          gallery.Config
+	cacheFolder     string
+	cacheFs         afero.Fs
+	rootFs          afero.Fs
 	cacheFolderName = "_foldergal_cache"
-	UrlPrefix       = ""
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
 	BuildTime       time.Time
 	startTime       time.Time
+	urlPrefix       string
 )
 
-type configuration struct {
-	Host              string
-	Port              int
-	Home              string
-	Root              string
-	Prefix            string
-	TlsCrt            string
-	TlsKey            string
-	Http2             bool
-	CacheExpiresAfter jsonDuration
-	NotifyAfter       jsonDuration
-	DiscordWebhook    string
-	PublicHost        string
-	Quiet             bool
-	Ffmpeg            string
-}
-
-func (c *configuration) FromFile(configFile string) (err error) {
-	if !fileExists(configFile) {
-		return errors.New("missing " + configFile)
-	}
-	var file *os.File
-	/* #nosec */
-	if file, err = os.Open(configFile); err != nil {
-		return
-	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&c)
-	return
-}
-
-type jsonDuration time.Duration
-
-func (d jsonDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
-}
-
-func (d *jsonDuration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case float64:
-		*d = jsonDuration(time.Duration(value))
-		return nil
-	case string:
-		tmp, err := time.ParseDuration(value)
-		if err != nil {
-			return err
-		}
-		*d = jsonDuration(tmp)
-		return nil
-	default:
-		return errors.New("invalid duration")
-	}
-}
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -116,13 +57,13 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 	page := templates.ErrorPage{
 		Page: templates.Page{
 			Title:        "404 not found",
-			Prefix:       UrlPrefix,
+			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 		},
 		Message: r.URL.String(),
 	}
-	_ = templates.Tpl.ExecuteTemplate(w, "error", &page)
+	_ = templates.Html.ExecuteTemplate(w, "error", &page)
 }
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
@@ -133,13 +74,13 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	page := templates.ErrorPage{
 		Page: templates.Page{
 			Title:        "500 internal server error",
-			Prefix:       UrlPrefix,
+			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 		},
 		Message: "see the logs for error details",
 	}
-	_ = templates.Tpl.ExecuteTemplate(w, "error", &page)
+	_ = templates.Html.ExecuteTemplate(w, "error", &page)
 }
 
 var dangerousPathSymbols = regexp.MustCompile("[:]")
@@ -156,12 +97,12 @@ func sanitizePath(path string) string {
 	return sanitized
 }
 
-// Serve image previews of media files
+// Serve image previews of Media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
+	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	ext := filepath.Ext(fullPath)
 	mimeType := mime.TypeByExtension(ext)
-	var f media
+	var f gallery.Media
 	// All thumbnails are jpeg... most of the time
 	thumbPath := sanitizePath(fullPath) + ".jpg"
 	contentType := "image/jpeg"
@@ -169,48 +110,51 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(mimeType, "image/svg") {
 		contentType = mimeType
 		thumbPath = fullPath // SVG are their own thumbnails
-		f = &svgFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
+		f = &gallery.SvgFile{MediaFile: gallery.MediaFile{
+			FullPath: fullPath, ThumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "image/") {
-		f = &imageFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
+		f = &gallery.ImageFile{MediaFile: gallery.MediaFile{
+			FullPath: fullPath, ThumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "audio/") {
 		contentType = "image/svg+xml"
-		f = &audioFile{mediaFile{fullPath: fullPath}}
+		f = &gallery.AudioFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
 	} else if strings.HasPrefix(mimeType, "video/") {
 		contentType = "image/svg+xml"
-		f = &videoFile{mediaFile{fullPath: fullPath, thumbPath: thumbPath}}
+		f = &gallery.VideoFile{MediaFile: gallery.MediaFile{
+			FullPath: fullPath, ThumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "application/pdf") {
 		contentType = "image/svg+xml"
-		f = &pdfFile{mediaFile{fullPath: fullPath}}
+		f = &gallery.PdfFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
 	} else {
 		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
-	if !f.fileExists() {
+	if !f.FileExists() {
 		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
-	if f.thumbExpired() {
-		err := f.thumbGenerate()
+	if f.ThumbExpired() {
+		err := f.ThumbGenerate()
 		if err != nil {
 			logger.Print(err)
 			renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 			return
 		}
 	}
-	thumb := f.thumb()
+	thumb := f.Thumb()
 	if thumb == nil || *thumb == nil {
 		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
 	}
-	if !strings.HasSuffix(f.media().thumbInfo.Name(), ".jpg") {
+	if !strings.HasSuffix(f.Media().ThumbInfo.Name(), ".jpg") {
 		w.Header().Set("Content-Type", contentType)
 	}
-	http.ServeContent(w, r, f.media().thumbPath, f.media().thumbInfo.ModTime(), *thumb)
+	http.ServeContent(w, r, f.Media().ThumbPath, f.Media().ThumbInfo.ModTime(), *thumb)
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
-	deepcrumb := UrlPrefix + "/"
-	currentUrl := strings.TrimPrefix(pageUrl.Path, UrlPrefix)
+	deepcrumb := urlPrefix + "/"
+	currentUrl := strings.TrimPrefix(pageUrl.Path, urlPrefix)
 	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
 	for _, name := range strings.Split(currentUrl, "/") {
 		if name == "" {
@@ -244,11 +188,11 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_, _ = fmt.Fprintf(w, "Root:        %v\n", Config.Root)
-	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(Config.Root))))
-	_, _ = fmt.Fprintf(w, "Cache:       %v\n", CacheFolder)
-	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(CacheFolder))))
-	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", watchedFolders)
+	_, _ = fmt.Fprintf(w, "Root:        %v\n", config.Root)
+	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(config.Root))))
+	_, _ = fmt.Fprintf(w, "Cache:       %v\n", cacheFolder)
+	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(cacheFolder))))
+	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", gallery.WatchedFolders)
 	_, _ = fmt.Fprintf(w, "\n")
 	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
 	_, _ = fmt.Fprintf(w, "TotalAlloc:  %v MiB\n", bToMb(m.TotalAlloc))
@@ -261,7 +205,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
-	if containsDotFile(r.URL.Path) {
+	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
 	}
@@ -271,31 +215,31 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		err       error
 		contents  []os.FileInfo
 	)
-	folderPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
-	contents, err = afero.ReadDir(RootFs, folderPath)
+	folderPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
+	contents, err = afero.ReadDir(rootFs, folderPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	folderInfo, _ := RootFs.Stat(folderPath)
+	folderInfo, _ := rootFs.Stat(folderPath)
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = path.Join(r.URL.Path, "..")
-	} else if Config.PublicHost != "" {
-		title = Config.PublicHost
+	} else if config.PublicHost != "" {
+		title = config.PublicHost
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
-		if containsDotFile(child.Name()) {
+		if gallery.ContainsDotFile(child.Name()) {
 			continue
 		}
-		mediaClass := getMediaClass(child.Name())
+		mediaClass := gallery.GetMediaClass(child.Name())
 		if !child.IsDir() && mediaClass == "" {
 			continue
 		}
-		childPath := filepath.Join(UrlPrefix, folderPath, child.Name())
+		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
 		childPath = filepath.ToSlash(childPath)
-		thumb := UrlPrefix + "/static?folder"
+		thumb := urlPrefix + "/static?folder"
 		class := "folder"
 		if !child.IsDir() {
 			thumb = filepath.Join(folderPath, child.Name()+"?thumb")
@@ -307,8 +251,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 			Name:    child.Name(),
 			Thumb:   thumb,
 			Class:   class,
-			W:       ThumbWidth,
-			H:       ThumbHeight,
+			W:       config.ThumbWidth,
+			H:       config.ThumbHeight,
 		})
 	}
 	if sortBy == "date" {
@@ -329,7 +273,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 	list := templates.List{
 		Page: templates.Page{
 			Title:        title,
-			Prefix:       UrlPrefix,
+			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 		},
@@ -339,7 +283,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		ParentUrl:   parentUrl,
 		Items:       children,
 	}
-	err = templates.Tpl.ExecuteTemplate(w, "layout", &list)
+	err = templates.Html.ExecuteTemplate(w, "layout", &list)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -348,32 +292,32 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 
 // Serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	if containsDotFile(r.URL.Path) {
+	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
 	}
-	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
+	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
 	var err error
-	m := mediaFile{
-		fullPath:  fullPath,
-		thumbPath: thumbPath,
+	m := gallery.MediaFile{
+		FullPath:  fullPath,
+		ThumbPath: thumbPath,
 	}
-	m.fileInfo, err = RootFs.Stat(fullPath)
+	m.FileInfo, err = rootFs.Stat(fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	if m.fileInfo.IsDir() || !validMedia(fullPath) {
+	if m.FileInfo.IsDir() || !gallery.IsValidMedia(fullPath) {
 		fail404(w, r)
 		return
 	}
-	contents := m.file()
+	contents := m.File()
 	if contents == nil {
 		fail404(w, r)
 		return
 	}
-	http.ServeContent(w, r, fullPath, m.fileInfo.ModTime(), *contents)
+	http.ServeContent(w, r, fullPath, m.FileInfo.ModTime(), *contents)
 }
 
 func renderEmbeddedFile(resFile string, contentType string,
@@ -391,7 +335,7 @@ func renderEmbeddedFile(resFile string, contentType string,
 
 // A secondary router.
 //
-// Since we are mapping URLs to file system resources we cannot use any names
+// Since we are mapping URLs to File system resources we cannot use any names
 // for our internal resources.
 //
 // Three types of content are served:
@@ -399,7 +343,7 @@ func renderEmbeddedFile(resFile string, contentType string,
 //    * html to show folder lists
 //    * media file (thumbnail or larger file)
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := strings.TrimPrefix(r.URL.Path, UrlPrefix)
+	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q := r.URL.Query()
 	// Retrieve sort order from cookie
 	sortBy := "name"
@@ -439,7 +383,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stat, err := RootFs.Stat(fullPath)
+	stat, err := rootFs.Stat(fullPath)
 	if err != nil { // Non-existing resource was requested
 		fail404(w, r)
 		return
@@ -465,57 +409,60 @@ func init() {
 		log.Fatal(err)
 	}
 
+	config.ThumbHeight = 200
+	config.ThumbWidth = 200
+
 	// Environment variables
-	if Config.Host = os.Getenv("FOLDERGAL_HOST"); Config.Host == "" {
-		Config.Host = "localhost"
+	if config.Host = os.Getenv("FOLDERGAL_HOST"); config.Host == "" {
+		config.Host = "localhost"
 	}
-	if Config.Port, _ = strconv.Atoi(os.Getenv("FOLDERGAL_HOST")); Config.Port == 0 {
-		Config.Port = 8080
+	if config.Port, _ = strconv.Atoi(os.Getenv("FOLDERGAL_HOST")); config.Port == 0 {
+		config.Port = 8080
 	}
-	if Config.Home = os.Getenv("FOLDERGAL_HOME"); Config.Home == "" {
-		Config.Home = execFolder
+	if config.Home = os.Getenv("FOLDERGAL_HOME"); config.Home == "" {
+		config.Home = execFolder
 	}
-	if Config.Root = os.Getenv("FOLDERGAL_ROOT"); Config.Root == "" {
-		Config.Root = execFolder
+	if config.Root = os.Getenv("FOLDERGAL_ROOT"); config.Root == "" {
+		config.Root = execFolder
 	}
-	Config.Prefix = os.Getenv("FOLDERGAL_PREFIX")
-	Config.TlsCrt = os.Getenv("FOLDERGAL_CRT")
-	Config.TlsKey = os.Getenv("FOLDERGAL_KEY")
-	Config.Http2, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_HTTP2"))
+	config.Prefix = os.Getenv("FOLDERGAL_PREFIX")
+	config.TlsCrt = os.Getenv("FOLDERGAL_CRT")
+	config.TlsKey = os.Getenv("FOLDERGAL_KEY")
+	config.Http2, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_HTTP2"))
 	if envValue := os.Getenv("FOLDERGAL_CACHE_EXPIRES_AFTER"); envValue != "" {
 		envCacheExpires, _ := time.ParseDuration(envValue)
-		Config.CacheExpiresAfter = jsonDuration(envCacheExpires)
+		config.CacheExpiresAfter = gallery.JsonDuration(envCacheExpires)
 	}
 	if envValue := os.Getenv("FOLDERGAL_NOTIFY_AFTER"); envValue != "" {
 		envNotifyAfter, _ := time.ParseDuration(envValue)
-		Config.NotifyAfter = jsonDuration(envNotifyAfter)
+		config.NotifyAfter = gallery.JsonDuration(envNotifyAfter)
 	} else {
-		Config.NotifyAfter = jsonDuration(30 * time.Second)
+		config.NotifyAfter = gallery.JsonDuration(30 * time.Second)
 	}
-	Config.DiscordWebhook = os.Getenv("FOLDERGAL_DISCORD_WEBHOOK")
-	Config.PublicHost = os.Getenv("FOLDERGAL_PUBLIC_HOST")
-	Config.Quiet, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_QUIET"))
+	config.DiscordWebhook = os.Getenv("FOLDERGAL_DISCORD_WEBHOOK")
+	config.PublicHost = os.Getenv("FOLDERGAL_PUBLIC_HOST")
+	config.Quiet, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_QUIET"))
 
 	// Command line arguments (they override env)
-	flag.StringVar(&Config.Host, "host", Config.Host, "host address to bind to")
-	flag.IntVar(&Config.Port, "port", Config.Port, "port to run at")
-	flag.StringVar(&Config.Home, "home", Config.Home, "home folder e.g. to keep thumbnails")
-	flag.StringVar(&Config.Root, "root", Config.Root, "root folder to serve files from")
-	flag.StringVar(&Config.Prefix, "prefix", Config.Prefix,
+	flag.StringVar(&config.Host, "host", config.Host, "host address to bind to")
+	flag.IntVar(&config.Port, "port", config.Port, "port to run at")
+	flag.StringVar(&config.Home, "home", config.Home, "home folder e.g. to keep thumbnails")
+	flag.StringVar(&config.Root, "root", config.Root, "root folder to serve files from")
+	flag.StringVar(&config.Prefix, "prefix", config.Prefix,
 		"path prefix as in http://localhost/PREFIX/other/stuff")
-	flag.StringVar(&Config.TlsCrt, "crt", Config.TlsCrt, "certificate file for TLS")
-	flag.StringVar(&Config.TlsKey, "key", Config.TlsKey, "key file for TLS")
-	flag.BoolVar(&Config.Http2, "http2", Config.Http2, "enable HTTP/2 (only with TLS)")
-	flag.BoolVar(&Config.Quiet, "quiet", Config.Quiet, "don't print to console")
-	flag.DurationVar((*time.Duration)(&Config.CacheExpiresAfter), "cache-expires-after",
-		time.Duration(Config.CacheExpiresAfter),
+	flag.StringVar(&config.TlsCrt, "crt", config.TlsCrt, "certificate File for TLS")
+	flag.StringVar(&config.TlsKey, "key", config.TlsKey, "key file for TLS")
+	flag.BoolVar(&config.Http2, "http2", config.Http2, "enable HTTP/2 (only with TLS)")
+	flag.BoolVar(&config.Quiet, "quiet", config.Quiet, "don't print to console")
+	flag.DurationVar((*time.Duration)(&config.CacheExpiresAfter), "cache-expires-after",
+		time.Duration(config.CacheExpiresAfter),
 		"duration to keep cached resources in memory")
-	flag.DurationVar((*time.Duration)(&Config.NotifyAfter), "notify-after",
-		time.Duration(Config.NotifyAfter),
+	flag.DurationVar((*time.Duration)(&config.NotifyAfter), "notify-after",
+		time.Duration(config.NotifyAfter),
 		"duration to delay notifications and combine them in one")
-	flag.StringVar(&Config.DiscordWebhook, "discord", Config.DiscordWebhook,
+	flag.StringVar(&config.DiscordWebhook, "discord", config.DiscordWebhook,
 		"webhook URL to receive notifications when new media appears")
-	flag.StringVar(&Config.PublicHost, "pub-host", Config.PublicHost,
+	flag.StringVar(&config.PublicHost, "pub-host", config.PublicHost,
 		"the public name for the machine")
 
 	// The following order is important
@@ -536,112 +483,116 @@ func main() {
 	}
 
 	// Config file variables override all others
-	if err := Config.FromFile(*configFile); *configFile != "" && err != nil {
+	if err := config.FromJson(*configFile); *configFile != "" && err != nil {
 		log.Fatalf("error: invalid config %v", err)
 	}
-	Config.Home, _ = filepath.Abs(Config.Home)
-	Config.Root, _ = filepath.Abs(Config.Root)
+	config.Home, _ = filepath.Abs(config.Home)
+	config.Root, _ = filepath.Abs(config.Root)
 
 	// Set up log file
-	logFile := filepath.Join(Config.Home, "foldergal.log")
+	logFile := filepath.Join(config.Home, "foldergal.log")
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0644) // #nosec Permit everybody to read the log file
 	if err != nil {
-		log.Print("Error: Log file cannot be created.")
+		log.Print("Error: Log File cannot be created.")
 		log.Fatal(err)
 	}
 	defer func() { _ = logging.Close() }()
 	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	if !Config.Quiet {
+	if !config.Quiet {
 		log.Printf("Logging to %s", logFile)
 	}
 
 	// Set root media folder
-	if exists, err := os.Stat(Config.Root); os.IsNotExist(err) || !exists.IsDir() {
-		log.Fatalf("Root folder does not exist: %v", Config.Root)
+	if exists, err := os.Stat(config.Root); os.IsNotExist(err) || !exists.IsDir() {
+		log.Fatalf("Root folder does not exist: %v", config.Root)
 	}
-	logger.Printf("Root folder is: %s", Config.Root)
-	if !Config.Quiet {
-		log.Printf("Serving files from: %v", Config.Root)
+	logger.Printf("Root folder is: %s", config.Root)
+	if !config.Quiet {
+		log.Printf("Serving files from: %v", config.Root)
 	}
-	if Config.CacheExpiresAfter == 0 {
-		RootFs = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), Config.Root))
+	if config.CacheExpiresAfter == 0 {
+		rootFs = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
 	} else {
-		base := afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), Config.Root))
+		base := afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
 		layer := afero.NewMemMapFs()
-		RootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
+		rootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(config.CacheExpiresAfter))
 	}
 
 	//stat, _ := embedded.Fs.Stat("asdf.svg")
 	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
-	CacheFolder = filepath.Join(Config.Home, cacheFolderName)
-	err = os.MkdirAll(CacheFolder, 0750)
+	cacheFolder = filepath.Join(config.Home, cacheFolderName)
+	err = os.MkdirAll(cacheFolder, 0750)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if !Config.Quiet {
-		log.Printf("Cache folder is: %s\n", CacheFolder)
+	if !config.Quiet {
+		log.Printf("Cache folder is: %s\n", cacheFolder)
 	}
-	logger.Printf("Cache folder is: %s", CacheFolder)
-	if Config.CacheExpiresAfter == 0 {
-		CacheFs = afero.NewBasePathFs(afero.NewOsFs(), CacheFolder)
+	logger.Printf("Cache folder is: %s", cacheFolder)
+	if config.CacheExpiresAfter == 0 {
+		cacheFs = afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 	} else {
-		base := afero.NewBasePathFs(afero.NewOsFs(), CacheFolder)
+		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 		layer := afero.NewMemMapFs()
-		CacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(Config.CacheExpiresAfter))
-		logger.Printf("Cache in-memory expiration after %v", time.Duration(Config.CacheExpiresAfter))
+		cacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(config.CacheExpiresAfter))
+		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.CacheExpiresAfter))
 	}
+
+	gallery.Initialize(config, rootFs, cacheFs, logger)
 
 	// Routing
 	httpmux := http.NewServeMux()
-	if Config.Prefix != "" {
-		UrlPrefix = fmt.Sprintf("/%s", strings.Trim(Config.Prefix, "/"))
-		httpmux.Handle(UrlPrefix, http.StripPrefix(UrlPrefix, http.HandlerFunc(httpHandler)))
+	if config.Prefix != "" {
+		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Prefix, "/"))
+		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile("res/favicon.ico", "", w, r)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
-	bind := fmt.Sprintf("%s:%d", Config.Host, Config.Port)
+	bind := fmt.Sprintf("%s:%d", config.Host, config.Port)
 
-	if Config.Ffmpeg == "" {
+	if config.Ffmpeg == "" {
 		if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
-			Config.Ffmpeg = ffmpegPath
+			config.Ffmpeg = ffmpegPath
 			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
 		}
 	}
 
 	// Server start sequence
 	useTls := false
-	if fileExists(Config.TlsCrt) && fileExists(Config.TlsKey) {
+	if fileExists(config.TlsCrt) && fileExists(config.TlsKey) {
 		useTls = true
-		logger.Printf("Using certificate: %s and key: %s", Config.TlsCrt, Config.TlsKey)
+		logger.Printf("Using certificate: %s and key: %s", config.TlsCrt, config.TlsKey)
 	}
-	go startFsWatcher(Config.Root) // Start filesystem watcher
+	if config.DiscordWebhook != "" { // Start filesystem watcher
+		go gallery.StartFsWatcher()
+	}
 	var srvErr error
 	defer func() {
 		if srvErr != nil {
 			log.Fatal(srvErr)
 		}
 	}()
-	if Config.PublicHost != "" {
-		PublicUrl = strings.Trim(Config.PublicHost, "/") + UrlPrefix + "/"
+	if config.PublicHost != "" {
+		config.PublicUrl = strings.Trim(config.PublicHost, "/") + urlPrefix + "/"
 	} else {
-		PublicUrl = bind + UrlPrefix + "/"
+		config.PublicUrl = bind + urlPrefix + "/"
 	}
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{}
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, _ := ioutil.ReadFile(Config.TlsCrt)
+		pem, _ := ioutil.ReadFile(config.TlsCrt)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
 
 		// Optional http2
-		if Config.Http2 {
+		if config.Http2 {
 			logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
 		} else {
@@ -652,17 +603,17 @@ func main() {
 			Handler:   httpmux,
 			TLSConfig: tlsConfig,
 		}
-		PublicUrl = "https://" + PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
-		if !Config.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
+		config.PublicUrl = "https://" + config.PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, config.PublicUrl)
+		if !config.Quiet {
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.PublicUrl)
 		}
-		srvErr = srv.ListenAndServeTLS(Config.TlsCrt, Config.TlsKey)
+		srvErr = srv.ListenAndServeTLS(config.TlsCrt, config.TlsKey)
 	} else { // Normal start
-		PublicUrl = "http://" + PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, PublicUrl)
-		if !Config.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, PublicUrl)
+		config.PublicUrl = "http://" + config.PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, config.PublicUrl)
+		if !config.Quiet {
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.PublicUrl)
 		}
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}

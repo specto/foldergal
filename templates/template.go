@@ -44,7 +44,7 @@ type ErrorPage struct {
 	Message string
 }
 
-var Tpl *template.Template
+var Html *template.Template
 
 func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
@@ -65,7 +65,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 
 func Initialize() {
 	var err error
-	Tpl, err = parseTemplates(
+	Html, err = parseTemplates(
 		"res/templates/list.html",
 		"res/templates/footer.html",
 		"res/templates/error.html",
