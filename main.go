@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"foldergal/config"
 	"foldergal/gallery"
 	"foldergal/storage"
 	"foldergal/templates"
@@ -21,7 +22,6 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -37,7 +37,6 @@ func fileExists(filename string) bool {
 
 var (
 	logger          *log.Logger
-	config          gallery.Configuration
 	cacheFolderName = "_foldergal_cache"
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
@@ -184,10 +183,10 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_, _ = fmt.Fprintf(w, "Root:        %v\n", config.Root)
-	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(config.Root))))
-	_, _ = fmt.Fprintf(w, "Cache:       %v\n", config.Cache)
-	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(config.Cache))))
+	_, _ = fmt.Fprintf(w, "Root:        %v\n", config.Global.Root)
+	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(config.Global.Root))))
+	_, _ = fmt.Fprintf(w, "Cache:       %v\n", config.Global.Cache)
+	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(config.Global.Cache))))
 	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", gallery.WatchedFolders)
 	_, _ = fmt.Fprintf(w, "\n")
 	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
@@ -221,8 +220,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = path.Join(r.URL.Path, "..")
-	} else if config.PublicHost != "" {
-		title = config.PublicHost
+	} else if config.Global.PublicHost != "" {
+		title = config.Global.PublicHost
 	}
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -247,8 +246,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 			Name:    child.Name(),
 			Thumb:   thumb,
 			Class:   class,
-			W:       config.ThumbWidth,
-			H:       config.ThumbHeight,
+			W:       config.Global.ThumbWidth,
+			H:       config.Global.ThumbHeight,
 		})
 	}
 	if sortBy == "date" {
@@ -405,66 +404,55 @@ func init() {
 		log.Fatal(err)
 	}
 
-	config.ThumbHeight = 200
-	config.ThumbWidth = 200
-
 	// Environment variables
-	if config.Host = os.Getenv("FOLDERGAL_HOST"); config.Host == "" {
-		config.Host = "localhost"
-	}
-	if config.Port, _ = strconv.Atoi(os.Getenv("FOLDERGAL_HOST")); config.Port == 0 {
-		config.Port = 8080
-	}
-	if config.Home = os.Getenv("FOLDERGAL_HOME"); config.Home == "" {
-		config.Home = execFolder
-	}
-	if config.Root = os.Getenv("FOLDERGAL_ROOT"); config.Root == "" {
-		config.Root = execFolder
-	}
-	config.Prefix = os.Getenv("FOLDERGAL_PREFIX")
-	config.TlsCrt = os.Getenv("FOLDERGAL_CRT")
-	config.TlsKey = os.Getenv("FOLDERGAL_KEY")
-	config.Http2, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_HTTP2"))
-	if envValue := os.Getenv("FOLDERGAL_CACHE_EXPIRES_AFTER"); envValue != "" {
-		envCacheExpires, _ := time.ParseDuration(envValue)
-		config.CacheExpiresAfter = gallery.JsonDuration(envCacheExpires)
-	}
-	if envValue := os.Getenv("FOLDERGAL_NOTIFY_AFTER"); envValue != "" {
-		envNotifyAfter, _ := time.ParseDuration(envValue)
-		config.NotifyAfter = gallery.JsonDuration(envNotifyAfter)
-	} else {
-		config.NotifyAfter = gallery.JsonDuration(30 * time.Second)
-	}
-	config.DiscordWebhook = os.Getenv("FOLDERGAL_DISCORD_WEBHOOK")
-	config.PublicHost = os.Getenv("FOLDERGAL_PUBLIC_HOST")
-	config.Quiet, _ = strconv.ParseBool(os.Getenv("FOLDERGAL_QUIET"))
+	config.Global.Host = config.SfromEnv("HOST", "localhost")
+	config.Global.Port = config.IfromEnv("PORT", 8080)
+	config.Global.Home = config.SfromEnv("HOME", execFolder)
+	config.Global.Root = config.SfromEnv("ROOT", execFolder)
+	config.Global.Prefix = config.SfromEnv("PREFIX", "")
+	config.Global.TlsCrt = config.SfromEnv("TLS_CRT", "")
+	config.Global.TlsKey = config.SfromEnv("TLS_KEY", "")
+	config.Global.Http2 = config.BfromEnv("HTTP2", false)
+	config.Global.CacheExpiresAfter = config.DfromEnv("CACHE_EXPIRES_AFTER", 0)
+	config.Global.NotifyAfter = config.DfromEnv("NOTIFY_AFTER", config.JsonDuration(30 * time.Second))
+	config.Global.DiscordWebhook = config.SfromEnv("DISCORD_WEBHOOK", "")
+	config.Global.DiscordName = config.SfromEnv("DISCORD_NAME", "Gallery")
+	config.Global.PublicHost = config.SfromEnv("PUBLIC_HOST", "")
+	config.Global.Quiet = config.BfromEnv("QUIET", false)
+	config.Global.ConfigFile = config.SfromEnv("CONFIG", "")
+	config.Global.ThumbWidth = config.IfromEnv("THUMB_W", 400)
+	config.Global.ThumbHeight = config.IfromEnv("THUMB_H", 400)
 
-	// Command line arguments (they override env)
-	flag.StringVar(&config.Host, "host", config.Host, "host address to bind to")
-	flag.IntVar(&config.Port, "port", config.Port, "port to run at")
-	flag.StringVar(&config.Home, "home", config.Home, "home folder e.g. to keep thumbnails")
-	flag.StringVar(&config.Root, "root", config.Root, "root folder to serve files from")
-	flag.StringVar(&config.Prefix, "prefix", config.Prefix,
+	// Command line arguments, they override env
+	flag.StringVar(&config.Global.Host, "host", config.Global.Host, "host address to bind to")
+	flag.IntVar(&config.Global.Port, "port", config.Global.Port, "port to run at")
+	flag.StringVar(&config.Global.Home, "home", config.Global.Home, "home folder e.g. to keep thumbnails")
+	flag.StringVar(&config.Global.Root, "root", config.Global.Root, "root folder to serve files from")
+	flag.StringVar(&config.Global.Prefix, "prefix", config.Global.Prefix,
 		"path prefix as in http://localhost/PREFIX/other/stuff")
-	flag.StringVar(&config.TlsCrt, "crt", config.TlsCrt, "certificate File for TLS")
-	flag.StringVar(&config.TlsKey, "key", config.TlsKey, "key file for TLS")
-	flag.BoolVar(&config.Http2, "http2", config.Http2, "enable HTTP/2 (only with TLS)")
-	flag.BoolVar(&config.Quiet, "quiet", config.Quiet, "don't print to console")
-	flag.DurationVar((*time.Duration)(&config.CacheExpiresAfter), "cache-expires-after",
-		time.Duration(config.CacheExpiresAfter),
+	flag.StringVar(&config.Global.TlsCrt, "crt", config.Global.TlsCrt, "certificate File for TLS")
+	flag.StringVar(&config.Global.TlsKey, "key", config.Global.TlsKey, "key file for TLS")
+	flag.BoolVar(&config.Global.Http2, "http2", config.Global.Http2, "enable HTTP/2 (only with TLS)")
+	flag.BoolVar(&config.Global.Quiet, "quiet", config.Global.Quiet, "don't print to console")
+	flag.DurationVar((*time.Duration)(&config.Global.CacheExpiresAfter),
+		"cache-expires-after", time.Duration(config.Global.CacheExpiresAfter),
 		"duration to keep cached resources in memory")
-	flag.DurationVar((*time.Duration)(&config.NotifyAfter), "notify-after",
-		time.Duration(config.NotifyAfter),
+	flag.DurationVar((*time.Duration)(&config.Global.NotifyAfter),
+		"notify-after", time.Duration(config.Global.NotifyAfter),
 		"duration to delay notifications and combine them in one")
-	flag.StringVar(&config.DiscordWebhook, "discord", config.DiscordWebhook,
+	flag.StringVar(&config.Global.DiscordWebhook, "discord-webhook", config.Global.DiscordWebhook,
 		"webhook URL to receive notifications when new media appears")
-	flag.StringVar(&config.PublicHost, "pub-host", config.PublicHost,
+	flag.StringVar(&config.Global.DiscordName, "discord-name", config.Global.DiscordName,
+		"name to appear on sent notifications")
+	flag.StringVar(&config.Global.PublicHost, "pub-host", config.Global.PublicHost,
 		"the public name for the machine")
+	flag.IntVar(&config.Global.ThumbWidth, "thumb-width", config.Global.ThumbWidth, "width for thumbnails")
+	flag.IntVar(&config.Global.ThumbHeight, "thumb-height", config.Global.ThumbHeight, "height for thumbnails")
+	flag.StringVar(&config.Global.ConfigFile, "config", config.Global.ConfigFile,
+		"json file to get all the parameters from")
 }
 
 func main() {
-	configFile := flag.String("config", "",
-		"json file to get all the parameters from")
 	showVersion := flag.Bool("version", false, "show program version and build time")
 
 	flag.Parse()
@@ -475,14 +463,16 @@ func main() {
 	}
 
 	// Configuration file variables override all others
-	if err := config.FromJson(*configFile); *configFile != "" && err != nil {
-		log.Fatalf("error: invalid config %v", err)
+	if config.Global.ConfigFile != "" {
+		if err := config.Global.FromJson(config.Global.ConfigFile); err != nil {
+			log.Fatalf("error: invalid config %v", err)
+		}
 	}
-	config.Home, _ = filepath.Abs(config.Home)
-	config.Root, _ = filepath.Abs(config.Root)
+	config.Global.Home, _ = filepath.Abs(config.Global.Home)
+	config.Global.Root, _ = filepath.Abs(config.Global.Root)
 
 	// Set up log file
-	logFile := filepath.Join(config.Home, "foldergal.log")
+	logFile := filepath.Join(config.Global.Home, "foldergal.log")
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0644) // #nosec Permit everybody to read the log file
 	if err != nil {
@@ -491,77 +481,77 @@ func main() {
 	}
 	defer func() { _ = logging.Close() }()
 	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
-	if !config.Quiet {
+	if !config.Global.Quiet {
 		log.Printf("Logging to %s", logFile)
 	}
 
 	// Set root media folder
-	if exists, err := os.Stat(config.Root); os.IsNotExist(err) || !exists.IsDir() {
-		log.Fatalf("Root folder does not exist: %v", config.Root)
+	if exists, err := os.Stat(config.Global.Root); os.IsNotExist(err) || !exists.IsDir() {
+		log.Fatalf("Root folder does not exist: %v", config.Global.Root)
 	}
-	logger.Printf("Root folder is: %s", config.Root)
-	if !config.Quiet {
-		log.Printf("Serving files from: %v", config.Root)
+	logger.Printf("Root folder is: %s", config.Global.Root)
+	if !config.Global.Quiet {
+		log.Printf("Serving files from: %v", config.Global.Root)
 	}
-	if config.CacheExpiresAfter == 0 {
-		storage.Root = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
+	if config.Global.CacheExpiresAfter == 0 {
+		storage.Root = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root))
 	} else {
 		storage.Root = afero.NewCacheOnReadFs(
-			afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root)),
+			afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root)),
 			afero.NewMemMapFs(),
-			time.Duration(config.CacheExpiresAfter))
+			time.Duration(config.Global.CacheExpiresAfter))
 	}
 
 	//stat, _ := storage.Internal.Stat("asdf.svg")
 	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
-	config.Cache = filepath.Join(config.Home, cacheFolderName)
-	err = os.MkdirAll(config.Cache, 0750)
+	config.Global.Cache = filepath.Join(config.Global.Home, cacheFolderName)
+	err = os.MkdirAll(config.Global.Cache, 0750)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if !config.Quiet {
-		log.Printf("Cache folder is: %s\n", config.Cache)
+	if !config.Global.Quiet {
+		log.Printf("Cache folder is: %s\n", config.Global.Cache)
 	}
-	logger.Printf("Cache folder is: %s", config.Cache)
-	if config.CacheExpiresAfter == 0 {
-		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), config.Cache)
+	logger.Printf("Cache folder is: %s", config.Global.Cache)
+	if config.Global.CacheExpiresAfter == 0 {
+		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache)
 	} else {
 		storage.Cache = afero.NewCacheOnReadFs(
-			afero.NewBasePathFs(afero.NewOsFs(), config.Cache),
+			afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache),
 			afero.NewMemMapFs(),
-			time.Duration(config.CacheExpiresAfter))
-		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.CacheExpiresAfter))
+			time.Duration(config.Global.CacheExpiresAfter))
+		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.Global.CacheExpiresAfter))
 	}
 
 	// Routing
 	httpmux := http.NewServeMux()
-	if config.Prefix != "" {
-		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Prefix, "/"))
+	if config.Global.Prefix != "" {
+		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Global.Prefix, "/"))
 		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile("res/favicon.ico", "", w, r)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
-	bind := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
-	if config.Ffmpeg == "" {
+	if config.Global.Ffmpeg == "" {
 		if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
-			config.Ffmpeg = ffmpegPath
+			config.Global.Ffmpeg = ffmpegPath
 			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
 		}
 	}
 
 	// Server start sequence
-	gallery.Initialize(&config, logger)
+	gallery.Initialize(logger)
 	useTls := false
-	if fileExists(config.TlsCrt) && fileExists(config.TlsKey) {
+	if fileExists(config.Global.TlsCrt) && fileExists(config.Global.TlsKey) {
 		useTls = true
-		logger.Printf("Using certificate: %s and key: %s", config.TlsCrt, config.TlsKey)
+		logger.Printf("Using certificate: %s and key: %s", config.Global.TlsCrt, config.Global.TlsKey)
 	}
-	if config.DiscordWebhook != "" { // Start filesystem watcher
+	if config.Global.DiscordWebhook != "" { // Start filesystem watcher
 		go gallery.StartFsWatcher()
 	}
 	var srvErr error
@@ -570,10 +560,10 @@ func main() {
 			log.Fatal(srvErr)
 		}
 	}()
-	if config.PublicHost != "" {
-		config.PublicUrl = strings.Trim(config.PublicHost, "/") + urlPrefix + "/"
+	if config.Global.PublicHost != "" {
+		config.Global.PublicUrl = strings.Trim(config.Global.PublicHost, "/") + urlPrefix + "/"
 	} else {
-		config.PublicUrl = bind + urlPrefix + "/"
+		config.Global.PublicUrl = bind + urlPrefix + "/"
 	}
 
 	if useTls { // Prepare the TLS
@@ -581,12 +571,12 @@ func main() {
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, _ := ioutil.ReadFile(config.TlsCrt)
+		pem, _ := ioutil.ReadFile(config.Global.TlsCrt)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
 
 		// Optional http2
-		if config.Http2 {
+		if config.Global.Http2 {
 			logger.Print("Using HTTP/2")
 			tlsConfig.NextProtos = []string{"h2"}
 		} else {
@@ -597,17 +587,17 @@ func main() {
 			Handler:   httpmux,
 			TLSConfig: tlsConfig,
 		}
-		config.PublicUrl = "https://" + config.PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, config.PublicUrl)
-		if !config.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.PublicUrl)
+		config.Global.PublicUrl = "https://" + config.Global.PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)
+		if !config.Global.Quiet {
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.Global.PublicUrl)
 		}
-		srvErr = srv.ListenAndServeTLS(config.TlsCrt, config.TlsKey)
+		srvErr = srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
 	} else { // Normal start
-		config.PublicUrl = "http://" + config.PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, config.PublicUrl)
-		if !config.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.PublicUrl)
+		config.Global.PublicUrl = "http://" + config.Global.PublicUrl
+		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)
+		if !config.Global.Quiet {
+			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.Global.PublicUrl)
 		}
 		srvErr = http.ListenAndServe(bind, httpmux)
 	}

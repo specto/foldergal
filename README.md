@@ -29,21 +29,25 @@ See config.default.json for details. Parameter names are case insensitive.
 
 All settings in the config file override the env and cli parameters!
 
-#### Environment Variables
+#### Environment variables and their defaults
 ```
-export FOLDERGAL_HOST=localhost
-export FOLDERGAL_PORT=8080
-export FOLDERGAL_HOME=/path/to/settings/
-export FOLDERGAL_ROOT=/files/to/serve/
-export FOLDERGAL_PREFIX=gallery
-export FOLDERGAL_CRT=/tls/server.crt
-export FOLDERGAL_KEY=/tls/server.key
-export FOLDERGAL_HTTP2=true
 export FOLDERGAL_CACHE_EXPIRES_AFTER=0
+export FOLDERGAL_CONFIG=
+export FOLDERGAL_DISCORD_NAME=Gallery
+export FOLDERGAL_DISCORD_WEBHOOK=
+export FOLDERGAL_HOME=.
+export FOLDERGAL_HOST=localhost
+export FOLDERGAL_HTTP2=false
 export FOLDERGAL_NOTIFY_AFTER=30s
-export FOLDERGAL_DISCORD_WEBHOOK=https://discordapp.com/api/webhooks/xxxxx
-export FOLDERGAL_PUBLIC_HOST=example.com
-export FOLDERGAL_QUIET=true
+export FOLDERGAL_PORT=8080
+export FOLDERGAL_PREFIX=
+export FOLDERGAL_PUBLIC_HOST=
+export FOLDERGAL_QUIET=false
+export FOLDERGAL_ROOT=.
+export FOLDERGAL_THUMB_H=200 
+export FOLDERGAL_THUMB_W=200
+export FOLDERGAL_TLS_CRT=
+export FOLDERGAL_TLS_KEY=
 ```
 
 #### Parameters
@@ -139,6 +143,7 @@ TODO
 * [x] Sort list by name or date 
 * [x] Fix gosec issues
 * [x] Use go:generate for embedded resources
+* [x] Test and fix environment variables
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads

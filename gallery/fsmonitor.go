@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"foldergal/config"
 	"github.com/charithe/timedbuf"
 	"github.com/fsnotify/fsnotify"
 	"net/http"
@@ -15,9 +16,9 @@ import (
 )
 
 var (
-	watcher           *fsnotify.Watcher
-	notificationFlush = 100
-	WatchedFolders    = 0
+	watcher        *fsnotify.Watcher
+	notifChanSize  = 100
+	WatchedFolders = 0
 )
 
 type discordMessage struct {
@@ -31,7 +32,7 @@ func sendDiscord(jsonData discordMessage) {
 	if errj != nil {
 		logger.Printf("error: invalid json: %v", errj)
 	}
-	resp, errp := http.Post(config.DiscordWebhook,
+	resp, errp := http.Post(config.Global.DiscordWebhook,
 		"application/json; charset=utf-8", jsonBuf)
 	if errp != nil {
 		logger.Printf("error: cannot send discord notification: %v", errp)
@@ -46,13 +47,13 @@ func sendDiscord(jsonData discordMessage) {
 func notify(items []interface{}) {
 	uniqueUrls := make(map[string]int)
 	for i, item := range items {
-		if path, err := filepath.Rel(config.Root, fmt.Sprint(item)); err == nil {
+		if path, err := filepath.Rel(config.Global.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
 			var urlPage *url.URL
 			if dirPath == "." {
-				urlPage, _ = url.Parse(config.PublicUrl)
+				urlPage, _ = url.Parse(config.Global.PublicUrl)
 			} else {
-				urlPage, _ = url.Parse(config.PublicUrl + filepath.ToSlash(dirPath) + "?by-date")
+				urlPage, _ = url.Parse(config.Global.PublicUrl + filepath.ToSlash(dirPath) + "?by-date")
 			}
 			uniqueUrls[urlPage.String()] = i
 		}
@@ -65,7 +66,7 @@ func notify(items []interface{}) {
 		return
 	}
 	jsonData := discordMessage{
-		Username: "Gallery",
+		Username: config.Global.DiscordName,
 		Content:  "See what was just published: \n" + strings.Join(urlStrings[:], "\n"),
 	}
 	go sendDiscord(jsonData)
@@ -79,9 +80,9 @@ func StartFsWatcher() {
 		return
 	}
 	defer func() { _ = watcher.Close() }()
-	notifyDuration := time.Duration(config.NotifyAfter)
+	notifyDuration := time.Duration(config.Global.NotifyAfter)
 	logger.Printf("Monitoring for filesystem changes with delay %v", notifyDuration)
-	eventBuffer := timedbuf.New(notificationFlush, notifyDuration, notify)
+	eventBuffer := timedbuf.New(notifChanSize, notifyDuration, notify)
 	defer eventBuffer.Close()
 
 	done := make(chan bool)
@@ -109,7 +110,7 @@ func StartFsWatcher() {
 		}
 	}()
 
-	err = filepath.Walk(config.Root,
+	err = filepath.Walk(config.Global.Root,
 		func(walkPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -128,7 +129,7 @@ func StartFsWatcher() {
 		logger.Print(err)
 	}
 
-	err = watcher.Add(config.Root)
+	err = watcher.Add(config.Global.Root)
 	if err != nil {
 		logger.Print(err)
 		return

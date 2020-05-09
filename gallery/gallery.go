@@ -2,9 +2,9 @@ package gallery
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"foldergal/config"
 	"foldergal/storage"
 	"github.com/disintegration/imaging"
 	"github.com/spf13/afero"
@@ -25,70 +25,8 @@ import (
 )
 
 var (
-	config *Configuration
 	logger *log.Logger
 )
-
-type Configuration struct {
-	Host              string
-	Port              int
-	Home              string
-	Root              string
-	Cache             string `json:"-"`
-	Prefix            string
-	TlsCrt            string
-	TlsKey            string
-	Http2             bool
-	CacheExpiresAfter JsonDuration
-	NotifyAfter       JsonDuration
-	DiscordWebhook    string
-	PublicHost        string
-	Quiet             bool
-	Ffmpeg            string
-	PublicUrl         string `json:"-"`
-	ThumbWidth        int
-	ThumbHeight       int
-}
-
-func (c *Configuration) FromJson(configFile string) (err error) {
-	var file *os.File
-	/* #nosec */
-	if file, err = os.Open(configFile); err != nil {
-		return
-	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&c)
-	return
-}
-
-type JsonDuration time.Duration
-
-func (d JsonDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
-}
-
-func (d *JsonDuration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case float64:
-		*d = JsonDuration(time.Duration(value))
-		return nil
-	case string:
-		tmp, err := time.ParseDuration(value)
-		if err != nil {
-			return err
-		}
-		*d = JsonDuration(tmp)
-		return nil
-	default:
-		return errors.New("invalid duration")
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
 
 type Media interface {
 	Media() *MediaFile // Expose our basic data structure in interface
@@ -178,7 +116,8 @@ func (f *ImageFile) ThumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	resized := imaging.Fit(img, config.ThumbWidth, config.ThumbHeight, imaging.Lanczos)
+	resized := imaging.Fit(img, config.Global.ThumbWidth,
+		config.Global.ThumbHeight, imaging.Lanczos)
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, resized, nil)
 	if err != nil {
@@ -302,7 +241,7 @@ func (f *VideoFile) Thumb() *afero.File {
 	if !f.ThumbExists() {
 		return nil
 	}
-	if config.Ffmpeg == "" {
+	if config.Global.Ffmpeg == "" {
 		thumb, _ := storage.Internal.Open("res/video.svg")
 		return &thumb
 	}
@@ -314,7 +253,7 @@ func (f *VideoFile) Thumb() *afero.File {
 }
 
 func (f *VideoFile) ThumbExists() (exists bool) {
-	if config.Ffmpeg != "" { // Check if we generated thumbnail already
+	if config.Global.Ffmpeg != "" { // Check if we generated thumbnail already
 		exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
 		// Ensure we refresh Thumb stat
 		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
@@ -343,14 +282,14 @@ func (f *VideoFile) ThumbExpired() (expired bool) {
 }
 
 func (f *VideoFile) ThumbGenerate() (err error) {
-	if config.Ffmpeg == "" { // No ffmpeg no thumbnail
+	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
 		return
 	}
 
-	movieFile := filepath.Join(config.Root, f.FullPath)
+	movieFile := filepath.Join(config.Global.Root, f.FullPath)
 
 	// Get the duration of the movie
-	cmd := exec.Command(config.Ffmpeg, "-hide_banner", "-i",
+	cmd := exec.Command(config.Global.Ffmpeg, "-hide_banner", "-i",
 		movieFile) // #nosec Configuration is provided by the admin
 	out, _ := cmd.CombinedOutput()
 	re := regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
@@ -360,10 +299,10 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 	}
 	// Target the first third of the movie
 	targetTime := toTimeCode(fromTimeCode(match[1]) / 3)
-	thumbSize := fmt.Sprintf("%dx%d", config.ThumbWidth, config.ThumbHeight)
+	thumbSize := fmt.Sprintf("%dx%d", config.Global.ThumbWidth, config.Global.ThumbHeight)
 
 	// Generate the thumbnail to stdout
-	thumbCmd := exec.Command(config.Ffmpeg,
+	thumbCmd := exec.Command(config.Global.Ffmpeg,
 		"-hide_banner",
 		"-loglevel", "quiet",
 		"-noaccurate_seek",
@@ -479,7 +418,6 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	return
 }
 
-func Initialize(cfg *Configuration, log *log.Logger) {
-	config = cfg
+func Initialize(log *log.Logger) {
 	logger = log
 }
