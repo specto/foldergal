@@ -46,7 +46,7 @@ func sendDiscord(jsonData discordMessage) {
 func notify(items []interface{}) {
 	uniqueUrls := make(map[string]int)
 	for i, item := range items {
-		if path, err := filepath.Rel(root, fmt.Sprint(item)); err == nil {
+		if path, err := filepath.Rel(config.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
 			var urlPage *url.URL
 			if dirPath == "." {

@@ -5,4 +5,4 @@
 /.idea
 /tags
 /dist
-/embedded/generated.go
+/storage/generated.go

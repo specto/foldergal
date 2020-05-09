@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"foldergal/embedded"
+	"foldergal/storage"
 	"github.com/disintegration/imaging"
 	"github.com/spf13/afero"
 	"image"
@@ -25,11 +25,8 @@ import (
 )
 
 var (
-	rootFs afero.Fs
-	root string
-	cacheFs afero.Fs
-	config Config
-	logger *log.Logger
+	config  *Config
+	logger  *log.Logger
 )
 
 type Config struct {
@@ -116,7 +113,7 @@ func (f *MediaFile) Media() *MediaFile {
 }
 
 func (f *MediaFile) File() *afero.File {
-	file, err := rootFs.Open(f.FullPath)
+	file, err := storage.Root.Open(f.FullPath)
 	if err != nil {
 		return nil
 	}
@@ -125,9 +122,9 @@ func (f *MediaFile) File() *afero.File {
 
 func (f *MediaFile) FileExists() (exists bool) {
 	var err error
-	exists, err = afero.Exists(rootFs, f.FullPath)
+	exists, err = afero.Exists(storage.Root, f.FullPath)
 	// Ensure we refresh File stat
-	f.FileInfo, err = rootFs.Stat(f.FullPath)
+	f.FileInfo, err = storage.Root.Stat(f.FullPath)
 	if err != nil {
 		return false
 	}
@@ -143,7 +140,7 @@ func (f *ImageFile) Thumb() *afero.File {
 	if !f.ThumbExists() {
 		return nil
 	}
-	file, err := cacheFs.Open(f.ThumbPath)
+	file, err := storage.Cache.Open(f.ThumbPath)
 	if err != nil {
 		return nil
 	}
@@ -151,9 +148,9 @@ func (f *ImageFile) Thumb() *afero.File {
 }
 
 func (f *ImageFile) ThumbExists() (exists bool) {
-	exists, _ = afero.Exists(cacheFs, f.ThumbPath)
+	exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
 	// Ensure we refresh Thumb stat
-	f.Media().ThumbInfo, _ = cacheFs.Stat(f.ThumbPath)
+	f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
 	return
 }
 
@@ -171,7 +168,7 @@ func (f *ImageFile) ThumbGenerate() (err error) {
 		file afero.File
 		img  image.Image
 	)
-	file, err = rootFs.Open(f.FullPath)
+	file, err = storage.Root.Open(f.FullPath)
 	defer func() { _ = file.Close() }()
 	if err != nil {
 		return
@@ -186,16 +183,16 @@ func (f *ImageFile) ThumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = cacheFs.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = cacheFs.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.ThumbPath)
 	if err != nil {
 		return
 	}
-	_ = afero.WriteFile(cacheFs, f.ThumbPath, buf.Bytes(), os.ModePerm)
-	f.Media().ThumbInfo, err = cacheFs.Stat(f.ThumbPath)
+	_ = afero.WriteFile(storage.Cache, f.ThumbPath, buf.Bytes(), os.ModePerm)
+	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
 	return
 }
 
@@ -208,7 +205,7 @@ func (f *SvgFile) Thumb() *afero.File {
 	if !f.ThumbExists() {
 		return nil
 	}
-	file, err := cacheFs.Open(f.ThumbPath)
+	file, err := storage.Cache.Open(f.ThumbPath)
 	if err != nil {
 		return nil
 	}
@@ -216,9 +213,9 @@ func (f *SvgFile) Thumb() *afero.File {
 }
 
 func (f *SvgFile) ThumbExists() (exists bool) {
-	exists, _ = afero.Exists(cacheFs, f.ThumbPath)
+	exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
 	// Ensure we refresh Thumb stat
-	f.Media().ThumbInfo, _ = cacheFs.Stat(f.ThumbPath)
+	f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
 	return
 }
 
@@ -236,7 +233,7 @@ func (f *SvgFile) ThumbGenerate() (err error) {
 		file     afero.File
 		contents []byte
 	)
-	file, err = rootFs.Open(f.FullPath)
+	file, err = storage.Root.Open(f.FullPath)
 	defer func() { _ = file.Close() }()
 	if err != nil {
 		return
@@ -245,21 +242,21 @@ func (f *SvgFile) ThumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = cacheFs.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = cacheFs.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.ThumbPath)
 	if err != nil {
 		return
 	}
-	err = afero.WriteFile(cacheFs, f.ThumbPath, contents, os.ModePerm)
+	err = afero.WriteFile(storage.Cache, f.ThumbPath, contents, os.ModePerm)
 	if err != nil {
 		return
 	}
 	// Since we just copy SVGs the Thumb File is the same as the original
 	f.ThumbPath = f.FullPath
-	f.Media().ThumbInfo, err = cacheFs.Stat(f.ThumbPath)
+	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
 	return
 }
 
@@ -269,17 +266,17 @@ type AudioFile struct {
 }
 
 func (f *AudioFile) Thumb() *afero.File {
-	thumb, _ := embedded.Fs.Open("res/audio.svg")
+	thumb, _ := storage.Internal.Open("res/audio.svg")
 	return &thumb
 }
 
 func (f *AudioFile) ThumbExists() (exists bool) {
 	var err error
-	exists, err = afero.Exists(embedded.Fs, "res/audio.svg")
+	exists, err = afero.Exists(storage.Internal, "res/audio.svg")
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = embedded.Fs.Stat("res/audio.svg")
+	f.Media().ThumbInfo, err = storage.Internal.Stat("res/audio.svg")
 	if err != nil {
 		return false
 	}
@@ -305,10 +302,10 @@ func (f *VideoFile) Thumb() *afero.File {
 		return nil
 	}
 	if config.Ffmpeg == "" {
-		thumb, _ := embedded.Fs.Open("res/video.svg")
+		thumb, _ := storage.Internal.Open("res/video.svg")
 		return &thumb
 	}
-	file, err := cacheFs.Open(f.ThumbPath)
+	file, err := storage.Cache.Open(f.ThumbPath)
 	if err != nil {
 		return nil
 	}
@@ -317,18 +314,18 @@ func (f *VideoFile) Thumb() *afero.File {
 
 func (f *VideoFile) ThumbExists() (exists bool) {
 	if config.Ffmpeg != "" { // Check if we generated thumbnail already
-		exists, _ = afero.Exists(cacheFs, f.ThumbPath)
+		exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
 		// Ensure we refresh Thumb stat
-		f.Media().ThumbInfo, _ = cacheFs.Stat(f.ThumbPath)
+		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
 		return
 	}
 	// Using internal images
 	var err error
-	exists, err = afero.Exists(embedded.Fs, "res/video.svg")
+	exists, err = afero.Exists(storage.Internal, "res/video.svg")
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = embedded.Fs.Stat("res/video.svg")
+	f.Media().ThumbInfo, err = storage.Internal.Stat("res/video.svg")
 	if err != nil {
 		return false
 	}
@@ -349,7 +346,7 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 		return
 	}
 
-	movieFile := filepath.Join(root, f.FullPath)
+	movieFile := filepath.Join(config.Root, f.FullPath)
 
 	// Get the duration of the movie
 	cmd := exec.Command(config.Ffmpeg, "-hide_banner", "-i",
@@ -377,17 +374,17 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 	if len(outThumb) == 0 { // Failed thumbnail
 		return errors.New("error: empty thumbnail: " + f.ThumbPath)
 	}
-	err = cacheFs.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = cacheFs.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.ThumbPath)
 	if err != nil {
 		return
 	}
 	// Save thumbnail
-	err = afero.WriteFile(cacheFs, f.ThumbPath, outThumb, os.ModePerm)
-	f.Media().ThumbInfo, err = cacheFs.Stat(f.ThumbPath)
+	err = afero.WriteFile(storage.Cache, f.ThumbPath, outThumb, os.ModePerm)
+	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
 
 	return
 }
@@ -399,17 +396,17 @@ type PdfFile struct {
 }
 
 func (f *PdfFile) Thumb() *afero.File {
-	thumb, _ := embedded.Fs.Open("res/pdf.svg")
+	thumb, _ := storage.Internal.Open("res/pdf.svg")
 	return &thumb
 }
 
 func (f *PdfFile) ThumbExists() (exists bool) {
 	var err error
-	exists, err = afero.Exists(embedded.Fs, "res/pdf.svg")
+	exists, err = afero.Exists(storage.Internal, "res/pdf.svg")
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = embedded.Fs.Stat("res/pdf.svg")
+	f.Media().ThumbInfo, err = storage.Internal.Stat("res/pdf.svg")
 	if err != nil {
 		return false
 	}
@@ -481,9 +478,7 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	return
 }
 
-func Initialize(cfg Config, rootF afero.Fs, cacheF afero.Fs, log *log.Logger) {
-	rootFs = rootF
-	cacheFs = cacheF
+func Initialize(cfg *Config, log *log.Logger) {
 	config = cfg
 	logger = log
 }

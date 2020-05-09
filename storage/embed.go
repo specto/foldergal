@@ -13,7 +13,7 @@ import (
 
 
 func main() {
-	f, err := os.Create("embedded/generated.go")
+	f, err := os.Create("storage/generated.go")
 	defer f.Close()
 	if err != nil {
 		panic(err)
@@ -73,7 +73,7 @@ func main() {
 	f.WriteString(time.Now().String())
 	f.WriteString(`
 
-package embedded
+package storage
 
 import "encoding/hex"
 

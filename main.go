@@ -5,8 +5,8 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"foldergal/embedded"
 	"foldergal/gallery"
+	"foldergal/storage"
 	"foldergal/templates"
 	"github.com/spf13/afero"
 	"io/ioutil"
@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-//go:generate go run embedded/embed.go
+//go:generate go run storage/embed.go
 
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
@@ -39,8 +39,6 @@ var (
 	logger          *log.Logger
 	config          gallery.Config
 	cacheFolder     string
-	cacheFs         afero.Fs
-	rootFs          afero.Fs
 	cacheFolderName = "_foldergal_cache"
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
@@ -216,12 +214,12 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		contents  []os.FileInfo
 	)
 	folderPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
-	contents, err = afero.ReadDir(rootFs, folderPath)
+	contents, err = afero.ReadDir(storage.Root, folderPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	folderInfo, _ := rootFs.Stat(folderPath)
+	folderInfo, _ := storage.Root.Stat(folderPath)
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = path.Join(r.URL.Path, "..")
@@ -303,7 +301,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		FullPath:  fullPath,
 		ThumbPath: thumbPath,
 	}
-	m.FileInfo, err = rootFs.Stat(fullPath)
+	m.FileInfo, err = storage.Root.Stat(fullPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -322,7 +320,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 
 func renderEmbeddedFile(resFile string, contentType string,
 	w http.ResponseWriter, r *http.Request) {
-	f, err := embedded.Fs.Open(resFile)
+	f, err := storage.Internal.Open(resFile)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -383,7 +381,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stat, err := rootFs.Stat(fullPath)
+	stat, err := storage.Root.Stat(fullPath)
 	if err != nil { // Non-existing resource was requested
 		fail404(w, r)
 		return
@@ -466,7 +464,7 @@ func init() {
 		"the public name for the machine")
 
 	// The following order is important
-	embedded.Intialize()
+	storage.Intialize()
 	templates.Initialize()
 }
 
@@ -512,14 +510,15 @@ func main() {
 		log.Printf("Serving files from: %v", config.Root)
 	}
 	if config.CacheExpiresAfter == 0 {
-		rootFs = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
+		storage.Root = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
 	} else {
-		base := afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root))
-		layer := afero.NewMemMapFs()
-		rootFs = afero.NewCacheOnReadFs(base, layer, time.Duration(config.CacheExpiresAfter))
+		storage.Root = afero.NewCacheOnReadFs(
+			afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Root)),
+			afero.NewMemMapFs(),
+			time.Duration(config.CacheExpiresAfter))
 	}
 
-	//stat, _ := embedded.Fs.Stat("asdf.svg")
+	//stat, _ := storage.Internal.Stat("asdf.svg")
 	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
@@ -533,15 +532,16 @@ func main() {
 	}
 	logger.Printf("Cache folder is: %s", cacheFolder)
 	if config.CacheExpiresAfter == 0 {
-		cacheFs = afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
+		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
 	} else {
-		base := afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
-		layer := afero.NewMemMapFs()
-		cacheFs = afero.NewCacheOnReadFs(base, layer, time.Duration(config.CacheExpiresAfter))
+		storage.Cache = afero.NewCacheOnReadFs(
+			afero.NewBasePathFs(afero.NewOsFs(), cacheFolder),
+			afero.NewMemMapFs(),
+			time.Duration(config.CacheExpiresAfter))
 		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.CacheExpiresAfter))
 	}
 
-	gallery.Initialize(config, rootFs, cacheFs, logger)
+	gallery.Initialize(&config, logger)
 
 	// Routing
 	httpmux := http.NewServeMux()

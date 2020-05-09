@@ -2,7 +2,7 @@ package templates
 
 import (
 	"fmt"
-	"foldergal/embedded"
+	"foldergal/storage"
 	"html/template"
 	"io/ioutil"
 	"time"
@@ -50,7 +50,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
 
 	for i, templ := range templs {
-		listFile, errF := embedded.Fs.Open(templ)
+		listFile, errF := storage.Internal.Open(templ)
 		if errF != nil {
 			panic(errF)
 		}
