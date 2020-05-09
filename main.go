@@ -38,7 +38,6 @@ func fileExists(filename string) bool {
 var (
 	logger          *log.Logger
 	config          gallery.Config
-	cacheFolder     string
 	cacheFolderName = "_foldergal_cache"
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
@@ -46,7 +45,6 @@ var (
 	startTime       time.Time
 	urlPrefix       string
 )
-
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -188,8 +186,8 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	runtime.ReadMemStats(&m)
 	_, _ = fmt.Fprintf(w, "Root:        %v\n", config.Root)
 	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(config.Root))))
-	_, _ = fmt.Fprintf(w, "Cache:       %v\n", cacheFolder)
-	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(cacheFolder))))
+	_, _ = fmt.Fprintf(w, "Cache:       %v\n", config.Cache)
+	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(config.Cache))))
 	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", gallery.WatchedFolders)
 	_, _ = fmt.Fprintf(w, "\n")
 	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
@@ -522,20 +520,20 @@ func main() {
 	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
-	cacheFolder = filepath.Join(config.Home, cacheFolderName)
-	err = os.MkdirAll(cacheFolder, 0750)
+	config.Cache = filepath.Join(config.Home, cacheFolderName)
+	err = os.MkdirAll(config.Cache, 0750)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if !config.Quiet {
-		log.Printf("Cache folder is: %s\n", cacheFolder)
+		log.Printf("Cache folder is: %s\n", config.Cache)
 	}
-	logger.Printf("Cache folder is: %s", cacheFolder)
+	logger.Printf("Cache folder is: %s", config.Cache)
 	if config.CacheExpiresAfter == 0 {
-		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), cacheFolder)
+		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), config.Cache)
 	} else {
 		storage.Cache = afero.NewCacheOnReadFs(
-			afero.NewBasePathFs(afero.NewOsFs(), cacheFolder),
+			afero.NewBasePathFs(afero.NewOsFs(), config.Cache),
 			afero.NewMemMapFs(),
 			time.Duration(config.CacheExpiresAfter))
 		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.CacheExpiresAfter))

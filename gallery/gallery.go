@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	config  *Config
-	logger  *log.Logger
+	config *Config
+	logger *log.Logger
 )
 
 type Config struct {
@@ -34,6 +34,7 @@ type Config struct {
 	Port              int
 	Home              string
 	Root              string
+	Cache             string `json:"-"`
 	Prefix            string
 	TlsCrt            string
 	TlsKey            string
