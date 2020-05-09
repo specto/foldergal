@@ -178,24 +178,38 @@ func folderSize(startPath string) (totalSize int64) {
 }
 
 func statusHandler(w http.ResponseWriter, _ *http.Request) {
-	bToMb := func(b uint64) uint64 {
-		return b / 1024 / 1024
+	bToMb := func(b uint64) string {
+		return fmt.Sprintf("%v MiB", b / 1024 / 1024)
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	_, _ = fmt.Fprintf(w, "Root:        %v\n", config.Global.Root)
-	_, _ = fmt.Fprintf(w, "Root size:   %v MiB\n", bToMb(uint64(folderSize(config.Global.Root))))
-	_, _ = fmt.Fprintf(w, "Cache:       %v\n", config.Global.Cache)
-	_, _ = fmt.Fprintf(w, "Cache size:  %v MiB\n", bToMb(uint64(folderSize(config.Global.Cache))))
-	_, _ = fmt.Fprintf(w, "FolderWatch: %v\n", gallery.WatchedFolders)
-	_, _ = fmt.Fprintf(w, "\n")
-	_, _ = fmt.Fprintf(w, "Alloc:       %v MiB\n", bToMb(m.Alloc))
-	_, _ = fmt.Fprintf(w, "TotalAlloc:  %v MiB\n", bToMb(m.TotalAlloc))
-	_, _ = fmt.Fprintf(w, "Sys:         %v MiB\n", bToMb(m.Sys))
-	_, _ = fmt.Fprintf(w, "NumGC:       %v\n", m.NumGC)
-	_, _ = fmt.Fprintf(w, "Goroutines:  %v\n", runtime.NumGoroutine())
-	//_, _ = fmt.Fprintf(w, "goVersion:   %v\n", runtime.Version())
-	_, _ = fmt.Fprintf(w, "SvcUptime:   %v\n", time.Since(startTime))
+
+	var rowData [][2]string
+	rowData = append(rowData, [2]string{"Root:", config.Global.Root})
+	rowData = append(rowData, [2]string{"Root size:", bToMb(uint64(folderSize(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Cache:", config.Global.Cache})
+	rowData = append(rowData, [2]string{"Cache size:", bToMb(uint64(folderSize(config.Global.Cache)))})
+	rowData = append(rowData, [2]string{"Folders watched:", fmt.Sprint(gallery.WatchedFolders)})
+	rowData = append(rowData, [2]string{"-", ""})
+	rowData = append(rowData, [2]string{"Alloc:", bToMb(m.Alloc)})
+	rowData = append(rowData, [2]string{"TotalAlloc:", bToMb(m.TotalAlloc)})
+	rowData = append(rowData, [2]string{"Sys:", bToMb(m.Sys)})
+	rowData = append(rowData, [2]string{"PauseTotalNs:", fmt.Sprint(m.PauseTotalNs)})
+	rowData = append(rowData, [2]string{"NumGC:", fmt.Sprint(m.NumGC)})
+	rowData = append(rowData, [2]string{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())})
+	rowData = append(rowData, [2]string{"-", ""})
+	rowData = append(rowData, [2]string{"Service uptime:", fmt.Sprint(time.Since(startTime))})
+
+	page := templates.TwoColTable{
+		Page: templates.Page{
+			Title:        "System Status",
+			Prefix:       urlPrefix,
+			AppVersion:   BuildVersion,
+			AppBuildTime: BuildTimestamp,
+		},
+		Rows: rowData,
+	}
+	_ = templates.Html.ExecuteTemplate(w, "table", &page)
 }
 
 // Prepare list of files
@@ -501,9 +515,6 @@ func main() {
 			afero.NewMemMapFs(),
 			time.Duration(config.Global.CacheExpiresAfter))
 	}
-
-	//stat, _ := storage.Internal.Stat("asdf.svg")
-	//fmt.Printf("%v\n", stat.Size())
 
 	// Set up caching folder
 	config.Global.Cache = filepath.Join(config.Global.Home, cacheFolderName)

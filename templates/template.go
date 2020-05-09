@@ -46,6 +46,11 @@ type ErrorPage struct {
 	Message string
 }
 
+type TwoColTable struct {
+	Page
+	Rows [][2]string
+}
+
 var Html *template.Template
 
 func parseTemplates(templs ...string) (t *template.Template, err error) {
@@ -72,6 +77,7 @@ func init() {
 		"res/templates/footer.html",
 		"res/templates/error.html",
 		"res/templates/layout.html",
+		"res/templates/table.html",
 	)
 	if err != nil {
 		panic(err)

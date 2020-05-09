@@ -1,0 +1,16 @@
+{{define "table"}}
+    {{template "layout_start" .}}
+    <header><h1>{{ .Title }}</h1></header>
+    <main>
+    <table>
+    {{ range $row := .Rows }}
+    	<tr>
+        <td style="text-align: right">{{ index $row 0 }}</td>
+        <td>{{ index $row 1 }}</td>
+        </tr>
+    {{ end }}
+    </table>
+    </main>
+    {{template "footer" .}}
+    {{template "layout_end" .}}
+{{end}}
