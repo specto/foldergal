@@ -13,6 +13,7 @@ type BreadCrumb struct {
 	Title string
 }
 
+// Base page
 type Page struct {
 	Title        string
 	Prefix       string
@@ -30,6 +31,7 @@ type ListItem struct {
 	H       int
 }
 
+// Page used for folder list
 type List struct {
 	ParentUrl   string
 	ItemCount   string

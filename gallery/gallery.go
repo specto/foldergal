@@ -366,6 +366,7 @@ func (f *PdfFile) ThumbGenerate() (err error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Check if any /path/./starts/with/.dot/somewhere
 func ContainsDotFile(name string) bool {
 	parts := strings.Split(name, "/")
 	for _, part := range parts {
@@ -378,6 +379,12 @@ func ContainsDotFile(name string) bool {
 
 var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
 
+// Find the type of a file
+//
+// Careful: on unix uses specific files
+//   /etc/mime.types
+//   /etc/apache2/mime.types
+//   /etc/apache/mime.types
 func GetMediaClass(name string) (class string) {
 	ext := filepath.Ext(name)
 	contentType := mime.TypeByExtension(ext)
@@ -393,6 +400,7 @@ func GetMediaClass(name string) (class string) {
 	return
 }
 
+// Check for valid media by content-type
 func IsValidMedia(name string) bool {
 	ext := filepath.Ext(name)
 	contentType := mime.TypeByExtension(ext)

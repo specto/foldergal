@@ -3,8 +3,11 @@ package storage
 import "github.com/spf13/afero"
 
 var (
+	// Internal resources: images, html, css...
 	Internal afero.Fs
+	// The main storage
 	Root     afero.Fs
+	// Thumbnails live here
 	Cache    afero.Fs
 )
 

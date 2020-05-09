@@ -72,6 +72,7 @@ func notify(items []interface{}) {
 	go sendDiscord(jsonData)
 }
 
+// Watch every folder in config.Global.Root and send notification on new file
 func StartFsWatcher() {
 	var err error
 	watcher, err = fsnotify.NewWatcher()
