@@ -25,11 +25,11 @@ import (
 )
 
 var (
-	config *Config
+	config *Configuration
 	logger *log.Logger
 )
 
-type Config struct {
+type Configuration struct {
 	Host              string
 	Port              int
 	Home              string
@@ -50,7 +50,7 @@ type Config struct {
 	ThumbHeight       int
 }
 
-func (c *Config) FromJson(configFile string) (err error) {
+func (c *Configuration) FromJson(configFile string) (err error) {
 	var file *os.File
 	/* #nosec */
 	if file, err = os.Open(configFile); err != nil {
@@ -351,7 +351,7 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 
 	// Get the duration of the movie
 	cmd := exec.Command(config.Ffmpeg, "-hide_banner", "-i",
-		movieFile) // #nosec Config is provided by the admin
+		movieFile) // #nosec Configuration is provided by the admin
 	out, _ := cmd.CombinedOutput()
 	re := regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
 	match := re.FindSubmatch(out)
@@ -370,7 +370,7 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 		"-ss", targetTime, "-i", movieFile,
 		"-vf", "scale="+thumbSize+":flags=lanczos:force_original_aspect_ratio=decrease",
 		"-vframes", "1",
-		"-f", "image2pipe", "-") // #nosec Config is provided by the admin
+		"-f", "image2pipe", "-") // #nosec Configuration is provided by the admin
 	outThumb, _ := thumbCmd.Output()
 	if len(outThumb) == 0 { // Failed thumbnail
 		return errors.New("error: empty thumbnail: " + f.ThumbPath)
@@ -479,7 +479,7 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	return
 }
 
-func Initialize(cfg *Config, log *log.Logger) {
+func Initialize(cfg *Configuration, log *log.Logger) {
 	config = cfg
 	logger = log
 }

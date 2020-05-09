@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-
 func main() {
 	f, err := os.Create("storage/generated.go")
 	defer f.Close()
@@ -19,7 +18,7 @@ func main() {
 		panic(err)
 	}
 
-	containsDotFile := func (name string) bool {
+	containsDotFile := func(name string) bool {
 		parts := strings.Split(name, "/")
 		for _, part := range parts {
 			if strings.HasPrefix(part, ".") {
@@ -29,7 +28,7 @@ func main() {
 		return false
 	}
 
-	processFilesfunc := func (walkPath string, info os.FileInfo, err error) error {
+	processFilesfunc := func(walkPath string, info os.FileInfo, err error) error {
 		name := walkPath
 		if info.IsDir() || containsDotFile(walkPath) {
 			return nil
@@ -46,7 +45,6 @@ func main() {
 		hexBytes := make([]byte, hex.EncodedLen(len(fileBytes)))
 		hex.Encode(hexBytes, fileBytes)
 		f.WriteString(string(hexBytes))
-
 
 		f.WriteString(`")
 		decoded := make([]byte, hex.DecodedLen(len(content)))
@@ -66,8 +64,6 @@ func main() {
 		return nil
 	}
 
-////////////////////////////////////////////////////////////////////////////////
-
 	f.WriteString(`// Code generated automatically DO NOT EDIT.
 // Last modified: `)
 	f.WriteString(time.Now().String())
@@ -77,9 +73,8 @@ package storage
 
 import "encoding/hex"
 
-var generatedFiles = make(map[string][]byte)
-
-func init() {
+func generateFiles() (generatedFiles map[string][]byte) {
+	generatedFiles = make(map[string][]byte)
 `)
 	err = filepath.Walk("res", processFilesfunc)
 	if err != nil {
@@ -87,6 +82,7 @@ func init() {
 	}
 
 	f.WriteString(`
+	return
 }`)
 
 }

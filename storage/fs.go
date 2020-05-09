@@ -8,9 +8,9 @@ var (
 	Cache    afero.Fs
 )
 
-func Intialize() {
+func init() {
 	Internal = afero.NewMemMapFs()
-	for name, data := range generatedFiles {
+	for name, data := range generateFiles() {
 		file, err := Internal.Create(name)
 		if err != nil {
 			panic(err)

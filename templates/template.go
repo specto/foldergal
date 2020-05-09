@@ -63,7 +63,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 	return
 }
 
-func Initialize() {
+func init() {
 	var err error
 	Html, err = parseTemplates(
 		"res/templates/list.html",

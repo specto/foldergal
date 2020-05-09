@@ -37,7 +37,7 @@ func fileExists(filename string) bool {
 
 var (
 	logger          *log.Logger
-	config          gallery.Config
+	config          gallery.Configuration
 	cacheFolderName = "_foldergal_cache"
 	BuildVersion    = "dev"
 	BuildTimestamp  = "now"
@@ -331,7 +331,7 @@ func renderEmbeddedFile(resFile string, contentType string,
 
 // A secondary router.
 //
-// Since we are mapping URLs to File system resources we cannot use any names
+// Since we are mapping URLs to filesystem resources we cannot use any names
 // for our internal resources.
 //
 // Three types of content are served:
@@ -460,10 +460,6 @@ func init() {
 		"webhook URL to receive notifications when new media appears")
 	flag.StringVar(&config.PublicHost, "pub-host", config.PublicHost,
 		"the public name for the machine")
-
-	// The following order is important
-	storage.Intialize()
-	templates.Initialize()
 }
 
 func main() {
@@ -478,7 +474,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Config file variables override all others
+	// Configuration file variables override all others
 	if err := config.FromJson(*configFile); *configFile != "" && err != nil {
 		log.Fatalf("error: invalid config %v", err)
 	}
@@ -539,8 +535,6 @@ func main() {
 		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.CacheExpiresAfter))
 	}
 
-	gallery.Initialize(&config, logger)
-
 	// Routing
 	httpmux := http.NewServeMux()
 	if config.Prefix != "" {
@@ -561,6 +555,7 @@ func main() {
 	}
 
 	// Server start sequence
+	gallery.Initialize(&config, logger)
 	useTls := false
 	if fileExists(config.TlsCrt) && fileExists(config.TlsKey) {
 		useTls = true
@@ -580,6 +575,7 @@ func main() {
 	} else {
 		config.PublicUrl = bind + urlPrefix + "/"
 	}
+
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{}
 
