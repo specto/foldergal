@@ -41,7 +41,6 @@ func sendDiscord(jsonData discordMessage) {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		logger.Printf("error: discord response: %v", resp)
 	}
-	_ = resp.Body.Close()
 }
 
 func notify(items []interface{}) {
@@ -69,7 +68,7 @@ func notify(items []interface{}) {
 		Username: config.Global.DiscordName,
 		Content:  "See what was just published: \n" + strings.Join(urlStrings[:], "\n"),
 	}
-	go sendDiscord(jsonData)
+	sendDiscord(jsonData)
 }
 
 // Watch every folder in config.Global.Root and send notification on new file
