@@ -18,15 +18,25 @@ load_rc_config $name
 foldergal_command="/usr/local/bin/foldergal"
 pidfile="/var/run/foldergal/${name}.pid"
 
-export FOLDERGAL_PORT=8080
-export FOLDERGAL_HOME="/path/to/home"
-export FOLDERGAL_ROOT="/path/to/files/to/serve"
-# export FOLDERGAL_PREFIX=gallery
-export FOLDERGAL_CACHE_EXPIRES_AFTER=8h
+# export FOLDERGAL_CACHE_EXPIRES_AFTER=0
+# export FOLDERGAL_DISCORD_NAME=Gallery
 # export FOLDERGAL_DISCORD_WEBHOOK="https://discordapp.com/api/webhooks/xxxxxx"
-export FOLDERGAL_QUIET=true
-export FOLDERGAL_HOST=0.0.0.0
-export FOLDERGAL_PUBLIC_HOST=www.example.com
+# export FOLDERGAL_HOME=.
+# export FOLDERGAL_HOST=localhost
+# export FOLDERGAL_HTTP2=false
+# export FOLDERGAL_NOTIFY_AFTER=30s
+# export FOLDERGAL_PORT=8080
+# export FOLDERGAL_PREFIX=
+# export FOLDERGAL_PUBLIC_HOST=
+# export FOLDERGAL_QUIET=false
+# export FOLDERGAL_ROOT=.
+# export FOLDERGAL_THUMB_H=400
+# export FOLDERGAL_THUMB_W=400
+# export FOLDERGAL_TLS_CRT=
+# export FOLDERGAL_TLS_KEY=
+#
+# or...
+export FOLDERGAL_CONFIG="/path/to/config.json"
 
 command="/usr/sbin/daemon"
 command_args="-P ${pidfile} -r -f ${foldergal_command}"
