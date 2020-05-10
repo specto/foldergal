@@ -108,7 +108,7 @@ Setting up service on Freebsd
 1. create a user to run the service e.g. `foldergaluser`
 1. create the folder `/var/run/foldergal` and make the service user it's owner
 1. create a file `/usr/local/etc/rc.d/foldergal` make sure it is executable
-1. put there the contents of `rc-example-freebsd.sh` and edit
+1. put there the contents of `example-rc-freebsd.sh` and edit
 1. set the service user, correct paths, port, public name
 1. add the line `foldergal_enable="yes"` in /etc/rc.conf
 1. `service foldergal start`
@@ -123,7 +123,7 @@ Service on Debian
 --
 
 Create `/etc/systemd/system/foldergal.service` similar to 
-`systemd-example.service`. Change paths, user and don't forget to 
+`example-systemd.service`. Change paths, user and don't forget to 
 edit your `config.json`.
 
 After `sudo systemctl daemon-reload` you can `sudo service foldergal start`.
