@@ -19,6 +19,7 @@ var (
 	watcher        *fsnotify.Watcher
 	notifChanSize  = 100
 	WatchedFolders = 0
+	logger         = &config.Global.Log
 )
 
 type discordMessage struct {
@@ -30,16 +31,16 @@ func sendDiscord(jsonData discordMessage) {
 	jsonBuf := new(bytes.Buffer)
 	errj := json.NewEncoder(jsonBuf).Encode(jsonData)
 	if errj != nil {
-		logger.Printf("error: invalid json: %v", errj)
+		(*logger).Printf("error: invalid json: %v", errj)
 	}
 	resp, errp := http.Post(config.Global.DiscordWebhook,
 		"application/json; charset=utf-8", jsonBuf)
 	if errp != nil {
-		logger.Printf("error: cannot send discord notification: %v", errp)
+		(*logger).Printf("error: cannot send discord notification: %v", errp)
 		return
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		logger.Printf("error: discord response: %v", resp)
+		(*logger).Printf("error: discord response: %v", resp)
 	}
 }
 
@@ -76,12 +77,12 @@ func StartFsWatcher() {
 	var err error
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		logger.Print(err)
+		(*logger).Print(err)
 		return
 	}
 	defer func() { _ = watcher.Close() }()
 	notifyDuration := time.Duration(config.Global.NotifyAfter)
-	logger.Printf("Monitoring for filesystem changes with delay %v", notifyDuration)
+	(*logger).Printf("Monitoring for filesystem changes with delay %v", notifyDuration)
 	eventBuffer := timedbuf.New(notifChanSize, notifyDuration, notify)
 	defer eventBuffer.Close()
 
@@ -98,14 +99,14 @@ func StartFsWatcher() {
 					newStat, _ := os.Stat(event.Name)
 					if newStat.IsDir() {
 						_ = watcher.Add(event.Name)
-						logger.Printf("Watching for new files in %v", event.Name)
+						(*logger).Printf("Watching for new files in %v", event.Name)
 					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				logger.Print("error:", err)
+				(*logger).Print("error:", err)
 			}
 		}
 	}()
@@ -126,12 +127,12 @@ func StartFsWatcher() {
 			return nil
 		})
 	if err != nil {
-		logger.Print(err)
+		(*logger).Print(err)
 	}
 
 	err = watcher.Add(config.Global.Root)
 	if err != nil {
-		logger.Print(err)
+		(*logger).Print(err)
 		return
 	}
 	WatchedFolders++

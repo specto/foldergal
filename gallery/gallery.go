@@ -12,7 +12,6 @@ import (
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
-	"log"
 	"math"
 	"mime"
 	"os"
@@ -22,10 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
-
-var (
-	logger *log.Logger
 )
 
 type Media interface {
@@ -423,8 +418,4 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	m3, _ = strconv.Atoi(string(timecode[6:8]))
 	d, _ = time.ParseDuration(fmt.Sprintf("%dh%dm%ds", m1, m2, m3))
 	return
-}
-
-func Initialize(log *log.Logger) {
-	logger = log
 }

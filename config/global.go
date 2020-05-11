@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -36,6 +37,7 @@ type Configuration struct {
 	PublicUrl         string `json:"-"`
 	ThumbWidth        int
 	ThumbHeight       int
+	Log               *log.Logger `json:"-"`
 }
 
 func (c *Configuration) FromJson(configFile string) (err error) {
@@ -82,11 +84,11 @@ func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 func fromEnv(envName string,
 	defaultVal interface{},
 	convertString func(string) interface{}) (property interface{}) {
-	RegisteredEnvVars[envPrefix + envName] = nil
+	RegisteredEnvVars[envPrefix+envName] = nil
 	if env := os.Getenv(envPrefix + envName); env != "" {
 		property = convertString(env)
 	} else if defaultVal != nil {
-		RegisteredEnvVars[envPrefix + envName] = defaultVal
+		RegisteredEnvVars[envPrefix+envName] = defaultVal
 		property = defaultVal
 	}
 	return
@@ -122,27 +124,35 @@ func SfromEnv(envName string, defaultVal string) string {
 	} else {
 		s = fromEnv(envName, defaultVal, envToString)
 	}
-	if s == nil { return ""	}
+	if s == nil {
+		return ""
+	}
 	return fmt.Sprint(s)
 }
 
 // Get a boolean from env or use default
 func BfromEnv(envName string, defaultVal bool) bool {
 	b := fromEnv(envName, defaultVal, envToBool)
-	if b == nil { return false	}
+	if b == nil {
+		return false
+	}
 	return b.(bool)
 }
 
 // Get a (json)Duration from env or use default
 func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 	d := fromEnv(envName, defaultVal, envToDuration)
-	if d == nil { return 0 }
+	if d == nil {
+		return 0
+	}
 	return d.(JsonDuration)
 }
 
 // Get an integer from env or use default
 func IfromEnv(envName string, defaultVal int) int {
 	i := fromEnv(envName, defaultVal, envToInt)
-	if i == nil { return 0 }
+	if i == nil {
+		return 0
+	}
 	return i.(int)
 }

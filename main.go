@@ -494,7 +494,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func() { _ = logging.Close() }()
-	logger = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
+	config.Global.Log = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
+	logger = config.Global.Log
 	if !config.Global.Quiet {
 		log.Printf("Logging to %s", logFile)
 	}
@@ -556,7 +557,6 @@ func main() {
 	}
 
 	// Server start sequence
-	gallery.Initialize(logger)
 	useTls := false
 	if fileExists(config.Global.TlsCrt) && fileExists(config.Global.TlsKey) {
 		useTls = true
