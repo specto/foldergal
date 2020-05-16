@@ -10,7 +10,7 @@ PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build build-all compress-all rerun rebuild zip-all favicon
+.PHONY: clean run build build-all compress-all rerun rebuild zip-all favicon test benchmark
 
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
@@ -63,3 +63,12 @@ $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 
 favicon: $(RES_DIR)/favicon.ico
 	cd $(RES_DIR); go-bindata favicon.ico
+
+test:
+	#go test ./...
+	go test ./... -coverprofile cover.out
+	go tool cover -func=cover.out
+	rm cover.out
+
+benchmark:
+	go test -bench=. ./...

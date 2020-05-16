@@ -273,7 +273,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		})
 	} else { // Sort by name
 		sort.Slice(children, func(i, j int) bool {
-			return strings.ToLower(children[i].Name) < strings.ToLower(children[j].Name)
+			return gallery.NaturalLess(
+				strings.ToLower(children[i].Name),
+				strings.ToLower(children[j].Name))
 		})
 	}
 	crumbs := splitUrlToBreadCrumbs(r.URL)
