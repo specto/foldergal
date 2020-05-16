@@ -3,9 +3,10 @@ SOURCES = $(shell find $(SRC_DIR) -name '*.go')
 DEST_DIR = dist
 RES_DIR = res
 PRODUCT = foldergal
-VERSION = "2.0.4"
+# Get version from last tag
+VERSION := $(shell git describe --always --tags --dirty=-dev | sed 's/release\///')
 PLATFORMS = -mac .exe -linux -freebsd -pi
-PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)%)
+PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
@@ -28,19 +29,19 @@ run: build
 
 build-all: $(DEST_DIR) $(PRODUCT_FILES)
 
-$(DEST_DIR)/$(PRODUCT)-mac: $(SOURCES)
+$(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac: $(SOURCES)
 	go generate
 	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@
-$(DEST_DIR)/$(PRODUCT).exe: $(SOURCES)
+$(DEST_DIR)/$(PRODUCT)-$(VERSION).exe: $(SOURCES)
 	go generate
 	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@
-$(DEST_DIR)/$(PRODUCT)-linux: $(SOURCES)
+$(DEST_DIR)/$(PRODUCT)-$(VERSION)-linux: $(SOURCES)
 	go generate
 	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@
-$(DEST_DIR)/$(PRODUCT)-freebsd: $(SOURCES)
+$(DEST_DIR)/$(PRODUCT)-$(VERSION)-freebsd: $(SOURCES)
 	go generate
 	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@
-$(DEST_DIR)/$(PRODUCT)-pi: $(SOURCES)
+$(DEST_DIR)/$(PRODUCT)-$(VERSION)-pi: $(SOURCES)
 	go generate
 	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@
 
