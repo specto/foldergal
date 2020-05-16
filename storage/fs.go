@@ -6,9 +6,9 @@ var (
 	// Internal resources: images, html, css...
 	Internal afero.Fs
 	// The main storage
-	Root     afero.Fs
+	Root afero.Fs
 	// Thumbnails live here
-	Cache    afero.Fs
+	Cache afero.Fs
 )
 
 func init() {

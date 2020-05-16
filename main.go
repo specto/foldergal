@@ -179,26 +179,29 @@ func folderSize(startPath string) (totalSize int64) {
 
 func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	bToMb := func(b uint64) string {
-		return fmt.Sprintf("%v MiB", b / 1024 / 1024)
+		return fmt.Sprintf("%v MiB", b/1024/1024)
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
 	var rowData [][2]string
 	rowData = append(rowData, [2]string{"Root:", config.Global.Root})
-	rowData = append(rowData, [2]string{"Root size:", bToMb(uint64(folderSize(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Root Size:", bToMb(uint64(folderSize(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)})
 	rowData = append(rowData, [2]string{"Cache:", config.Global.Cache})
-	rowData = append(rowData, [2]string{"Cache size:", bToMb(uint64(folderSize(config.Global.Cache)))})
-	rowData = append(rowData, [2]string{"Folders watched:", fmt.Sprint(gallery.WatchedFolders)})
+	rowData = append(rowData, [2]string{"Cache Size:", bToMb(uint64(folderSize(config.Global.Cache)))})
+	rowData = append(rowData, [2]string{"Prefix:", config.Global.Prefix})
+	rowData = append(rowData, [2]string{"Public Url:", config.Global.PublicUrl})
 	rowData = append(rowData, [2]string{"-", ""})
 	rowData = append(rowData, [2]string{"Alloc:", bToMb(m.Alloc)})
 	rowData = append(rowData, [2]string{"TotalAlloc:", bToMb(m.TotalAlloc)})
 	rowData = append(rowData, [2]string{"Sys:", bToMb(m.Sys)})
-	rowData = append(rowData, [2]string{"PauseTotalNs:", fmt.Sprint(m.PauseTotalNs)})
 	rowData = append(rowData, [2]string{"NumGC:", fmt.Sprint(m.NumGC)})
 	rowData = append(rowData, [2]string{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())})
 	rowData = append(rowData, [2]string{"-", ""})
-	rowData = append(rowData, [2]string{"Service uptime:", fmt.Sprint(time.Since(startTime))})
+	rowData = append(rowData, [2]string{"App Version:", BuildVersion})
+	rowData = append(rowData, [2]string{"App Build Date:", BuildTimestamp})
+	rowData = append(rowData, [2]string{"Service Uptime:", fmt.Sprint(time.Since(startTime))})
 
 	page := templates.TwoColTable{
 		Page: templates.Page{
@@ -428,7 +431,7 @@ func init() {
 	config.Global.TlsKey = config.SfromEnv("TLS_KEY", "")
 	config.Global.Http2 = config.BfromEnv("HTTP2", false)
 	config.Global.CacheExpiresAfter = config.DfromEnv("CACHE_EXPIRES_AFTER", 0)
-	config.Global.NotifyAfter = config.DfromEnv("NOTIFY_AFTER", config.JsonDuration(30 * time.Second))
+	config.Global.NotifyAfter = config.DfromEnv("NOTIFY_AFTER", config.JsonDuration(30*time.Second))
 	config.Global.DiscordWebhook = config.SfromEnv("DISCORD_WEBHOOK", "")
 	config.Global.DiscordName = config.SfromEnv("DISCORD_NAME", "Gallery")
 	config.Global.PublicHost = config.SfromEnv("PUBLIC_HOST", "")
