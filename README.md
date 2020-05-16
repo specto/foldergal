@@ -147,4 +147,5 @@ TODO
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
+* [ ] 100% test coverage
 
