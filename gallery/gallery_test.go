@@ -161,3 +161,22 @@ func BenchmarkStdStringLess(b *testing.B) {
 		}
 	}
 }
+
+func TestGetMediaClass(t *testing.T) {
+	for _, v := range []struct {
+		filepath  string
+		mediatype string
+	}{
+		{"/some/path/file.unknown", ""},
+		{"/some/path/file.jpg", "image"},
+		{"/some/path/file.jpeg", "image"},
+		{"/some/path/file.mp3", "audio"},
+		{"file.mp4", "video"},
+		{"file.pdf", "pdf"},
+		{"doc.docx", ""},
+	} {
+		if res := GetMediaClass(v.filepath); res != v.mediatype {
+			t.Errorf("Tested %#q: expected %v, got %v", v.filepath, v.mediatype, res)
+		}
+	}
+}

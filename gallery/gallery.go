@@ -380,18 +380,18 @@ var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
 //   /etc/apache2/mime.types
 //   /etc/apache/mime.types
 func GetMediaClass(name string) (class string) {
-	ext := filepath.Ext(name)
-	contentType := mime.TypeByExtension(ext)
-	if strings.HasPrefix(contentType, "image/") {
-		class = "image"
-	} else if strings.HasPrefix(contentType, "audio/") {
-		class = "audio"
-	} else if strings.HasPrefix(contentType, "video/") {
-		class = "video"
-	} else if strings.HasPrefix(contentType, "application/pdf") {
-		class = "pdf"
+	switch contentType := mime.TypeByExtension(filepath.Ext(name)); {
+	case strings.HasPrefix(contentType, "image/"):
+		return "image"
+	case strings.HasPrefix(contentType, "audio/"):
+		return "audio"
+	case strings.HasPrefix(contentType, "video/"):
+		return "video"
+	case strings.HasPrefix(contentType, "application/pdf"):
+		return "pdf"
+	default:
+		return
 	}
-	return
 }
 
 // Check for valid media by content-type
@@ -419,7 +419,6 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	d, _ = time.ParseDuration(fmt.Sprintf("%dh%dm%ds", m1, m2, m3))
 	return
 }
-
 
 func isdigit(b byte) bool { return '0' <= b && b <= '9' }
 
