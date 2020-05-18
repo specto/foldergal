@@ -144,6 +144,7 @@ TODO
 * [x] Fix gosec issues
 * [x] Use go:generate for embedded resources
 * [x] Test and fix environment variables
+* [x] Fix name url escape
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads

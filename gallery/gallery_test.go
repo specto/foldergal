@@ -180,3 +180,71 @@ func TestGetMediaClass(t *testing.T) {
 		}
 	}
 }
+
+type EscapeTest struct {
+	in  string
+	out string
+	err error
+}
+
+var pathEscapeTests = []EscapeTest{
+	{
+		"",
+		"",
+		nil,
+	},
+	{
+		"abc",
+		"abc",
+		nil,
+	},
+	{
+		"/",
+		"/",
+		nil,
+	},
+	{
+		"abc+def",
+		"abc+def",
+		nil,
+	},
+	{
+		"a/b",
+		"a/b",
+		nil,
+	},
+	{
+		"/a/b",
+		"/a/b",
+		nil,
+	},
+	{
+		"/a/b/",
+		"/a/b/",
+		nil,
+	},
+	{
+		"one two",
+		"one%20two",
+		nil,
+	},
+	{
+		"10%",
+		"10%25",
+		nil,
+	},
+	{
+		" ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
+		"%20%3F&=%23+%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09:/@$%27%28%29%2A%2C%3B",
+		nil,
+	},
+}
+
+func TestEscapePath(t *testing.T) {
+	for _, tt := range pathEscapeTests {
+		actual := EscapePath(tt.in)
+		if tt.out != actual {
+			t.Errorf("PathEscape(%q) = %q, want %q", tt.in, actual, tt.out)
+		}
+	}
+}

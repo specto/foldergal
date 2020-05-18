@@ -249,12 +249,13 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		if !child.IsDir() && mediaClass == "" {
 			continue
 		}
-		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
+		childPath := filepath.Join(urlPrefix, folderPath, gallery.EscapePath(child.Name()))
 		childPath = filepath.ToSlash(childPath)
 		thumb := urlPrefix + "/static?folder"
 		class := "folder"
 		if !child.IsDir() {
-			thumb = filepath.Join(folderPath, child.Name()+"?thumb")
+			thumbPath := filepath.Join(folderPath, gallery.EscapePath(child.Name()))
+			thumb = thumbPath+"?thumb"
 			class = mediaClass
 		}
 		children = append(children, templates.ListItem{
