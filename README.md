@@ -3,13 +3,15 @@ Web Gallery from a Folder
 
 A web server that displays folders of images, video and audio.
 
-Simple browsing of media files as web pages. No editing or uploading.
+Simple browsing of media files as web pages. Read only - no editing or uploading.
 Limited only to the folder you want.
 
 Produces a standalone executable. The only optional external 
 dependency is `ffmpeg` for video thumbnails.
 
 Supports TLS and http2.
+
+![](screenshot.png "Foldergal Screenshot")
 
 Usage
 ---
@@ -144,7 +146,7 @@ TODO
 * [x] Fix gosec issues
 * [x] Use go:generate for embedded resources
 * [x] Test and fix environment variables
-* [x] Fix name url escape
+* [x] Fix url escape
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads
