@@ -216,7 +216,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Prepare list of files
-func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
+func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slideshow string) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -295,6 +295,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
 		SortedBy:    sortBy,
+		Slideshow:   slideshow,
 		ParentUrl:   parentUrl,
 		Items:       children,
 	}
@@ -365,6 +366,10 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
 		sortBy = sorted.Value
 	}
+	slideshow := "files"
+	if slide, nocookie := r.Cookie("slideshow"); nocookie == nil {
+		slideshow = slide.Value
+	}
 	// We use query string parameters for internal resources. Isn't that novel!
 	if _, ok := q["status"]; ok {
 		statusHandler(w, r)
@@ -378,6 +383,12 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["by-name"]; ok {
 		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1})
 		sortBy = "name"
+	} else if _, ok := q["show-files"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "", MaxAge: -1})
+		slideshow = "files"
+	} else if _, ok := q["show-inline"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "inline", MaxAge: 3e6})
+		slideshow = "inline"
 	} else if _, ok := q["broken"]; ok {
 		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
 		return
@@ -393,6 +404,9 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["css"]; ok {
 		renderEmbeddedFile("res/style.css", "text/css", w, r)
 		return
+	} else if _, ok := q["js"]; ok {
+		renderEmbeddedFile("res/script.js", "text/javascript", w, r)
+		return
 	} else if len(q) > 0 {
 		fail404(w, r)
 		return
@@ -404,7 +418,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if stat.IsDir() { // Prepare and render folder contents
-		listHandler(w, r, sortBy)
+		listHandler(w, r, sortBy, slideshow)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}

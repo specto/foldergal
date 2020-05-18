@@ -147,6 +147,7 @@ TODO
 * [x] Use go:generate for embedded resources
 * [x] Test and fix environment variables
 * [x] Fix url escape
+* [ ] Inline media display
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] RSS feed
 * [ ] In-browser notifications for new uploads

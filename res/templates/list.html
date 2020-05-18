@@ -1,4 +1,7 @@
-{{ define "head" }}<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />{{end}}
+{{ define "head" }}
+<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />
+<script type="text/javascript" src="{{ .Prefix }}/static?js"></script>
+{{end}}
 {{ define "body" }}
 
     <header>
@@ -10,6 +13,12 @@
 				<span>{{ .ItemCount }}&gt;</span>
             </h1>
 			<div class="toolbar">
+			    <span class="title">show:</span>
+				<span class="buttons"><a {{ if eq .Slideshow "inline" -}}
+					class="current"
+				{{- end }} href="?show-inline">inline</a><a {{ if ne .Slideshow "inline" -}}
+					class="current"
+				{{- end }} href="?show-files">files</a></span>
 				<span class="title">order by:</span>
 				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
 					class="current"
@@ -28,7 +37,12 @@
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li class="{{ .Class }}"><a class="title-container" href="{{- .Url -}}" title="{{ .Name }} [{{ .ModTime }}]">
+            <li class="{{ .Class }}"><a class="title-container"
+            {{ if and (ne .Class "folder") (eq $.Slideshow "inline") -}}
+            onclick="return showSlide(this);"
+            {{- end }}
+            href="{{- .Url -}}"
+            title="{{ .Name }} [{{ .ModTime }}]">
                 <span>
                     {{ if .Thumb -}}
                         <img src="{{ .Thumb }}" alt="{{ .Name }}" width="10em" />
@@ -39,4 +53,5 @@
         {{ end }}
     </ul>
     </main>
+    <div id="slideshow"></div>
 {{ end }}
