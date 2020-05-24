@@ -39,7 +39,7 @@
         {{ range .Items }}
             <li class="{{ .Class }}"><a class="title-container"
             {{ if and (ne .Class "folder") (eq $.Slideshow "inline") -}}
-            onclick="return showSlide(this);"
+            onclick="return showSlide(this, '{{ .Class }}');"
             {{- end }}
             href="{{- .Url -}}"
             title="{{ .Name }} [{{ .ModTime }}]">
