@@ -22,7 +22,6 @@ function showSlide(elem, mediaClass) {
     currentlyShown = elem;
     const href = elem.href;
     showMedia(href, mediaClass);
-    elem.focus();
     history.pushState({"url": href, "className": mediaClass}, href, href);
     return false;
 }
@@ -91,6 +90,9 @@ function cancelSlide() {
     const modal = document.getElementById("slideshow");
     modal.style.display = "none";
     modal.innerHTML = "";
+    if (currentlyShown) {
+        currentlyShown.focus();
+    }
     currentlyShown = null;
     history.pushState(null, originalHref, originalHref);
 }

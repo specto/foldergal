@@ -13,12 +13,12 @@
 				<span>{{ .ItemCount }}&gt;</span>
             </h1>
 			<div class="toolbar">
-			    <span class="title">show:</span>
+			    <span class="title">view files:</span>
 				<span class="buttons"><a {{ if eq .Slideshow "inline" -}}
 					class="current"
-				{{- end }} href="?show-inline">inline</a><a {{ if ne .Slideshow "inline" -}}
+				{{- end }} href="?show-inline">overlaid</a><a {{ if ne .Slideshow "inline" -}}
 					class="current"
-				{{- end }} href="?show-files">files</a></span>
+				{{- end }} href="?show-files">separately</a></span>
 				<span class="title">order by:</span>
 				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
 					class="current"
