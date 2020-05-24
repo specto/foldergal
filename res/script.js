@@ -4,11 +4,11 @@ let originalHref;
 function showMedia(href, mediaClass) {
     const modal = document.getElementById("slideshow");
     if (mediaClass === "video") {
-        modal.innerHTML = `<video controls="true" autoplay="true">
+        modal.innerHTML = `<video controls="true" poster="${href}?thumb" playsinline="true" preload="metadata" autoplay="true">
             <source src="${href}" /></video>`;
     } else if (mediaClass === "audio") {
-        modal.innerHTML = `<audio controls="true" autoplay="true">
-            <source src="${href}" /></audio>`;
+        modal.innerHTML = `<video controls="true" poster="${href}?thumb" playsinline="true" preload="metadata" autoplay="true">
+            <source src="${href}" /></video>`;
     } else {
         modal.innerHTML = `<img src="${href}" />`;
     }
@@ -96,10 +96,19 @@ function cancelSlide() {
 }
 
 function clickHandle(ev) {
-    if (ev && ["IMG", "VIDEO", "AUDIO"].includes(ev.target.tagName)) {
-        return false;
+    if (ev) {
+        if ("IMG" === ev.target.tagName) {
+            ev.preventDefault();
+            return nextSlide();
+        } else if (["VIDEO", "AUDIO"].includes(ev.target.tagName)) {
+            return false;
+        }
     }
     cancelSlide();
+}
+
+function playpause(vid) {
+    return vid.paused ? vid.play() : vid.pause();
 }
 
 function keyHandle(ev) {
@@ -116,14 +125,22 @@ function keyHandle(ev) {
     case "PageUp":
     case "ArrowUp":
     case "ArrowLeft":
+        ev.preventDefault();
         return prevSlide();
     case "PageDown":
     case "ArrowDown":
     case "ArrowRight":
+        ev.preventDefault();
         return nextSlide();
-    case "Tab":
     case "Space":
+        const videoElem = document.querySelector("#slideshow video");
+        if (videoElem) {
+            ev.preventDefault();
+            return playpause(videoElem);
+        } // otherwise continue...
+    case "Tab":
     case "Enter":
+        ev.preventDefault();
         return ev.shiftKey ? prevSlide() : nextSlide();
     // case "Home":
     // case "End":
@@ -135,4 +152,4 @@ function init() {
     window.addEventListener("popstate", historyHandle);
     document.getElementById("slideshow").addEventListener("click", clickHandle);
 }
-window.addEventListener("load", init)
+window.addEventListener("load", init);
