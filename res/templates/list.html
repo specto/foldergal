@@ -32,12 +32,12 @@
     <ul>
         {{ if .ParentUrl }}
             <li>
-                <a class="title-container folder" href="{{- .ParentUrl -}}">
+                <a tabindex="1" class="title-container folder" href="{{- .ParentUrl -}}">
                     <span><img src="{{ .Prefix }}/static?up" alt=".." title="{{ .ParentUrl }}" /></span>
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li class="{{ .Class }}"><a class="title-container"
+            <li class="{{ .Class }}"><a tabindex="1" class="title-container"
             {{ if and (ne .Class "folder") (eq $.Slideshow "inline") -}}
             onclick="return showSlide(this, '{{ .Class }}');"
             {{- end }}
