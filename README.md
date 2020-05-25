@@ -151,4 +151,5 @@ TODO
 * [x] RSS feed
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
-
+* [ ] Fix ? in file/folder name
+* [ ] Improve top navigation on narrow screens

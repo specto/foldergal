@@ -81,8 +81,7 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 
 var dangerousPathSymbols = regexp.MustCompile("[:]")
 
-func sanitizePath(path string) string {
-	var sanitized string
+func sanitizePath(path string) (sanitized string) {
 	if vol := filepath.VolumeName(path); vol != "" {
 		sanitized = strings.TrimPrefix(path, vol)
 		sanitized = strings.TrimPrefix(sanitized, "\\")
@@ -90,7 +89,7 @@ func sanitizePath(path string) string {
 		sanitized = path
 	}
 	dangerousPathSymbols.ReplaceAllString(sanitized, "_")
-	return sanitized
+	return
 }
 
 // Serve image previews of Media files
