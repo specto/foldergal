@@ -1,52 +1,57 @@
+{{ define "atom" }}
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>{{site_title}}</title>
-  <link rel="self" type="application/atom+xml" href="{{feed_url}}" />
-  <id>{{site_url}}</id>
-  <updated>{{last_date}}</updated>
+  <title>{{ .SiteTitle }}</title>
+  <link rel="self" type="application/atom+xml" href="{{ .FeedUrl }}" />
+  <id>{{ .SiteUrl }}</id>
+  <updated>{{ .LastDate }}</updated>
 
-  {% for item in items %}
+  {{ range .Items }}
   <entry>
-	<title>{{item.title}}</title>
-	<link href="{{item.url}}" />
-	<id>{{item.id}}</id>
-	<published>{{item.cdate}}</published>
-	<updated>{{item.mdate}}</updated>
+	<title>{{ .Title }}</title>
+	<link href="{{ .Url }}" />
+	<id>{{ .Id }}</id>
+	<published>{{ .Date }}</published>
+	<updated>{{ .Date }}</updated>
 	<content><![CDATA[
-	    <img src="{{ item.url }}" />
+		{{ if eq .Type "image" }}
+	    <img src="{{ .Url }}" />
+	    {{ else }}
+	    <a href="{{ .Url }}"><img src="{{ .Thumb }}" /></a>
+	    {{ end }}
 	]]></content>
-	{%- if item.author %}
-	<author>
-	  <name>{{item.author}}</name>
-	</author>
-	{% endif%}
   </entry>
-  {% endfor %}
+  {{ end }}
 </feed>
+{{ end }}
 
 
-
-{#
+{{ define "rss" }}
 
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
 <channel>
-<title>{{site_title}}</title>
-<link>{{site_url}}</link>
-<description>{{site_description}}</description>
-<lastBuildDate>{{last_date}}</lastBuildDate>
+<title>{{ .SiteTitle }}</title>
+<link>{{ .SiteUrl }}</link>
+<lastBuildDate>{{ .LastDate }}</lastBuildDate>
 
-{% for item in items %}
+{{ range .Items }}
 <item>
-<title>{{item.title}}</title>
-<link>{{item.url}}</link>
-<guid>{{item.guid}}</guid>
-<description>{{item.description}}</description>
-<pubDate>{{item.date}}</pubDate>
+	<title>{{ .Title }}</title>
+	<link>{{ .Url }}</link>
+	<guid>{{ .Id }}</guid>
+	<description><![CDATA[
+	    {{ if eq .Type "image" }}
+	    <img src="{{ .Url }}" />
+	    {{ else }}
+	    <a href="{{ .Url }}"><img src="{{ .Thumb }}" /></a>
+	    {{ end }}
+	]]></description>
+	<pubDate>{{ .Date }}</pubDate>
 </item>
-{% endfor %}
+{{ end }}
 
 </channel>
 </rss>
 
-#}
+{{ end }}

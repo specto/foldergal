@@ -5,6 +5,7 @@ import (
 	"foldergal/storage"
 	"html/template"
 	"io/ioutil"
+	textTpl "text/template"
 	"time"
 )
 
@@ -52,7 +53,28 @@ type TwoColTable struct {
 	Rows [][2]string
 }
 
-var Html *template.Template
+type RssItem struct {
+	Title string
+	Type  string
+	Url   string
+	Thumb string
+	Id    string
+	Mdate time.Time
+	Date  string
+}
+
+type RssPage struct {
+	FeedUrl   string
+	SiteTitle string
+	SiteUrl   string
+	LastDate  string
+	Items     []RssItem
+}
+
+var (
+	Rss  *textTpl.Template
+	Html *template.Template
+)
 
 func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
@@ -71,6 +93,24 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 	return
 }
 
+func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
+	t = textTpl.New("_all")
+
+	for i, templ := range templs {
+		listFile, errF := storage.Internal.Open(templ)
+		if errF != nil {
+			panic(errF)
+		}
+		listBytes, _ := ioutil.ReadAll(listFile)
+		if _, err = t.New(fmt.Sprint("_", i)).Parse(
+			string(listBytes)); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
 func init() {
 	var err error
 	Html, err = parseTemplates(
@@ -80,6 +120,11 @@ func init() {
 		"res/templates/layout.html",
 		"res/templates/table.html",
 	)
+	if err != nil {
+		panic(err)
+	}
+	Rss, err = parseTextTemplates("res/rss.xml")
+
 	if err != nil {
 		panic(err)
 	}

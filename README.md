@@ -149,7 +149,7 @@ TODO
 * [x] Fix url escape
 * [ ] Inline media display
 * [ ] Generate pdf thumbnails (imagemagick?)
-* [ ] RSS feed
+* [x] RSS feed
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
 
