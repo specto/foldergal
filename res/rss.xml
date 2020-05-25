@@ -11,10 +11,14 @@
 	<title>{{ .Title }}</title>
 	<link href="{{ .Url }}" />
 	<id>{{ .Id }}</id>
-	<published>{{ .Mdate }}</published>
-	<updated>{{ .Mdate }}</updated>
+	<published>{{ .Date }}</published>
+	<updated>{{ .Date }}</updated>
 	<content><![CDATA[
+		{{ if eq .Type "image" }}
 	    <img src="{{ .Url }}" />
+	    {{ else }}
+	    <a href="{{ .Url }}"><img src="{{ .Thumb }}" /></a>
+	    {{ end }}
 	]]></content>
   </entry>
   {{ end }}
@@ -37,9 +41,13 @@
 	<link>{{ .Url }}</link>
 	<guid>{{ .Id }}</guid>
 	<description><![CDATA[
+	    {{ if eq .Type "image" }}
 	    <img src="{{ .Url }}" />
+	    {{ else }}
+	    <a href="{{ .Url }}"><img src="{{ .Thumb }}" /></a>
+	    {{ end }}
 	]]></description>
-	<pubDate>{{ .Mdate }}</pubDate>
+	<pubDate>{{ .Date }}</pubDate>
 </item>
 {{ end }}
 

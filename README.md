@@ -148,7 +148,7 @@ TODO
 * [x] Test and fix environment variables
 * [x] Fix url escape
 * [ ] Generate pdf thumbnails (imagemagick?)
-* [ ] RSS feed
+* [x] RSS feed
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
 
