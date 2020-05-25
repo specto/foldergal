@@ -43,6 +43,7 @@ var (
 	BuildTime       time.Time
 	startTime       time.Time
 	urlPrefix       string
+	rssFreshness    = 2 * 168 * time.Hour
 )
 
 func fail404(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +256,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string) {
 		class := "folder"
 		if !child.IsDir() {
 			thumbPath := filepath.Join(folderPath, gallery.EscapePath(child.Name()))
-			thumb = thumbPath+"?thumb"
+			thumb = thumbPath + "?thumb"
 			class = mediaClass
 		}
 		children = append(children, templates.ListItem{
@@ -332,6 +333,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
+
 	http.ServeContent(w, r, fullPath, m.FileInfo.ModTime(), *contents)
 }
 
@@ -346,6 +348,51 @@ func renderEmbeddedFile(resFile string, contentType string,
 		w.Header().Set("Content-Type", contentType)
 	}
 	http.ServeContent(w, r, r.URL.Path, BuildTime, f)
+}
+
+func rssHandler(w http.ResponseWriter, _ *http.Request) {
+	// Limit rss items only to the most fresh
+	then := time.Now().Add(-rssFreshness)
+	isFresh := func(t time.Time) bool {
+		return t.After(then)
+	}
+
+	var rssItems []templates.RssItem
+	err := filepath.Walk(config.Global.Root,
+		func(walkPath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && !gallery.ContainsDotFile(walkPath) &&
+				gallery.IsValidMedia(walkPath) && isFresh(info.ModTime()) {
+				rssItems = append(rssItems, templates.RssItem{
+					Title: walkPath,
+					Url:   walkPath,
+					Id:    walkPath,
+					Mdate: info.ModTime(),
+				})
+				return nil
+			}
+			return nil
+		})
+	if err != nil {
+		logger.Print(err)
+	}
+
+	sort.Slice(rssItems, func(i, j int) bool {
+		return rssItems[i].Mdate.After(rssItems[j].Mdate)
+	})
+
+	w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+
+	rss := templates.RssPage{
+		FeedUrl:   config.Global.PublicUrl + "feed?rss",
+		SiteTitle: config.Global.PublicUrl,
+		SiteUrl:   config.Global.PublicUrl,
+		LastDate:  time.Time{},
+		Items:     rssItems,
+	}
+	_ = templates.Rss.ExecuteTemplate(w, "atom", &rss)
 }
 
 // A secondary router.
@@ -392,6 +439,9 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if _, ok := q["css"]; ok {
 		renderEmbeddedFile("res/style.css", "text/css", w, r)
+		return
+	} else if _, ok := q["rss"]; ok {
+		rssHandler(w, r)
 		return
 	} else if len(q) > 0 {
 		fail404(w, r)

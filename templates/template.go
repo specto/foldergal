@@ -51,7 +51,25 @@ type TwoColTable struct {
 	Rows [][2]string
 }
 
-var Html *template.Template
+type RssItem struct {
+	Title string
+	Url string
+	Id string
+	Mdate time.Time
+}
+
+type RssPage struct {
+	FeedUrl string
+	SiteTitle string
+	SiteUrl string
+	LastDate time.Time
+	Items []RssItem
+}
+
+var (
+	Rss  *template.Template
+	Html *template.Template
+)
 
 func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
@@ -79,6 +97,10 @@ func init() {
 		"res/templates/layout.html",
 		"res/templates/table.html",
 	)
+	if err != nil {
+		panic(err)
+	}
+	Rss, err = parseTemplates("res/rss.xml")
 	if err != nil {
 		panic(err)
 	}
