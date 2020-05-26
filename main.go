@@ -249,12 +249,12 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slidesho
 		if !child.IsDir() && mediaClass == "" {
 			continue
 		}
-		childPath := filepath.Join(urlPrefix, folderPath, gallery.EscapePath(child.Name()))
-		childPath = filepath.ToSlash(childPath)
+		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
+		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
 		thumb := urlPrefix + "/static?folder"
 		class := "folder"
 		if !child.IsDir() {
-			thumbPath := filepath.Join(folderPath, gallery.EscapePath(child.Name()))
+			thumbPath := gallery.EscapePath(filepath.Join(folderPath, child.Name()))
 			thumb = thumbPath + "?thumb"
 			class = mediaClass
 		}

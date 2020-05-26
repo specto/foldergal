@@ -188,51 +188,18 @@ type EscapeTest struct {
 }
 
 var pathEscapeTests = []EscapeTest{
-	{
-		"",
-		"",
-		nil,
-	},
-	{
-		"abc",
-		"abc",
-		nil,
-	},
-	{
-		"/",
-		"/",
-		nil,
-	},
-	{
-		"abc+def",
-		"abc+def",
-		nil,
-	},
-	{
-		"a/b",
-		"a/b",
-		nil,
-	},
-	{
-		"/a/b",
-		"/a/b",
-		nil,
-	},
-	{
-		"/a/b/",
-		"/a/b/",
-		nil,
-	},
-	{
-		"one two",
-		"one%20two",
-		nil,
-	},
-	{
-		"10%",
-		"10%25",
-		nil,
-	},
+	{"", "", nil},
+	{" ", "%20", nil},
+	{"abй日", "ab%D0%B9%E6%97%A5", nil},
+	{"/", "/", nil},
+	{"//", "//", nil},
+	{"a/", "a/", nil},
+	{"abc+def", "abc+def", nil},
+	{"a/b", "a/b", nil},
+	{"/a/b", "/a/b", nil},
+	{"/a//b/", "/a//b/", nil},
+	{"one two", "one%20two", nil},
+	{"10%", "10%25", nil},
 	{
 		" ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
 		"%20%3F&=%23+%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09:/@$%27%28%29%2A%2C%3B",
