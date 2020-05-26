@@ -147,9 +147,9 @@ TODO
 * [x] Use go:generate for embedded resources
 * [x] Test and fix environment variables
 * [x] Fix url escape
-* [ ] Generate pdf thumbnails (imagemagick?)
 * [x] RSS feed
+* [x] Fix ? in file/folder name
+* [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
-* [ ] Fix ? in file/folder name
 * [ ] Improve top navigation on narrow screens

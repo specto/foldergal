@@ -377,19 +377,9 @@ func EscapePath(s string) (r string) {
 	parts := strings.Split(s, "/")
 	eparts := make([]string, 0, len(parts))
 	for _, part := range parts {
-		if part != "" {
-			eparts = append(eparts, url.PathEscape(part))
-		}
+		eparts = append(eparts, url.PathEscape(part))
 	}
-	r = ""
-	if strings.HasPrefix(s, "/") {
-		r = "/"
-	}
-	r += strings.Join(eparts, "/")
-	if strings.HasSuffix(s, "/") && len(s) > 2 {
-		r += "/"
-	}
-	return
+	return strings.Join(eparts, "/")
 }
 
 var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")

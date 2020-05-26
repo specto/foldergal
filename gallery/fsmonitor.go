@@ -8,7 +8,6 @@ import (
 	"github.com/charithe/timedbuf"
 	"github.com/fsnotify/fsnotify"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,13 +51,11 @@ func notify(items []interface{}) {
 	for i, item := range items {
 		if path, err := filepath.Rel(config.Global.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
-			var urlPage *url.URL
-			if dirPath == "." {
-				urlPage, _ = url.Parse(config.Global.PublicUrl)
-			} else {
-				urlPage, _ = url.Parse(config.Global.PublicUrl + filepath.ToSlash(dirPath) + "?by-date")
+			urlPage := config.Global.PublicUrl
+			if dirPath != "." {
+				urlPage += EscapePath(filepath.ToSlash(dirPath)) + "?by-date"
 			}
-			uniqueUrls[urlPage.String()] = i
+			uniqueUrls[urlPage] = i
 		}
 	}
 	urlStrings := make([]string, 0, len(uniqueUrls))
