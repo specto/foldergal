@@ -11,6 +11,9 @@ dependency is `ffmpeg` for video thumbnails.
 
 Supports TLS and http2.
 
+Javascript is not needed to browse the web gallery. 
+However some javascript is used when the overlay media on page feature is on.
+
 ![](screenshot.png "Foldergal Screenshot")
 
 Usage

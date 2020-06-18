@@ -84,90 +84,83 @@ body > footer::before
 
 main ul
 {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: flex-start;
-	flex-direction: row;
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+	grid-gap: 1vw;
 	padding: 0;
 	margin: 0;
 }
 
 main li
 {
-	display: flex;
-	padding: 0.25em;
+	min-width: 0;
 	margin: 0;
+	padding: 0;
 	list-style: none;
-	align-items: center;
+	justify-self: stretch;
+	align-self: center;
+	position: relative;
 }
 
-main a
+main li img
 {
-	width: 8em;
-	min-height: 7em;
-	display: flex;
-	padding: 0.5em;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	color: black;
-}
-
-main a span
-{
-	display: flex;
-	width: 100%;
-	flex-grow: 1;
-	overflow-wrap: break-word;
-	word-break: break-all;
-	text-align: center;
-	align-items: center;
-	justify-content: center;
-}
-
-main a img
-{
-	max-height: 8em;
-	width: 100%;
+	max-width: 90%;
+	padding: 5%;
+	margin: 0 auto;
 	object-fit: contain;
 	object-position: center top;
-	display: inline-block;
+	display: block;
 }
 
-main li a { position: relative; }
+main li a, main li a span { display: block; }
 
-main .title
+main li a
+{
+	width: 100%;
+	height: 100%;
+}
+
+main li.folder .title
 {
 	position: absolute;
-	left: 0;
-	bottom: 0;
-	color: white;
-	font-size: 0.8em;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	padding-right: 2%;
-	padding-left: 2%;
-	width: 96%;
-	min-width: 0;
-	background: rgba(0, 0, 0, 0.6);
-	border-radius: 0 0 0.5em 0.5em;
+	left: 21%;
+	width: 58%;
+	top: 31%;
+	height: 46%;
+	color: black;
 	text-align: center;
-	z-index: 5;
-}
-
-main .folder .title
-{
+	display: flex;
+	min-height: 0;
+	flex: 1;
 	align-items: center;
 	justify-content: center;
-	text-align: center;
-	width: 70%;
-	height: 90%;
-	background: none;
-	color: black;
-	font-weight: bold;
-	white-space: normal;
 }
+
+main li:not(.folder) .title
+{
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	white-space: nowrap;
+	text-align: center;
+	color: white;
+	background: rgba(0, 0, 0, 0.6);
+	border-radius: 0 0 0.5em 0.5em;
+	padding: 0 3%;
+	width: 94%;
+	font-size: 0.8rem;
+}
+
+main .title b
+{
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: block;
+	max-height: 100%;
+}
+
+main li:not(.folder) .title b { font-weight: normal; }
 
 main .video a > span::before
 {
