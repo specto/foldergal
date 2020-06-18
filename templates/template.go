@@ -20,6 +20,7 @@ type Page struct {
 	Prefix       string
 	AppVersion   string
 	AppBuildTime string
+	ShowOverlay bool
 }
 
 type ListItem struct {

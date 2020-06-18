@@ -1,6 +1,11 @@
 {{ define "head" }}
-<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/static?css" />
-<script type="text/javascript" src="{{ .Prefix }}/static?js"></script>
+<link rel="stylesheet" type="text/css" href="{{ .Prefix }}/?static=style.css" />
+{{ if .ShowOverlay }}
+<script type="text/javascript" src="{{ .Prefix }}/?static=script.js"></script>
+<script type="text/javascript">
+    window.addEventListener("load", findAndShow);
+</script>
+{{ end }}
 {{end}}
 {{ define "body" }}
 
@@ -16,9 +21,11 @@
 			    <span class="title">view files:</span>
 				<span class="buttons"><a {{ if eq .Slideshow "inline" -}}
 					class="current"
-				{{- end }} href="?show-inline">overlaid</a><a {{ if ne .Slideshow "inline" -}}
+				{{- end }} onclick="window.location.href='?show-inline';return false;" href="/overlay_requires_javascript?error">overlaid</a><a {{ if ne .Slideshow "inline" -}}
 					class="current"
 				{{- end }} href="?show-files">separately</a></span>
+			</div>
+			<div class="toolbar">
 				<span class="title">order by:</span>
 				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
 					class="current"
@@ -32,20 +39,20 @@
     <ul>
         {{ if .ParentUrl }}
             <li>
-                <a tabindex="1" class="title-container folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ .Prefix }}/static?up" alt=".." title="{{ .ParentUrl }}" /></span>
+                <a tabindex="1" class="folder" href="{{- .ParentUrl -}}">
+                    <span><img src="{{ .Prefix }}/?static=up.svg" alt=".." title="{{ .ParentUrl }}" /></span>
                 </a></li>
         {{ end }}
         {{ range .Items }}
-            <li class="{{ .Class }}"><a tabindex="1" class="title-container"
+            <li class="{{ .Class }}"><a tabindex="1"
             {{ if and (ne .Class "folder") (eq $.Slideshow "inline") -}}
-            onclick="return showSlide(this, '{{ .Class }}');"
+            class="overlay"
             {{- end }}
             href="{{- .Url -}}"
             title="{{ .Name }} [{{ .ModTime }}]">
                 <span>
                     {{ if .Thumb -}}
-                        <img src="{{ .Thumb }}" alt="{{ .Name }}" width="10em" />
+                        <img src="{{ .Thumb }}" alt="{{ .Name }}" />
                     {{- end }}
 
                     <span class="title">{{- .Name -}}</span>
@@ -53,5 +60,12 @@
         {{ end }}
     </ul>
     </main>
-    <div id="slideshow"></div>
+    <div id="slideshow">
+    <div id="slideshowOverlay">
+    <a id="slideshowClose" href="#"><img src="{{ .Prefix }}/?static=close.svg" alt="x" title="close" /></a>
+    <a id="slideshowNext"  href="#"><img src="{{ .Prefix }}/?static=rarr.svg" alt="&gt;" title="next" /></a>
+    <a id="slideshowPrev"  href="#"><img src="{{ .Prefix }}/?static=larr.svg" alt="&lt;" title="previous" /></a>
+    </div>
+    <div id="slideshowContents"></div>
+    </div>
 {{ end }}

@@ -1,5 +1,5 @@
 SRC_DIR = .
-SOURCES = $(shell find $(SRC_DIR) -name '*.go')
+SOURCES := $(shell find $(SRC_DIR) -name '*.go')
 DEST_DIR = dist
 RES_DIR = res
 PRODUCT = foldergal
@@ -10,7 +10,7 @@ PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build build-all compress-all rerun rebuild zip-all favicon test benchmark
+.PHONY: clean run build all build-all compress-all rerun rebuild zip-all favicon test benchmark
 
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
@@ -65,10 +65,12 @@ favicon: $(RES_DIR)/favicon.ico
 	cd $(RES_DIR); go-bindata favicon.ico
 
 test:
-	#go test ./...
 	go test ./... -coverprofile cover.out
 	go tool cover -func=cover.out
 	rm cover.out
+	gosec ./...
 
 benchmark:
 	go test -bench=. ./...
+
+all: zip-all

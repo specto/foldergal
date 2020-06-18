@@ -153,4 +153,6 @@ TODO
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
-* [ ] Improve top navigation on narrow screens
+* [x] Improve top navigation on narrow screens
+* [ ] Use touch events for overlay media navigation
+* [ ] Loading indicator for overlay image next and prev

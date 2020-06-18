@@ -57,7 +57,7 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 		},
-		Message: r.URL.String(),
+		Message: r.URL.Path,
 	}
 	_ = templates.Html.ExecuteTemplate(w, "error", &page)
 }
@@ -216,7 +216,8 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Prepare list of files
-func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slideshow string) {
+func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
+	slideshow string, isOverlay bool) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -228,6 +229,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slidesho
 		contents  []os.FileInfo
 	)
 	folderPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
+	if isOverlay {
+		folderPath = filepath.Dir(folderPath)
+	}
 	contents, err = afero.ReadDir(storage.Root, folderPath)
 	if err != nil {
 		fail500(w, err, r)
@@ -251,7 +255,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slidesho
 		}
 		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
 		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
-		thumb := urlPrefix + "/static?folder"
+		thumb := urlPrefix + "/?static=folder.svg"
 		class := "folder"
 		if !child.IsDir() {
 			thumbPath := gallery.EscapePath(filepath.Join(folderPath, child.Name()))
@@ -279,7 +283,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slidesho
 				strings.ToLower(children[j].Name))
 		})
 	}
-	crumbs := splitUrlToBreadCrumbs(r.URL)
+	pUrl, _ := url.Parse(folderPath)
+	crumbs := splitUrlToBreadCrumbs(pUrl)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
 	itemCount := ""
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
@@ -291,6 +296,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string, slidesho
 			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
+			ShowOverlay: isOverlay,
 		},
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
@@ -381,13 +387,13 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 			}
 			if !info.IsDir() && !gallery.ContainsDotFile(walkPath) &&
 				gallery.IsValidMedia(walkPath) && isFresh(info.ModTime()) {
-				url := pathToUrl(walkPath)
+				urlStr := pathToUrl(walkPath)
 				rssItems = append(rssItems, templates.RssItem{
 					Type:  gallery.GetMediaClass(walkPath),
-					Title: url,
-					Url:   url,
-					Thumb: url + "?thumb",
-					Id:    url,
+					Title: urlStr,
+					Url:   urlStr,
+					Thumb: urlStr + "?thumb",
+					Id:    urlStr,
 					Mdate: info.ModTime(),
 					Date:  info.ModTime().In(loc).Format(http.TimeFormat),
 				})
@@ -491,9 +497,14 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if stat.IsDir() { // Prepare and render folder contents
-		listHandler(w, r, sortBy, slideshow)
+		listHandler(w, r, sortBy, slideshow, false)
 	} else { // This is a media file and we should serve it in all it's glory
-		fileHandler(w, r)
+		if _, raw := q["raw"]; !raw && slideshow == "inline" {
+			// Except when using overlay slideshow
+			listHandler(w, r, sortBy, slideshow, true)
+		} else {
+			fileHandler(w, r)
+		}
 	}
 }
 
