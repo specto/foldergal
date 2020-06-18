@@ -121,24 +121,24 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		contentType = "image/svg+xml"
 		f = &gallery.PdfFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
 	} else {
-		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
+		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
 	if !f.FileExists() {
-		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
+		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
 	if f.ThumbExpired() {
 		err := f.ThumbGenerate()
 		if err != nil {
 			logger.Print(err)
-			renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
+			renderEmbeddedFile("res/broken.svg", w, r)
 			return
 		}
 	}
 	thumb := f.Thumb()
 	if thumb == nil || *thumb == nil {
-		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
+		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
 	if !strings.HasSuffix(f.Media().ThumbInfo.Name(), ".jpg") {
@@ -337,17 +337,19 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.FileInfo.ModTime(), *contents)
 }
 
-func renderEmbeddedFile(resFile string, contentType string,
-	w http.ResponseWriter, r *http.Request) {
+func renderEmbeddedFile(resFile string,	w http.ResponseWriter, r *http.Request) {
 	f, err := storage.Internal.Open(resFile)
 	if err != nil {
-		fail500(w, err, r)
+		fail404(w, r)
 		return
 	}
-	if contentType != "" {
-		w.Header().Set("Content-Type", contentType)
+	var name string
+	if qName, inQuery := r.URL.Query()["static"]; inQuery {
+		name = qName[0]
+	} else {
+		name = filepath.Base(resFile)
 	}
-	http.ServeContent(w, r, r.URL.Path, BuildTime, f)
+	http.ServeContent(w, r, name, BuildTime, f)
 }
 
 func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
@@ -439,6 +441,25 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if slide, nocookie := r.Cookie("slideshow"); nocookie == nil {
 		slideshow = slide.Value
 	}
+
+	// All these can be set simultaneously in the query string
+	if _, ok := q["by-date"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "date", MaxAge: 3e6, Path: urlPrefix})
+		sortBy = "date"
+	}
+	if _, ok := q["by-name"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1, Path: urlPrefix})
+		sortBy = "name"
+	}
+	if _, ok := q["show-inline"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "inline", MaxAge: 3e6, Path: urlPrefix})
+		slideshow = "inline"
+	}
+	if _, ok := q["show-files"]; ok {
+		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "", MaxAge: -1, Path: urlPrefix})
+		slideshow = "files"
+	}
+
 	// We use query string parameters for internal resources. Isn't that novel!
 	if _, ok := q["status"]; ok {
 		statusHandler(w, r)
@@ -446,35 +467,12 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["thumb"]; ok {
 		previewHandler(w, r)
 		return
-	} else if _, ok := q["by-date"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "date", MaxAge: 3e6})
-		sortBy = "date"
-	} else if _, ok := q["by-name"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1})
-		sortBy = "name"
-	} else if _, ok := q["show-files"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "", MaxAge: -1})
-		slideshow = "files"
-	} else if _, ok := q["show-inline"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "inline", MaxAge: 3e6})
-		slideshow = "inline"
-	} else if _, ok := q["broken"]; ok {
-		renderEmbeddedFile("res/broken.svg", "image/svg+xml", w, r)
+	} else if _, ok := q["broken"]; ok { // Keep this separate, just in case...
+		renderEmbeddedFile("res/broken.svg", w, r)
 		return
-	} else if _, ok := q["up"]; ok {
-		renderEmbeddedFile("res/up.svg", "image/svg+xml", w, r)
-		return
-	} else if _, ok := q["folder"]; ok {
-		renderEmbeddedFile("res/folder.svg", "image/svg+xml", w, r)
-		return
-	} else if _, ok := q["favicon"]; ok {
-		renderEmbeddedFile("res/favicon.ico", "", w, r)
-		return
-	} else if _, ok := q["css"]; ok {
-		renderEmbeddedFile("res/style.css", "text/css", w, r)
-		return
-	} else if _, ok := q["js"]; ok {
-		renderEmbeddedFile("res/script.js", "text/javascript", w, r)
+	} else if static, ok := q["static"]; ok {
+		staticResource := static[0]
+		renderEmbeddedFile("res/" + staticResource, w, r)
 		return
 	} else if _, ok := q["rss"]; ok {
 		rssHandler("rss", w, r)
@@ -482,7 +480,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["atom"]; ok {
 		rssHandler("atom", w, r)
 		return
-	} else if len(q) > 0 {
+	} else if _, ok := q["error"]; ok {
 		fail404(w, r)
 		return
 	}
@@ -639,7 +637,7 @@ func main() {
 		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		renderEmbeddedFile("res/favicon.ico", "", w, r)
+		renderEmbeddedFile("res/favicon.ico", w, r)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(httpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
