@@ -1,0 +1,18 @@
+{
+    "host": "localhost",
+    "port": 8080,
+    "home": ".",
+    "root": ".",
+    "publicHost": "",
+    "prefix": "",
+    "tlsCrt": "",
+    "tlsKey": "",
+    "http2": false,
+    "cacheExpiresAfter": 13.2,
+    "notifyAfter": "30s",
+    "discordWebhook": "",
+    "discordName": "Gallery",
+    "thumbWidth": 400,
+    "thumbHeight": 400,
+    "quiet": false
+}

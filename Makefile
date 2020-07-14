@@ -67,6 +67,7 @@ favicon: $(RES_DIR)/favicon.ico
 test:
 	go test ./... -coverprofile cover.out
 	go tool cover -func=cover.out
+	# go tool cover -html=cover.out -o cover.html
 	rm cover.out
 	gosec ./...
 

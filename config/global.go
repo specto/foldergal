@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 var (
 	Global            Configuration
 	envPrefix         = "FOLDERGAL_"
-	RegisteredEnvVars = make(map[string]interface{})
 )
 
 type Configuration struct {
@@ -54,15 +52,13 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 
 type JsonDuration time.Duration
 
-func (d JsonDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Duration(d).String())
-}
+//func (d JsonDuration) MarshalJSON() ([]byte, error) {
+//	return json.Marshal(time.Duration(d).String())
+//}
 
 func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
+	_ = json.Unmarshal(b, &v)
 	switch value := v.(type) {
 	case float64:
 		*d = JsonDuration(time.Duration(value))
@@ -81,78 +77,73 @@ func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func fromEnv(envName string,
-	defaultVal interface{},
-	convertString func(string) interface{}) (property interface{}) {
-	RegisteredEnvVars[envPrefix+envName] = nil
-	if env := os.Getenv(envPrefix + envName); env != "" {
-		property = convertString(env)
-	} else if defaultVal != nil {
-		RegisteredEnvVars[envPrefix+envName] = defaultVal
-		property = defaultVal
+func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
+	if env, ok := os.LookupEnv(envPrefix + envName); ok {
+		return parseVal(env)
 	}
-	return
+	return nil
 }
-
-func envToInt(s string) interface{} {
-	i, _ := strconv.Atoi(s)
-	return i
-}
-
-func envToBool(s string) interface{} {
-	b, _ := strconv.ParseBool(s)
-	return b
-}
-
-func envToString(s string) interface{} { return s }
-
-func envToDuration(s string) interface{} {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		return 0
-	}
-	return JsonDuration(d)
-}
-
-////////////////////////////////////////////////////////////////////////////////
 
 // Get a string from env or use default
 func SfromEnv(envName string, defaultVal string) string {
-	var s interface{}
-	if defaultVal == "" {
-		s = fromEnv(envName, nil, envToString)
-	} else {
-		s = fromEnv(envName, defaultVal, envToString)
+	s := fromEnv(envName, func (s string) interface{} {
+		return s
+	})
+	switch s.(type) {
+	case string:
+		return s.(string)
+	default:
+		return defaultVal
 	}
-	if s == nil {
-		return ""
-	}
-	return fmt.Sprint(s)
 }
 
 // Get a boolean from env or use default
 func BfromEnv(envName string, defaultVal bool) bool {
-	b := fromEnv(envName, defaultVal, envToBool)
-	if b == nil {
-		return false
+	b := fromEnv(envName, func (s string) interface{} {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return nil
+		}
+		return b
+	})
+	switch b.(type) {
+	case bool:
+		return b.(bool)
+	default:
+		return defaultVal
 	}
-	return b.(bool)
 }
 
 // Get a (json)Duration from env or use default
 func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
-	d := fromEnv(envName, defaultVal, envToDuration)
-	if d == nil {
-		return 0
+	d := fromEnv(envName, func (s string) interface{} {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return nil
+		}
+		return JsonDuration(d)
+	})
+	switch d.(type) {
+	case JsonDuration:
+		return d.(JsonDuration)
+	default:
+		return defaultVal
 	}
-	return d.(JsonDuration)
 }
 
 // Get an integer from env or use default
 func IfromEnv(envName string, defaultVal int) int {
-	i := fromEnv(envName, defaultVal, envToInt)
-	if i == nil {
-		return 0
+	i := fromEnv(envName, func (s string) interface{} {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return nil
+		}
+		return i
+	})
+	switch i.(type) {
+	case int:
+		return i.(int)
+	default:
+		return defaultVal
 	}
-	return i.(int)
 }
