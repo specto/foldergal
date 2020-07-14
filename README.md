@@ -159,3 +159,4 @@ TODO
 * [x] Improve top navigation on narrow screens
 * [ ] Use touch events for overlay media navigation
 * [ ] Loading indicator for overlay image next and prev
+* [ ] Implement README.md parsing in folders (using https://github.com/yuin/goldmark)

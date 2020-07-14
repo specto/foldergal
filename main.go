@@ -120,7 +120,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	} else if strings.HasPrefix(mimeType, "application/pdf") {
 		contentType = "image/svg+xml"
 		f = &gallery.PdfFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
-	} else {
+	} else { // Unrecognized mime type
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
