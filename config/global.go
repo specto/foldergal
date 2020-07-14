@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	Global            Configuration
-	envPrefix         = "FOLDERGAL_"
+	Global    Configuration
+	envPrefix = "FOLDERGAL_"
 )
 
 type Configuration struct {
@@ -86,7 +86,7 @@ func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
 
 // Get a string from env or use default
 func SfromEnv(envName string, defaultVal string) string {
-	s := fromEnv(envName, func (s string) interface{} {
+	s := fromEnv(envName, func(s string) interface{} {
 		return s
 	})
 	switch s.(type) {
@@ -99,7 +99,7 @@ func SfromEnv(envName string, defaultVal string) string {
 
 // Get a boolean from env or use default
 func BfromEnv(envName string, defaultVal bool) bool {
-	b := fromEnv(envName, func (s string) interface{} {
+	b := fromEnv(envName, func(s string) interface{} {
 		b, err := strconv.ParseBool(s)
 		if err != nil {
 			return nil
@@ -116,7 +116,7 @@ func BfromEnv(envName string, defaultVal bool) bool {
 
 // Get a (json)Duration from env or use default
 func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
-	d := fromEnv(envName, func (s string) interface{} {
+	d := fromEnv(envName, func(s string) interface{} {
 		d, err := time.ParseDuration(s)
 		if err != nil {
 			return nil
@@ -133,7 +133,7 @@ func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 
 // Get an integer from env or use default
 func IfromEnv(envName string, defaultVal int) int {
-	i := fromEnv(envName, func (s string) interface{} {
+	i := fromEnv(envName, func(s string) interface{} {
 		i, err := strconv.Atoi(s)
 		if err != nil {
 			return nil
