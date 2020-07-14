@@ -20,7 +20,7 @@ type Page struct {
 	Prefix       string
 	AppVersion   string
 	AppBuildTime string
-	ShowOverlay bool
+	ShowOverlay  bool
 }
 
 type ListItem struct {
@@ -38,7 +38,7 @@ type List struct {
 	ParentUrl   string
 	ItemCount   string
 	SortedBy    string
-	Slideshow	string
+	Slideshow   string
 	Items       []ListItem
 	BreadCrumbs []BreadCrumb
 	Page

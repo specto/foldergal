@@ -10,7 +10,7 @@ PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build all build-all compress-all rerun rebuild zip-all favicon test benchmark
+.PHONY: clean run build all build-all compress-all rerun rebuild zip-all favicon test benchmark format
 
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
@@ -74,3 +74,6 @@ benchmark:
 	go test -bench=. ./...
 
 all: zip-all
+
+format:
+	gofmt -s -w .

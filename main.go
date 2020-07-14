@@ -296,7 +296,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
-			ShowOverlay: isOverlay,
+			ShowOverlay:  isOverlay,
 		},
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
@@ -343,7 +343,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, m.FileInfo.ModTime(), *contents)
 }
 
-func renderEmbeddedFile(resFile string,	w http.ResponseWriter, r *http.Request) {
+func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
 	f, err := storage.Internal.Open(resFile)
 	if err != nil {
 		fail404(w, r)
@@ -478,7 +478,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if static, ok := q["static"]; ok {
 		staticResource := static[0]
-		renderEmbeddedFile("res/" + staticResource, w, r)
+		renderEmbeddedFile("res/"+staticResource, w, r)
 		return
 	} else if _, ok := q["rss"]; ok {
 		rssHandler("rss", w, r)
