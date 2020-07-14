@@ -1,0 +1,19 @@
+root = true
+
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+x-show-invisibles = true
+x-show-spaces = false
+
+[Makefile]
+indent_style = tab
+
+[*.go]
+indent_size = 4
+indent_style = tab
+
+[*.{js,json}]
+indent_size = 4
+indent_style = space
