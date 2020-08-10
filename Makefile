@@ -8,9 +8,9 @@ VERSION := $(shell git describe --always --tags --dirty=-dev | sed 's/release\//
 PLATFORMS = -mac .exe -linux -freebsd -pi
 PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-FLAGS := -ldflags="-X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
+FLAGS := -ldflags="-s -w -X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build all build-all compress-all rerun rebuild zip-all favicon test benchmark format update
+.PHONY: clean run build all release compress-all rerun rebuild zip-all favicon test benchmark format update
 
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
@@ -27,7 +27,7 @@ clean: $(DEST_DIR)
 run: build
 	./$(DEST_DIR)/$(PRODUCT) --config config.json
 
-build-all: $(DEST_DIR) $(PRODUCT_FILES)
+release: $(DEST_DIR) $(PRODUCT_FILES)
 
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac: $(SOURCES)
 	go generate
@@ -52,7 +52,7 @@ rebuild: clean build
 compress-all: $(PRODUCT_FILES)
 	upx --brute $?
 
-zip-all: build-all
+zip-all: release
 	cd $(DEST_DIR); find . -type f -not -name "*.zip" -and -not -name ".*" -exec zip "{}.zip" "{}" \;
 
 $(RES_DIR)/favicon.png: $(RES_DIR)/favicon.svg
