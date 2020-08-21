@@ -57,9 +57,7 @@ func main() {
 		f.WriteString(name)
 		f.WriteString(`"] = decoded`)
 		f.WriteString("\n")
-		f.WriteString(`
-	}()
-`)
+		f.WriteString("\t}()")
 		//fmt.Printf("Packaged: %v\n", walkPath)
 		return nil
 	}
@@ -73,16 +71,15 @@ package storage
 
 import "encoding/hex"
 
-func generateFiles() (generatedFiles map[string][]byte) {
-	generatedFiles = make(map[string][]byte)
-`)
+func generateFiles() map[string][]byte {
+	generatedFiles := make(map[string][]byte)`)
 	err = filepath.Walk("res", processFilesfunc)
 	if err != nil {
 		panic(err)
 	}
 
 	f.WriteString(`
-	return
+	return generatedFiles
 }`)
 
 }
