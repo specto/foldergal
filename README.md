@@ -160,3 +160,5 @@ TODO
 * [ ] Use touch events for overlay media navigation
 * [ ] Loading indicator for overlay image next and prev
 * [ ] Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
+* [ ] Dynamic folder icons pased on the full folder path
+
