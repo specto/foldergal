@@ -32,7 +32,7 @@ func TestFromJson(t *testing.T) {
 		t.Errorf("invalid.json: '%v'", err)
 	}
 
-	invalidDurationStr := "time: invalid duration blabla"
+	invalidDurationStr := `time: invalid duration "blabla"`
 	if err := testCfg.FromJson("./testdata/duration_invalid_string.json"); err == nil || err.Error() != invalidDurationStr {
 		t.Errorf("Expected error '%v', got '%v'", invalidDurationStr, err)
 	}
