@@ -24,8 +24,9 @@ type discordImage struct {
 	Url string `json:"url"`
 }
 type discordEmbed struct {
-	Title string       `json:"title"`
-	Image discordImage `json:"image"`
+	Title     string       `json:"title"`
+	Url       string       `json:"url"`
+	Thumbnail discordImage `json:"thumbnail"`
 }
 
 type discordMessage struct {
@@ -65,18 +66,16 @@ func notify(items []interface{}) {
 	uniqueEmbeds := make(map[string]discordEmbed)
 	for _, item := range items {
 		if path, err := filepath.Rel(config.Global.Root, fmt.Sprint(item)); err == nil {
-			dirPath := filepath.Dir(path)
-			urlPage := config.Global.PublicUrl
-			if dirPath != "." {
-				urlPage += EscapePath(filepath.ToSlash(dirPath)) + "?by-date"
-			}
 			sItem := fmt.Sprint(item)
 			if filepath.Ext(sItem) == "" {
+				// Ignore non files
 				continue
 			}
+			urlPage := config.Global.PublicUrl + EscapePath(filepath.ToSlash(path))
 			uniqueEmbeds[urlPage] = discordEmbed{
-				Title: filepath.Base(sItem),
-				Image: discordImage{Url: urlPage},
+				Title:     filepath.Base(sItem),
+				Url:       urlPage,
+				Thumbnail: discordImage{Url: urlPage + "?thumb"},
 			}
 		}
 	}
