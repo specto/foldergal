@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -21,17 +20,29 @@ var (
 	logger         = &config.Global.Log
 )
 
+type discordImage struct {
+	Url string `json:"url"`
+}
+type discordEmbed struct {
+	Title string       `json:"title"`
+	Image discordImage `json:"image"`
+}
+
 type discordMessage struct {
-	Username string `json:"username"`
-	Content  string `json:"content"`
+	Username string         `json:"username"`
+	Content  string         `json:"content"`
+	Embeds   []discordEmbed `json:"embeds"`
 }
 
 func sendDiscord(jsonData discordMessage) {
+
 	jsonBuf := new(bytes.Buffer)
 	errj := json.NewEncoder(jsonBuf).Encode(jsonData)
 	if errj != nil {
 		(*logger).Printf("error: invalid json: %v", errj)
 	}
+	// debug
+	//(*logger).Print(jsonBuf.String())
 	resp, errp := http.Post(config.Global.DiscordWebhook,
 		"application/json; charset=utf-8", jsonBuf)
 	if resp != nil {
@@ -47,29 +58,57 @@ func sendDiscord(jsonData discordMessage) {
 }
 
 func notify(items []interface{}) {
-	uniqueUrls := make(map[string]int)
-	for i, item := range items {
+	jsonData := discordMessage{
+		Username: config.Global.DiscordName,
+		Embeds:   []discordEmbed{},
+	}
+	uniqueEmbeds := make(map[string]discordEmbed)
+	for _, item := range items {
 		if path, err := filepath.Rel(config.Global.Root, fmt.Sprint(item)); err == nil {
 			dirPath := filepath.Dir(path)
 			urlPage := config.Global.PublicUrl
 			if dirPath != "." {
 				urlPage += EscapePath(filepath.ToSlash(dirPath)) + "?by-date"
 			}
-			uniqueUrls[urlPage] = i
+			sItem := fmt.Sprint(item)
+			if filepath.Ext(sItem) == "" {
+				continue
+			}
+			uniqueEmbeds[urlPage] = discordEmbed{
+				Title: filepath.Base(sItem),
+				Image: discordImage{Url: urlPage},
+			}
 		}
 	}
-	urlStrings := make([]string, 0, len(uniqueUrls))
-	for k := range uniqueUrls {
-		urlStrings = append(urlStrings, k)
+	embeds := make([]discordEmbed, 0, len(uniqueEmbeds))
+	urls := make([]string, 0, len(uniqueEmbeds))
+	for u, embed := range uniqueEmbeds {
+		embeds = append(embeds, embed)
+		urls = append(urls, u)
 	}
-	if len(urlStrings) == 0 {
+	totalEmbeds := len(embeds)
+	if totalEmbeds == 0 {
 		return
 	}
-	jsonData := discordMessage{
-		Username: config.Global.DiscordName,
-		Content:  "See what was just published: \n" + strings.Join(urlStrings[:], "\n"),
+	maxEmbeds := 10
+	if totalEmbeds > maxEmbeds {
+		// Split to multiple messages
+		// because the discord api docs says
+		// only 10 embeds are allowed per message
+		for i := 0; i < totalEmbeds; i += maxEmbeds {
+			bound := i + maxEmbeds
+			if bound > totalEmbeds {
+				bound = totalEmbeds
+			}
+			jsonData.Content = "New media in " + config.Global.PublicUrl
+			jsonData.Embeds = embeds[i:bound]
+			sendDiscord(jsonData)
+		}
+	} else {
+		jsonData.Content = "New media in " + config.Global.PublicUrl
+		jsonData.Embeds = embeds
+		sendDiscord(jsonData)
 	}
-	sendDiscord(jsonData)
 }
 
 // Watch every folder in config.Global.Root and send notification on new file
