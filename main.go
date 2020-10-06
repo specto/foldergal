@@ -359,7 +359,7 @@ func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) 
 }
 
 func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
-	loc, _ := time.LoadLocation("GMT")
+	loc, _ := time.LoadLocation("UTC")
 
 	// Limit rss items only to the most fresh
 	then := time.Now().Add(-rssFreshness) // negative duration to subtract
