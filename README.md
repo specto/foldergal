@@ -152,13 +152,13 @@ TODO
 * [x] Fix url escape
 * [x] RSS feed
 * [x] Fix ? in file/folder name
-* [ ] Inline media display
+* [x] Inline media display
+* [x] Improve top navigation on narrow screens
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
-* [x] Improve top navigation on narrow screens
 * [ ] Use touch events for overlay media navigation
 * [ ] Loading indicator for overlay image next and prev
 * [ ] Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
-* [ ] Dynamic folder icons pased on the full folder path
+* [ ] Dynamic folder icons generated from the full folder path
 
