@@ -263,6 +263,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 			class = mediaClass
 		}
 		children = append(children, templates.ListItem{
+			Id:      gallery.HashId(child.Name()),
 			ModTime: child.ModTime(),
 			Url:     childPath,
 			Name:    child.Name(),

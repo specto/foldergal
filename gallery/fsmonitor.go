@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -24,9 +25,10 @@ type discordImage struct {
 	Url string `json:"url"`
 }
 type discordEmbed struct {
-	Title     string       `json:"title"`
-	Url       string       `json:"url"`
-	Thumbnail discordImage `json:"thumbnail"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	Url         string       `json:"url"`
+	Image       discordImage `json:"image"`
 }
 
 type discordMessage struct {
@@ -58,32 +60,37 @@ func sendDiscord(jsonData discordMessage) {
 	}
 }
 
+var slashes = regexp.MustCompile(`/`)
+
 func notify(items []interface{}) {
 	jsonData := discordMessage{
 		Username: config.Global.DiscordName,
 		Embeds:   []discordEmbed{},
 	}
 	uniqueEmbeds := make(map[string]discordEmbed)
+
 	for _, item := range items {
-		if path, err := filepath.Rel(config.Global.Root, fmt.Sprint(item)); err == nil {
-			sItem := fmt.Sprint(item)
-			if filepath.Ext(sItem) == "" {
-				// Ignore non files
-				continue
-			}
-			urlPage := config.Global.PublicUrl + EscapePath(filepath.ToSlash(path))
-			uniqueEmbeds[urlPage] = discordEmbed{
-				Title:     filepath.Base(sItem),
-				Url:       urlPage,
-				Thumbnail: discordImage{Url: urlPage + "?thumb"},
+		sItem := fmt.Sprint(item)
+		if filepath.Ext(sItem) == "" {
+			// Ignore non files
+			continue
+		}
+		if path, err := filepath.Rel(config.Global.Root, sItem); err == nil {
+			uniqueEmbeds[path] = discordEmbed{
+				Title:       filepath.Base(sItem),
+				Description: slashes.ReplaceAllString(filepath.ToSlash(
+					filepath.Dir(path)), " • "),
+				Url: config.Global.PublicUrl +
+					EscapePath(filepath.ToSlash(filepath.Dir(path))) +
+					"#" + HashId(filepath.Base(sItem)),
+				Image: discordImage{Url: config.Global.PublicUrl +
+					EscapePath(filepath.ToSlash(path))},
 			}
 		}
 	}
 	embeds := make([]discordEmbed, 0, len(uniqueEmbeds))
-	urls := make([]string, 0, len(uniqueEmbeds))
-	for u, embed := range uniqueEmbeds {
+	for _, embed := range uniqueEmbeds {
 		embeds = append(embeds, embed)
-		urls = append(urls, u)
 	}
 	totalEmbeds := len(embeds)
 	if totalEmbeds == 0 {

@@ -2,6 +2,8 @@ package gallery
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"foldergal/config"
@@ -484,4 +486,11 @@ func NaturalLess(str1, str2 string) bool {
 	// So far they are identical. At least one is ended. If the other continues,
 	// it sorts last.
 	return len(str1) < len(str2)
+}
+
+// Return a hash from string
+// Constructing from the base file name should be enough for unique id per page
+func HashId(from string) string {
+	hash := md5.Sum([]byte(from))
+	return "m" + hex.EncodeToString(hash[:])
 }

@@ -24,6 +24,7 @@ type Page struct {
 }
 
 type ListItem struct {
+	Id      string
 	Url     string
 	Name    string
 	Thumb   string
