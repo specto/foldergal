@@ -161,4 +161,4 @@ TODO
 * [ ] Loading indicator for overlay image next and prev
 * [ ] Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
 * [ ] Dynamic folder icons generated from the full folder path
-
+* [ ] Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/

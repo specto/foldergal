@@ -82,7 +82,7 @@ func notify(items []interface{}) {
 					filepath.Dir(path)), " • "),
 				Url: config.Global.PublicUrl +
 					EscapePath(filepath.ToSlash(filepath.Dir(path))) +
-					"#" + HashId(filepath.Base(sItem)),
+					"#" + EscapePath(filepath.Base(sItem)),
 				Image: discordImage{Url: config.Global.PublicUrl +
 					EscapePath(filepath.ToSlash(path)) + "?thumb"},
 			}

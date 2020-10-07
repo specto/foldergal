@@ -163,6 +163,16 @@ func BenchmarkStdStringLess(b *testing.B) {
 	}
 }
 
+func BenchmarkEscapePath(b *testing.B) {
+	set := randomStringArray(1)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := range set[0] {
+			_ = EscapePath(set[0][j])
+		}
+	}
+}
+
 func TestGetMediaClass(t *testing.T) {
 	for _, v := range []struct {
 		filepath  string
