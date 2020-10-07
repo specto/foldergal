@@ -159,6 +159,15 @@
 
     // Exported so we can load an image in the overlay
     global.findAndShow = function () {
+        // Try to load from url fragment
+        if (global.location.hash !== "") {
+            const fragment = document.getElementById(global.location.hash.slice(1));
+            if (fragment) {
+                fragment.click();
+                return;
+            }
+        }
+
         const target = global.location.href;
         for (let a of document.querySelectorAll("main a").values()) {
             if (a.href === target) {
