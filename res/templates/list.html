@@ -39,7 +39,7 @@
     <ul>
         {{ if .ParentUrl }}
             <li>
-                <a tabindex="1" class="folder" href="{{- .ParentUrl -}}">
+                <a tabindex="0" class="folder" href="{{- .ParentUrl -}}">
                     <span><img src="{{ .Prefix }}/?static=up.svg" alt=".." title="{{ .ParentUrl }}" /></span>
                 </a></li>
         {{ end }}

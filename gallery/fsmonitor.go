@@ -84,7 +84,7 @@ func notify(items []interface{}) {
 					EscapePath(filepath.ToSlash(filepath.Dir(path))) +
 					"#" + HashId(filepath.Base(sItem)),
 				Image: discordImage{Url: config.Global.PublicUrl +
-					EscapePath(filepath.ToSlash(path))},
+					EscapePath(filepath.ToSlash(path)) + "?thumb"},
 			}
 		}
 	}

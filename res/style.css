@@ -14,7 +14,7 @@ a
 a.media { background: white; }
 a:hover { background-color: #D6D6D6; }
 
-a:active
+a:active, a:focus
 {
 	background-color: #D1DDF0;
 	color: cornflowerblue;
