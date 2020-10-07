@@ -2,7 +2,7 @@ package gallery
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -491,6 +491,6 @@ func NaturalLess(str1, str2 string) bool {
 // Return a hash from string
 // Constructing from the base file name should be enough for unique id per page
 func HashId(from string) string {
-	hash := md5.Sum([]byte(from))
+	hash := md5.Sum([]byte(from)) // #nosec Use for page ids only
 	return "m" + hex.EncodeToString(hash[:])
 }
