@@ -10,7 +10,7 @@ PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-s -w -X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
 
-.PHONY: clean run build all release compress-all rerun rebuild zip-all favicon test benchmark format update
+.PHONY: clean run build all release upx rerun rebuild zip favicon test benchmark format update
 
 build: $(DEST_DIR) $(DEST_DIR)/$(PRODUCT)
 
@@ -49,10 +49,10 @@ rerun: clean run
 
 rebuild: clean build
 
-compress-all: $(PRODUCT_FILES)
-	upx --brute $?
+upx:
+	cd $(DEST_DIR); upx *; true
 
-zip-all: release
+zip:
 	cd $(DEST_DIR); find . -type f -not -name "*.zip" -and -not -name ".*" -exec zip "{}.zip" "{}" \;
 
 $(RES_DIR)/favicon.png: $(RES_DIR)/favicon.svg
@@ -75,7 +75,7 @@ test:
 benchmark:
 	go test -bench=. ./...
 
-all: zip-all
+all: test release upx zip
 
 format:
 	gofmt -s -w .
