@@ -498,7 +498,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if stat.IsDir() { // Prepare and render folder contents
-		listHandler(w, r, sortBy, slideshow, slideshow == "inline")
+		listHandler(w, r, sortBy, slideshow, false)
 	} else { // This is a media file and we should serve it in all it's glory
 		if _, raw := q["raw"]; !raw && slideshow == "inline" {
 			// Except when using overlay slideshow
