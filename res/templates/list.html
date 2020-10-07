@@ -5,6 +5,31 @@
 <script type="text/javascript">
     window.addEventListener("load", findAndShow);
 </script>
+{{ else }}
+<script type="text/javascript">
+    function readCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for(var i=0;i < ca.length;i++) {
+            var c = ca[i];
+            while (c.charAt(0)==' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+        }
+        return null;
+    }
+
+    window.addEventListener("load", function init() {
+        // Try to load from url fragment
+        const slideshowCookie = readCookie("slideshow");
+        if (slideshowCookie && slideshowCookie === "inline" && window.location.hash !== "") {
+            const fragment = document.getElementById(window.location.hash.slice(1));
+            if (fragment) {
+                fragment.click();
+                return;
+            }
+        }
+    });
+</script>
 {{ end }}
 {{end}}
 {{ define "body" }}
