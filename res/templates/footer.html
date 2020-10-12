@@ -1,5 +1,10 @@
 {{define "footer"}}
 <footer>
-    <a href="{{ .Prefix }}/?status">foldergal v:{{ .AppVersion }}</a>
+    <a href="{{ .Prefix }}/feed?rss" title="RSS feed">
+    <svg viewBox="0 -256 1792 1792" style="width: 16px">
+        <use xlink:href="{{ .Prefix }}/?static=rss.svg#rss_icon"></use>
+    </svg>
+    RSS</a>
+    <a href="{{ .Prefix }}/?status" title="System info">foldergal v:{{ .AppVersion }}</a>
 </footer>
 {{end}}

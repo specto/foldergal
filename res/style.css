@@ -9,6 +9,7 @@ a
 {
 	text-decoration: none;
 	border-radius: 0.5em;
+	color: #6871CF;
 }
 
 a.media { background: white; }
@@ -74,6 +75,13 @@ body > footer
 	color: gray;
 	font-size: 0.8em;
 	text-align: right;
+}
+
+footer a
+{
+	display: inline-block;
+	padding: 0 0.2em;
+	margin: 0;
 }
 
 body > footer::before
@@ -250,12 +258,6 @@ header nav h1
 	border: none;
 	margin: 1em 0;
 	border-collapse: collapse;
-}
-
-footer a
-{
-	display: inline-block;
-	padding: 0 0.5em;
 }
 
 #slideshow
