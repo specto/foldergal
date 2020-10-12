@@ -368,18 +368,25 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 		return t.After(then)
 	}
 	typeRss := "atom"
+	var formatTime func(time.Time) string
 	if t == "rss" {
 		typeRss = "rss"
 		w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+		formatTime = func(t time.Time) string {
+			return t.In(loc).Format(http.TimeFormat)
+
+		}
 	} else {
 		w.Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
+		formatTime = func(t time.Time) string {
+			return t.In(loc).Format(time.RFC3339)
+		}
 	}
 
 	pathToUrl := func(p string) string {
-		return config.Global.PublicUrl +
-			strings.TrimPrefix(p, config.Global.Root+"/")
+		return gallery.EscapePath(config.Global.PublicUrl +
+			strings.TrimPrefix(p, config.Global.Root+"/"))
 	}
-
 	var rssItems []templates.RssItem
 	err := filepath.Walk(config.Global.Root,
 		func(walkPath string, info os.FileInfo, err error) error {
@@ -396,7 +403,7 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 					Thumb: urlStr + "?thumb",
 					Id:    urlStr,
 					Mdate: info.ModTime(),
-					Date:  info.ModTime().In(loc).Format(http.TimeFormat),
+					Date:  formatTime(info.ModTime()),
 				})
 				return nil
 			}
@@ -414,7 +421,7 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 	if len(rssItems) > 0 {
 		lastDate = rssItems[0].Mdate
 	}
-	lastDateStr := lastDate.In(loc).Format(http.TimeFormat)
+	lastDateStr := formatTime(lastDate)
 	w.Header().Set("Last-modified", lastDateStr)
 
 	rss := templates.RssPage{
