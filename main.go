@@ -387,6 +387,7 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 		return gallery.EscapePath(config.Global.PublicUrl +
 			strings.TrimPrefix(p, config.Global.Root+"/"))
 	}
+
 	var rssItems []templates.RssItem
 	err := filepath.Walk(config.Global.Root,
 		func(walkPath string, info os.FileInfo, err error) error {
@@ -398,7 +399,7 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 				urlStr := pathToUrl(walkPath)
 				rssItems = append(rssItems, templates.RssItem{
 					Type:  gallery.GetMediaClass(walkPath),
-					Title: urlStr,
+					Title: filepath.Base(walkPath),
 					Url:   urlStr,
 					Thumb: urlStr + "?thumb",
 					Id:    urlStr,
@@ -426,7 +427,7 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 
 	rss := templates.RssPage{
 		FeedUrl:   config.Global.PublicUrl + "feed?" + typeRss,
-		SiteTitle: config.Global.PublicUrl,
+		SiteTitle: config.Global.PublicHost,
 		SiteUrl:   config.Global.PublicUrl,
 		LastDate:  lastDateStr,
 		Items:     rssItems,
