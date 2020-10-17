@@ -9,10 +9,16 @@ Limited only to the folder you want.
 Produces a standalone executable. The only optional external 
 dependency is `ffmpeg` for video thumbnails.
 
-Supports TLS and http2.
+Optional support for TLS and http2.
 
 Javascript is not needed to browse the web gallery. 
 However some javascript is used when the overlay media on page feature is on.
+
+Can work even on openwrt routers. But thumbnail generation is very slow there.
+
+Has RSS/atom feed.
+
+Optional Discord webhook for new uploads.
 
 ![](screenshot.png "Foldergal Screenshot")
 
@@ -96,7 +102,7 @@ Use the [Makefile]().
 
 Foldergal uses go modules.
 
-Developed using go version 1.14.2.
+Tested with go version 1.15.
 
 When building use these flags to set the build time and version:
 ```
@@ -138,28 +144,12 @@ To enable auto-start: `sudo systemctl enable foldergal`
 TODO
 ---
 
-* [x] Enable support for http2 (with tls) and fall back to http1
-* [x] Embed favicon and serve it
-* [x] Use and show app version
-* [x] Notifications for new files via web e.g. discord webhook.
-* [x] Show number of items in folder
-* [x] Flag to turn off in-memory cache
-* [x] Call ffmpeg binary to generate video thumbnail
-* [x] Sort list by name or date 
-* [x] Fix gosec issues
-* [x] Use go:generate for embedded resources
-* [x] Test and fix environment variables
-* [x] Fix url escape
-* [x] RSS feed
-* [x] Fix ? in file/folder name
-* [x] Inline media display
-* [x] Improve top navigation on narrow screens
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
 * [ ] Use touch events for overlay media navigation
 * [ ] Loading indicator for overlay image next and prev
-* [ ] Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
-* [ ] Dynamic folder icons generated from the full folder path
-* [ ] Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
+* [ ] (maybe) Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
+* [ ] (maybe) Dynamic folder icons generated from the full folder path
+* [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
 * [ ] Combine svg icons in a single file and `<use>` sprites 
