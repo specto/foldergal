@@ -240,7 +240,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 	folderInfo, _ := storage.Root.Stat(folderPath)
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
-		parentUrl = path.Join(r.URL.Path, "..")
+		parentUrl = path.Join(folderPath, "..")
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
