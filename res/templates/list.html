@@ -8,24 +8,27 @@
 {{ else }}
 <script type="text/javascript">
     function readCookie(name) {
-        var nameEQ = name + "=";
-        var ca = document.cookie.split(';');
-        for(var i=0;i < ca.length;i++) {
-            var c = ca[i];
-            while (c.charAt(0)==' ') c = c.substring(1,c.length);
-            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') {
+                c = c.substring(1, c.length);
+            }
+            if (c.indexOf(nameEQ) === 0) {
+                return c.substring(nameEQ.length, c.length);
+            }
         }
         return null;
     }
 
     window.addEventListener("load", function init() {
         // Try to load from url fragment
-        const slideshowCookie = readCookie("slideshow");
-        if (slideshowCookie && slideshowCookie === "inline" && window.location.hash !== "") {
+        const showCookie = readCookie("show");
+        if (showCookie && showCookie === "inline" && window.location.hash !== "") {
             const fragment = document.getElementById(window.location.hash.slice(1));
             if (fragment) {
                 fragment.click();
-                return;
             }
         }
     });
@@ -44,9 +47,11 @@
             </h1>
 			<div class="toolbar">
 			    <span class="title">view files:</span>
-				<span class="buttons"><a {{ if eq .Slideshow "inline" -}}
+				<span class="buttons"><a {{ if eq .DisplayMode "inline" -}}
 					class="current"
-				{{- end }} onclick="window.location.href='?show-inline';return false;" href="/overlay_requires_javascript?error">overlaid on page</a><a {{ if ne .Slideshow "inline" -}}
+				{{- end }} onclick="window.location.href='?show-inline';return false;"
+				    href="/overlay_requires_javascript?error">overlaid on page
+				</a><a {{ if ne .DisplayMode "inline" -}}
 					class="current"
 				{{- end }} href="?show-files">as separate links</a></span>
 			</div>
@@ -70,10 +75,11 @@
         {{ end }}
         {{ range .Items }}
             <li class="{{ .Class }}"><a id="{{ .Id }}" tabindex="1"
-            {{ if and (ne .Class "folder") (eq $.Slideshow "inline") -}}
+            {{ if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}
             class="overlay"
             {{- end }}
-            href="{{- .Url -}}"
+            href="{{- .Url -}}
+    {{- if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}?overlay{{- end -}}"
             title="{{ .Name }} [{{ .ModTime }}]">
                 <span>
                     {{ if .Thumb -}}

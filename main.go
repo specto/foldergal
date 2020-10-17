@@ -217,7 +217,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 
 // Prepare list of files
 func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
-	slideshow string, isOverlay bool) {
+	displayMode string, isOverlay bool) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -302,7 +302,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
 		SortedBy:    sortBy,
-		Slideshow:   slideshow,
+		DisplayMode: displayMode,
 		ParentUrl:   parentUrl,
 		Items:       children,
 	}
@@ -452,27 +452,31 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
 		sortBy = sorted.Value
 	}
-	slideshow := "files"
-	if slide, nocookie := r.Cookie("slideshow"); nocookie == nil {
-		slideshow = slide.Value
+	show := "files"
+	if showCookie, nocookie := r.Cookie("show"); nocookie == nil {
+		show = showCookie.Value
 	}
 
 	// All these can be set simultaneously in the query string
 	if _, ok := q["by-date"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "date", MaxAge: 3e6, Path: urlPrefix})
+		http.SetCookie(w, &http.Cookie{
+			Name: "sort", Value: "date", MaxAge: 3e6, Path: urlPrefix})
 		sortBy = "date"
 	}
 	if _, ok := q["by-name"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "sort", Value: "", MaxAge: -1, Path: urlPrefix})
+		http.SetCookie(w, &http.Cookie{
+			Name: "sort", Value: "", MaxAge: -1, Path: urlPrefix})
 		sortBy = "name"
 	}
 	if _, ok := q["show-inline"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "inline", MaxAge: 3e6, Path: urlPrefix})
-		slideshow = "inline"
+		http.SetCookie(w, &http.Cookie{
+			Name: "show", Value: "inline", MaxAge: 3e6, Path: urlPrefix})
+		show = "inline"
 	}
 	if _, ok := q["show-files"]; ok {
-		http.SetCookie(w, &http.Cookie{Name: "slideshow", Value: "", MaxAge: -1, Path: urlPrefix})
-		slideshow = "files"
+		http.SetCookie(w, &http.Cookie{
+			Name: "show", Value: "", MaxAge: -1, Path: urlPrefix})
+		show = "files"
 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
@@ -482,7 +486,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	} else if _, ok := q["thumb"]; ok {
 		previewHandler(w, r)
 		return
-	} else if _, ok := q["broken"]; ok { // Keep this separate, just in case...
+	} else if _, ok := q["broken"]; ok { // Keep this separate from static, just in case...
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	} else if static, ok := q["static"]; ok {
@@ -505,15 +509,11 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if stat.IsDir() { // Prepare and render folder contents
-		listHandler(w, r, sortBy, slideshow, false)
+	if _, overlay := q["overlay"]; stat.IsDir() || (show == "inline" && overlay) {
+		// Prepare and render folder contents
+		listHandler(w, r, sortBy, show, overlay)
 	} else { // This is a media file and we should serve it in all it's glory
-		if _, raw := q["raw"]; !raw && slideshow == "inline" {
-			// Except when using overlay slideshow
-			listHandler(w, r, sortBy, slideshow, true)
-		} else {
-			fileHandler(w, r)
-		}
+		fileHandler(w, r)
 	}
 }
 

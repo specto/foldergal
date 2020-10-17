@@ -39,7 +39,7 @@ type List struct {
 	ParentUrl   string
 	ItemCount   string
 	SortedBy    string
-	Slideshow   string
+	DisplayMode string
 	Items       []ListItem
 	BreadCrumbs []BreadCrumb
 	Page

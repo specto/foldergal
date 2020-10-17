@@ -12,22 +12,23 @@
     }
 
     function showMedia(href, mediaClass) {
+        href = href.split("?")[0]; // clear querystring
         const contents = document.getElementById("slideshowContents");
         if (mediaClass === "video") {
             contents.innerHTML = `<video controls="true" poster="${href}?thumb" playsinline="true" preload="metadata" autoplay="true">
-                <source src="${href}?raw" /></video>`;
+                <source src="${href}" /></video>`;
         }
         else if (mediaClass === "audio") {
             contents.innerHTML = `<video controls="true" poster="${href}?thumb" playsinline="true" preload="metadata" autoplay="true">
-                <source src="${href}?raw" /></video>`;
+                <source src="${href}" /></video>`;
         }
         else {
             const img = contents.querySelector("img");
             if (img) { // Reuse image tag to have more fluid rendering
-                img.src = href + "?raw";
+                img.src = href;
             }
             else {
-                contents.innerHTML = `<img src="${href}?raw" />`;
+                contents.innerHTML = `<img src="${href}" />`;
             }
         }
         document.getElementById("slideshow").style.display = "block";
