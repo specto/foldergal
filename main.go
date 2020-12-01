@@ -9,7 +9,6 @@ import (
 	"foldergal/gallery"
 	"foldergal/storage"
 	"foldergal/templates"
-	"github.com/spf13/afero"
 	"io/ioutil"
 	"log"
 	"mime"
@@ -22,8 +21,11 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/spf13/afero"
 )
 
 //go:generate go run storage/embed.go
@@ -215,9 +217,12 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	_ = templates.Html.ExecuteTemplate(w, "table", &page)
 }
 
-// Prepare list of files
+// Show the list of files
+//
+// sortBy can be "date" or "name"
+// displayMode "inline" or "files"
 func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
-	displayMode string, isOverlay bool) {
+	isReversed bool, displayMode string, isOverlay bool) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -275,10 +280,16 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 	}
 	if sortBy == "date" {
 		sort.Slice(children, func(i, j int) bool {
+			if isReversed {
+				j, i = i, j
+			}
 			return children[i].ModTime.After(children[j].ModTime)
 		})
 	} else { // Sort by name
 		sort.Slice(children, func(i, j int) bool {
+			if isReversed {
+				j, i = i, j
+			}
 			return gallery.NaturalLess(
 				strings.ToLower(children[i].Name),
 				strings.ToLower(children[j].Name))
@@ -302,6 +313,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
 		SortedBy:    sortBy,
+		IsReversed:  isReversed,
 		DisplayMode: displayMode,
 		ParentUrl:   parentUrl,
 		Items:       children,
@@ -444,17 +456,21 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 //    * internal resource (image, css, etc.)
 //    * html to show folder lists
 //    * media file (thumbnail or larger file)
-func httpHandler(w http.ResponseWriter, r *http.Request) {
+func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q := r.URL.Query()
 	// Retrieve sort order from cookie
-	sortBy := "name"
+	sortBy := "date"
 	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
 		sortBy = sorted.Value
 	}
 	show := "files"
 	if showCookie, nocookie := r.Cookie("show"); nocookie == nil {
 		show = showCookie.Value
+	}
+	isReversed := true
+	if reversedCookie, nocookie := r.Cookie("reversed"); nocookie == nil {
+		isReversed, _ = strconv.ParseBool(reversedCookie.Value)
 	}
 
 	// All these can be set simultaneously in the query string
@@ -467,6 +483,16 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name: "sort", Value: "", MaxAge: -1, Path: urlPrefix})
 		sortBy = "name"
+	}
+	if _, ok := q["asc"]; ok {
+		http.SetCookie(w, &http.Cookie{
+			Name: "reversed", Value: "0", MaxAge: 3e6, Path: urlPrefix})
+		isReversed = false
+	}
+	if _, ok := q["desc"]; ok {
+		http.SetCookie(w, &http.Cookie{
+			Name: "reversed", Value: "1", MaxAge: 3e6, Path: urlPrefix})
+		isReversed = true
 	}
 	if _, ok := q["show-inline"]; ok {
 		http.SetCookie(w, &http.Cookie{
@@ -511,7 +537,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, overlay := q["overlay"]; stat.IsDir() || (show == "inline" && overlay) {
 		// Prepare and render folder contents
-		listHandler(w, r, sortBy, show, overlay)
+		listHandler(w, r, sortBy, isReversed, show, overlay)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}
@@ -647,19 +673,21 @@ func main() {
 			afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache),
 			afero.NewMemMapFs(),
 			time.Duration(config.Global.CacheExpiresAfter))
-		logger.Printf("Cache in-memory expiration after %v", time.Duration(config.Global.CacheExpiresAfter))
+		logger.Printf("Cache in-memory expiration after %v",
+			time.Duration(config.Global.CacheExpiresAfter))
 	}
 
 	// Routing
 	httpmux := http.NewServeMux()
 	if config.Global.Prefix != "" {
 		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Global.Prefix, "/"))
-		httpmux.Handle(urlPrefix, http.StripPrefix(urlPrefix, http.HandlerFunc(httpHandler)))
+		httpmux.Handle(urlPrefix,
+			http.StripPrefix(urlPrefix, http.HandlerFunc(HttpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		renderEmbeddedFile("res/favicon.ico", w, r)
 	}))
-	httpmux.Handle("/", http.HandlerFunc(httpHandler))
+	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
 	if config.Global.Ffmpeg == "" {
@@ -673,7 +701,8 @@ func main() {
 	useTls := false
 	if fileExists(config.Global.TlsCrt) && fileExists(config.Global.TlsKey) {
 		useTls = true
-		logger.Printf("Using certificate: %s and key: %s", config.Global.TlsCrt, config.Global.TlsKey)
+		logger.Printf("Using certificate: %s and key: %s",
+			config.Global.TlsCrt, config.Global.TlsKey)
 	}
 	if config.Global.DiscordWebhook != "" { // Start filesystem watcher
 		go gallery.StartFsWatcher()

@@ -77,7 +77,7 @@ func notify(items []interface{}) {
 		}
 		if path, err := filepath.Rel(config.Global.Root, sItem); err == nil {
 			uniqueEmbeds[path] = discordEmbed{
-				Title:       filepath.Base(sItem),
+				Title: filepath.Base(sItem),
 				Description: slashes.ReplaceAllString(filepath.ToSlash(
 					filepath.Dir(path)), " • "),
 				Url: config.Global.PublicUrl +

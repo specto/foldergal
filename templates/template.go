@@ -39,6 +39,7 @@ type List struct {
 	ParentUrl   string
 	ItemCount   string
 	SortedBy    string
+	IsReversed  bool
 	DisplayMode string
 	Items       []ListItem
 	BreadCrumbs []BreadCrumb

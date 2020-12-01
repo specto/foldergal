@@ -5,7 +5,7 @@ RES_DIR = res
 PRODUCT = foldergal
 # Get version from last tag
 VERSION := $(shell git describe --always --tags --dirty=-dev | sed 's/release\///')
-PLATFORMS = -mac .exe -linux -freebsd -pi
+PLATFORMS = -mac .exe -linux -freebsd -pi -openwrt
 PRODUCT_FILES := $(PLATFORMS:%=$(DEST_DIR)/$(PRODUCT)-$(VERSION)%)
 TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 FLAGS := -ldflags="-s -w -X 'main.BuildTimestamp=$(TIME)' -X 'main.BuildVersion=$(VERSION)'"
@@ -44,6 +44,9 @@ $(DEST_DIR)/$(PRODUCT)-$(VERSION)-freebsd: $(SOURCES)
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-pi: $(SOURCES)
 	go generate
 	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@
+$(DEST_DIR)/$(PRODUCT)-$(VERSION)-openwrt: $(SOURCES)
+	go generate
+	GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v $(FLAGS) -o $@
 
 rerun: clean run
 
@@ -82,3 +85,6 @@ format:
 
 update:
 	go get -u ./...
+
+tags:
+	uctags **/*.go

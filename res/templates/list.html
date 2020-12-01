@@ -51,18 +51,26 @@
 					class="current"
 				{{- end }} onclick="window.location.href='?show-inline';return false;"
 				    href="/overlay_requires_javascript?error">overlaid on page
-				</a><a {{ if ne .DisplayMode "inline" -}}
+				</a><a {{ if eq .DisplayMode "files" -}}
 					class="current"
 				{{- end }} href="?show-files">as separate links</a></span>
+            </div>
+            <div class="toolbar">
+				<span class="title">order by:</span>
+				<span class="buttons"><a {{ if not .IsReversed -}}
+					class="current"
+				{{- end }} href="?asc">asc</a><a {{ if .IsReversed -}}
+					class="current"
+				{{- end }} href="?desc">desc</a></span>
 			</div>
 			<div class="toolbar">
-				<span class="title">order by:</span>
+				<span class="title">sort by:</span>
 				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
 					class="current"
 				{{- end }} href="?by-name">name</a><a {{ if eq .SortedBy "date" -}}
 					class="current"
 				{{- end }} href="?by-date">date</a></span>
-			</div>
+            </div>
         </nav>
     </header>
     <main>
