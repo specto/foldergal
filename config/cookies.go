@@ -11,18 +11,18 @@ type CookieSettings struct {
 	Show  string `json:"show"`
 }
 
-func (cs *CookieSettings) Encode() string {
+func (cs *CookieSettings) Encode() (string, error) {
 	val, err := json.Marshal(cs)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(val)
+	return base64.StdEncoding.EncodeToString(val), nil
 }
 
 func (cs *CookieSettings) FromString(from string) (err error) {
 	s, err := base64.StdEncoding.DecodeString(from)
 	if err != nil {
-		return err
+		return
 	}
 	err = json.Unmarshal(s, &cs)
 	return

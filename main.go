@@ -461,7 +461,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 
 	opts := config.DefaultCookieSettings()
 	if settingsCookie, nocookie := r.Cookie(cookieName); nocookie == nil {
-		opts.FromString(settingsCookie.Value)
+		_ = opts.FromString(settingsCookie.Value)
 	}
 
 	mustSaveSettings := false
@@ -496,12 +496,17 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mustSaveSettings {
-		cookiePath := urlPrefix
-		if cookiePath == "" {
-			cookiePath = "/"
+		cookieData, err := opts.Encode()
+		if err == nil {
+			cookiePath := urlPrefix
+			if cookiePath == "" {
+				cookiePath = "/"
+			}
+			http.SetCookie(w, &http.Cookie{Name: cookieName,
+				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
+		} else {
+			log.Printf("Error creating cookie: %s", err)
 		}
-		http.SetCookie(w, &http.Cookie{Name: cookieName,
-			Value: opts.Encode(), MaxAge: 3e6, Path: cookiePath})
 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
