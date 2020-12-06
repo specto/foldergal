@@ -461,7 +461,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 
 	opts := config.DefaultCookieSettings()
 	if settingsCookie, nocookie := r.Cookie(cookieName); nocookie == nil {
-		_ = opts.FromString(settingsCookie.Value)
+		_ = opts.Unmarshal(settingsCookie.Value)
 	}
 
 	mustSaveSettings := false
@@ -496,7 +496,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mustSaveSettings {
-		cookieData, err := opts.Encode()
+		cookieData, err := opts.Marshal()
 		if err == nil {
 			cookiePath := urlPrefix
 			if cookiePath == "" {
