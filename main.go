@@ -473,35 +473,40 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		isReversed, _ = strconv.ParseBool(reversedCookie.Value)
 	}
 
+	cookiePath := urlPrefix
+	if cookiePath == "" {
+		cookiePath = "/"
+	}
+
 	// All these can be set simultaneously in the query string
 	if _, ok := q["by-date"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "sort", Value: "date", MaxAge: 3e6, Path: urlPrefix})
+			Name: "sort", Value: "date", MaxAge: 3e6, Path: cookiePath})
 		sortBy = "date"
 	}
 	if _, ok := q["by-name"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "sort", Value: "", MaxAge: -1, Path: urlPrefix})
+			Name: "sort", Value: "", MaxAge: -1, Path: cookiePath})
 		sortBy = "name"
 	}
 	if _, ok := q["asc"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "reversed", Value: "0", MaxAge: 3e6, Path: urlPrefix})
+			Name: "reversed", Value: "0", MaxAge: 3e6, Path: cookiePath})
 		isReversed = false
 	}
 	if _, ok := q["desc"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "reversed", Value: "1", MaxAge: 3e6, Path: urlPrefix})
+			Name: "reversed", Value: "1", MaxAge: 3e6, Path: cookiePath})
 		isReversed = true
 	}
 	if _, ok := q["show-inline"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "show", Value: "inline", MaxAge: 3e6, Path: urlPrefix})
+			Name: "show", Value: "inline", MaxAge: 3e6, Path: cookiePath})
 		show = "inline"
 	}
 	if _, ok := q["show-files"]; ok {
 		http.SetCookie(w, &http.Cookie{
-			Name: "show", Value: "", MaxAge: -1, Path: urlPrefix})
+			Name: "show", Value: "", MaxAge: -1, Path: cookiePath})
 		show = "files"
 	}
 
