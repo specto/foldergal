@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -221,19 +220,19 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 //
 // sortBy can be "date" or "name"
 // displayMode "inline" or "files"
-func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
-	isReversed bool, displayMode string, isOverlay bool) {
+func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSettings, isOverlay bool) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
 	}
 	var (
-		parentUrl string
-		title     string
-		err       error
-		contents  []os.FileInfo
+		parentUrl  string
+		title      string
+		err        error
+		contents   []os.FileInfo
+		folderPath string
 	)
-	folderPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
+	folderPath = strings.TrimPrefix(r.URL.Path, urlPrefix)
 	if isOverlay {
 		folderPath = filepath.Dir(folderPath)
 	}
@@ -278,16 +277,16 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 			H:       config.Global.ThumbHeight,
 		})
 	}
-	if sortBy == "date" {
+	if opts.Sort == "date" {
 		sort.Slice(children, func(i, j int) bool {
-			if isReversed {
+			if !opts.Order {
 				j, i = i, j
 			}
 			return children[i].ModTime.After(children[j].ModTime)
 		})
 	} else { // Sort by name
 		sort.Slice(children, func(i, j int) bool {
-			if isReversed {
+			if opts.Order {
 				j, i = i, j
 			}
 			return gallery.NaturalLess(
@@ -302,7 +301,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
-	list := templates.List{
+	err = templates.Html.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
 			Prefix:       urlPrefix,
@@ -312,13 +311,12 @@ func listHandler(w http.ResponseWriter, r *http.Request, sortBy string,
 		},
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
-		SortedBy:    sortBy,
-		IsReversed:  isReversed,
-		DisplayMode: displayMode,
+		SortedBy:    opts.Sort,
+		IsReversed:  opts.Order,
+		DisplayMode: opts.Show,
 		ParentUrl:   parentUrl,
 		Items:       children,
-	}
-	err = templates.Html.ExecuteTemplate(w, "layout", &list)
+	})
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -459,55 +457,51 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q := r.URL.Query()
-	// Retrieve sort order from cookie
-	sortBy := "date"
-	if sorted, nocookie := r.Cookie("sort"); nocookie == nil {
-		sortBy = sorted.Value
-	}
-	show := "files"
-	if showCookie, nocookie := r.Cookie("show"); nocookie == nil {
-		show = showCookie.Value
-	}
-	isReversed := true
-	if reversedCookie, nocookie := r.Cookie("reversed"); nocookie == nil {
-		isReversed, _ = strconv.ParseBool(reversedCookie.Value)
+	cookieName := "settings"
+
+	settings := config.NewCookieSettings()
+	if settingsCookie, nocookie := r.Cookie(cookieName); nocookie == nil {
+		settings.FromString(settingsCookie.Value)
 	}
 
-	cookiePath := urlPrefix
-	if cookiePath == "" {
-		cookiePath = "/"
-	}
+	mustSaveSettings := false
 
 	// All these can be set simultaneously in the query string
-	if _, ok := q["by-date"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "sort", Value: "date", MaxAge: 3e6, Path: cookiePath})
-		sortBy = "date"
-	}
-	if _, ok := q["by-name"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "sort", Value: "", MaxAge: -1, Path: cookiePath})
-		sortBy = "name"
-	}
 	if _, ok := q["asc"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "reversed", Value: "0", MaxAge: 3e6, Path: cookiePath})
-		isReversed = false
+		settings.Order = false
+		mustSaveSettings = true
 	}
 	if _, ok := q["desc"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "reversed", Value: "1", MaxAge: 3e6, Path: cookiePath})
-		isReversed = true
+		settings.Order = true
+		mustSaveSettings = true
+	}
+	if _, ok := q["by-date"]; ok {
+		settings.Sort = "date"
+		mustSaveSettings = true
+	}
+	if _, ok := q["by-name"]; ok {
+		if !mustSaveSettings { // Default order for name is ascending
+			settings.Order = false
+		}
+		settings.Sort = "name"
+		mustSaveSettings = true
 	}
 	if _, ok := q["show-inline"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "show", Value: "inline", MaxAge: 3e6, Path: cookiePath})
-		show = "inline"
+		settings.Show = "inline"
+		mustSaveSettings = true
 	}
 	if _, ok := q["show-files"]; ok {
-		http.SetCookie(w, &http.Cookie{
-			Name: "show", Value: "", MaxAge: -1, Path: cookiePath})
-		show = "files"
+		settings.Show = "files"
+		mustSaveSettings = true
+	}
+
+	if mustSaveSettings {
+		cookiePath := urlPrefix
+		if cookiePath == "" {
+			cookiePath = "/"
+		}
+		http.SetCookie(w, &http.Cookie{Name: cookieName,
+			Value: settings.Encode(), MaxAge: 3e6, Path: cookiePath})
 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
@@ -540,9 +534,9 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if _, overlay := q["overlay"]; stat.IsDir() || (show == "inline" && overlay) {
+	if _, overlay := q["overlay"]; stat.IsDir() || (settings.Show == "inline" && overlay) {
 		// Prepare and render folder contents
-		listHandler(w, r, sortBy, isReversed, show, overlay)
+		listHandler(w, r, settings, overlay)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}
