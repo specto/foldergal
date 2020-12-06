@@ -459,39 +459,39 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	cookieName := "settings"
 
-	settings := config.NewCookieSettings()
+	opts := config.DefaultCookieSettings()
 	if settingsCookie, nocookie := r.Cookie(cookieName); nocookie == nil {
-		settings.FromString(settingsCookie.Value)
+		opts.FromString(settingsCookie.Value)
 	}
 
 	mustSaveSettings := false
 
 	// All these can be set simultaneously in the query string
 	if _, ok := q["asc"]; ok {
-		settings.Order = false
+		opts.Order = false
 		mustSaveSettings = true
 	}
 	if _, ok := q["desc"]; ok {
-		settings.Order = true
+		opts.Order = true
 		mustSaveSettings = true
 	}
 	if _, ok := q["by-date"]; ok {
-		settings.Sort = "date"
+		opts.Sort = "date"
 		mustSaveSettings = true
 	}
 	if _, ok := q["by-name"]; ok {
 		if !mustSaveSettings { // Default order for name is ascending
-			settings.Order = false
+			opts.Order = false
 		}
-		settings.Sort = "name"
+		opts.Sort = "name"
 		mustSaveSettings = true
 	}
 	if _, ok := q["show-inline"]; ok {
-		settings.Show = "inline"
+		opts.Show = "inline"
 		mustSaveSettings = true
 	}
 	if _, ok := q["show-files"]; ok {
-		settings.Show = "files"
+		opts.Show = "files"
 		mustSaveSettings = true
 	}
 
@@ -501,7 +501,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 			cookiePath = "/"
 		}
 		http.SetCookie(w, &http.Cookie{Name: cookieName,
-			Value: settings.Encode(), MaxAge: 3e6, Path: cookiePath})
+			Value: opts.Encode(), MaxAge: 3e6, Path: cookiePath})
 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
@@ -534,9 +534,9 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if _, overlay := q["overlay"]; stat.IsDir() || (settings.Show == "inline" && overlay) {
+	if _, overlay := q["overlay"]; stat.IsDir() || (opts.Show == "inline" && overlay) {
 		// Prepare and render folder contents
-		listHandler(w, r, settings, overlay)
+		listHandler(w, r, opts, overlay)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}

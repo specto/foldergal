@@ -28,6 +28,6 @@ func (cs *CookieSettings) FromString(from string) (err error) {
 	return
 }
 
-func NewCookieSettings() CookieSettings {
+func DefaultCookieSettings() CookieSettings {
 	return CookieSettings{Sort: "date", Order: true, Show: "files"}
 }
