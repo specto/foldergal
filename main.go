@@ -276,13 +276,14 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 			W:       config.Global.ThumbWidth,
 			H:       config.Global.ThumbHeight,
 		})
+		//logger.Printf("%40v %v\n", child.ModTime(), childPath)
 	}
 	if opts.Sort == "date" {
 		sort.Slice(children, func(i, j int) bool {
-			if !opts.Order {
+			if opts.Order {
 				j, i = i, j
 			}
-			return children[i].ModTime.After(children[j].ModTime)
+			return children[i].ModTime.Before(children[j].ModTime)
 		})
 	} else { // Sort by name
 		sort.Slice(children, func(i, j int) bool {

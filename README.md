@@ -153,4 +153,4 @@ TODO
 * [ ] (maybe) Dynamic folder icons generated from the full folder path
 * [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
 * [ ] Combine svg icons in a single file and `<use>` sprites 
-* [ ] Implement ascending/descending sort order
+* [ ] Fix misterious date bug 0001-01-01 on freebsd
