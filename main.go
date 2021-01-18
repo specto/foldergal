@@ -163,6 +163,24 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 	return
 }
 
+func fileCount(startPath string) (totalCount int64) {
+	err := filepath.Walk(startPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && gallery.IsValidMedia(path) {
+				logger.Print(path)
+				totalCount += 1
+			}
+			return nil
+		})
+	if err != nil {
+		logger.Print(err)
+	}
+	return
+}
+
 func folderSize(startPath string) (totalSize int64) {
 	err := filepath.Walk(startPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -186,18 +204,15 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	runtime.ReadMemStats(&m)
 
 	var rowData [][2]string
-	rowData = append(rowData, [2]string{"Root:", config.Global.Root})
-	rowData = append(rowData, [2]string{"Root Size:", bToMb(uint64(folderSize(config.Global.Root)))})
-	rowData = append(rowData, [2]string{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)})
-	rowData = append(rowData, [2]string{"Cache:", config.Global.Cache})
+	rowData = append(rowData, [2]string{"Total Files:", fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Media Size:", bToMb(uint64(folderSize(config.Global.Root)))})
 	rowData = append(rowData, [2]string{"Cache Size:", bToMb(uint64(folderSize(config.Global.Cache)))})
-	rowData = append(rowData, [2]string{"Prefix:", config.Global.Prefix})
+	rowData = append(rowData, [2]string{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)})
 	rowData = append(rowData, [2]string{"Public Url:", config.Global.PublicUrl})
+	rowData = append(rowData, [2]string{"Prefix:", config.Global.Prefix})
 	rowData = append(rowData, [2]string{"-", ""})
-	rowData = append(rowData, [2]string{"Alloc:", bToMb(m.Alloc)})
-	rowData = append(rowData, [2]string{"TotalAlloc:", bToMb(m.TotalAlloc)})
-	rowData = append(rowData, [2]string{"Sys:", bToMb(m.Sys)})
-	rowData = append(rowData, [2]string{"NumGC:", fmt.Sprint(m.NumGC)})
+	rowData = append(rowData, [2]string{"Alloc Memory:", bToMb(m.Alloc)})
+	rowData = append(rowData, [2]string{"Sys Memory:", bToMb(m.Sys)})
 	rowData = append(rowData, [2]string{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())})
 	rowData = append(rowData, [2]string{"-", ""})
 	rowData = append(rowData, [2]string{"App Version:", BuildVersion})
