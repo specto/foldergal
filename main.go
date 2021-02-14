@@ -47,6 +47,8 @@ var (
 	rssFreshness    = 2 * 168 * time.Hour
 )
 
+var faultyDate, _ = time.Parse("2006-01-02", "0001-01-02")
+
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -273,6 +275,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
+
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
 		if gallery.ContainsDotFile(child.Name()) {
@@ -290,6 +293,11 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 			thumbPath := gallery.EscapePath(filepath.Join(folderPath, child.Name()))
 			thumb = thumbPath + "?thumb"
 			class = mediaClass
+		}
+		if child.ModTime().Before(faultyDate) {
+			// TODO: find the reason for afero bad dates and remove this fix
+			logger.Printf("Invalid date detected for %s", childPath)
+			child, _ = storage.Root.Stat(filepath.Join(folderPath, child.Name()))
 		}
 		children = append(children, templates.ListItem{
 			Id:      gallery.EscapePath(child.Name()),
@@ -327,6 +335,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
+
 	err = templates.Html.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
@@ -683,11 +692,13 @@ func main() {
 	if !config.Global.Quiet {
 		log.Printf("Serving files from: %v", config.Global.Root)
 	}
+	baseRoot := afero.NewReadOnlyFs(
+		afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root))
 	if config.Global.CacheExpiresAfter == 0 {
-		storage.Root = afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root))
+		storage.Root = baseRoot
 	} else {
 		storage.Root = afero.NewCacheOnReadFs(
-			afero.NewReadOnlyFs(afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root)),
+			baseRoot,
 			afero.NewMemMapFs(),
 			time.Duration(config.Global.CacheExpiresAfter))
 	}
