@@ -14,5 +14,6 @@
     "discordName": "Gallery",
     "thumbWidth": 400,
     "thumbHeight": 400,
+    "timeZone": "Local",
     "quiet": false
 }

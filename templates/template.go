@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"foldergal/config"
 	"foldergal/storage"
 	"html/template"
 	"io/ioutil"
@@ -79,6 +80,10 @@ var (
 	Html *template.Template
 )
 
+func formatDate(date time.Time) string {
+	return date.In(config.Global.TimeLocation).Format("2006-01-02 15:04 Z07")
+}
+
 func parseTemplates(templs ...string) (t *template.Template, err error) {
 	t = template.New("_all")
 
@@ -88,7 +93,9 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 			panic(errF)
 		}
 		listBytes, _ := ioutil.ReadAll(listFile)
-		if _, err = t.New(fmt.Sprint("_", i)).Parse(string(listBytes)); err != nil {
+		if _, err = t.New(fmt.Sprint("_", i)).Funcs(
+			template.FuncMap{"formatDate": formatDate},
+		).Parse(string(listBytes)); err != nil {
 			return
 		}
 	}

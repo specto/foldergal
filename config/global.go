@@ -35,7 +35,9 @@ type Configuration struct {
 	PublicUrl         string `json:"-"`
 	ThumbWidth        int
 	ThumbHeight       int
-	Log               *log.Logger `json:"-"`
+	TimeZone          string
+	TimeLocation      *time.Location `json:"-"`
+	Log               *log.Logger    `json:"-"`
 }
 
 func (c *Configuration) FromJson(configFile string) (err error) {

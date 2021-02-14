@@ -654,6 +654,12 @@ func main() {
 	config.Global.Home, _ = filepath.Abs(config.Global.Home)
 	config.Global.Root, _ = filepath.Abs(config.Global.Root)
 
+	var err error
+	config.Global.TimeLocation, err = time.LoadLocation(config.Global.TimeZone)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Set up log file
 	logFile := filepath.Join(config.Global.Home, "foldergal.log")
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,

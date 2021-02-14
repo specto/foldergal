@@ -88,7 +88,7 @@
             {{- end }}
             href="{{- .Url -}}
     {{- if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}?overlay{{- end -}}"
-            title="{{ .Name }} [{{ .ModTime }}]">
+            title="{{ .Name }} [{{ .ModTime | formatDate }}]">
                 <span>
                     {{ if .Thumb -}}
                         <img src="{{ .Thumb }}" alt="{{ .Name }}" />
