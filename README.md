@@ -154,3 +154,4 @@ TODO
 * [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
 * [ ] Combine svg icons in a single file and `<use>` sprites 
 * [ ] Fix misterious date bug 0001-01-01 on freebsd
+* [ ] Rewrite embedded files using the `go:embed` directive available in go 1.16
