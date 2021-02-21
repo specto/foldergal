@@ -155,3 +155,6 @@ TODO
 * [ ] Combine svg icons in a single file and `<use>` sprites 
 * [ ] Fix misterious date bug 0001-01-01 on freebsd
 * [ ] Rewrite embedded files using the `go:embed` directive available in go 1.16
+* [ ] Rewrite info page to use `runtime/metrics` package
+* [ ] Rewrite HTTP handlers using middleware e.g.
+  https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/
