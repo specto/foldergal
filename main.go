@@ -239,7 +239,7 @@ func readDir(fs afero.Fs, dirname string) (list []os.FileInfo, err error) {
 		return
 	}
 	list, err = f.Readdir(-1)
-	f.Close()
+	_ = f.Close()
 	return
 }
 

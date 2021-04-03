@@ -13,7 +13,7 @@ import (
 
 func main() {
 	f, err := os.Create("storage/generated.go")
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err != nil {
 		panic(err)
 	}
