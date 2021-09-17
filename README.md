@@ -158,3 +158,4 @@ TODO
 * [ ] Rewrite info page to use `runtime/metrics` package
 * [ ] Rewrite HTTP handlers using middleware e.g.
   https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/
+* [ ] Exclude thumbs.db files
