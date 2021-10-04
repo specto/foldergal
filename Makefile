@@ -108,3 +108,7 @@ update: ## Update go modules
 .PHONY: tags
 tags: ## Create tags for all go code
 	uctags **/*.go
+
+.PHONY: version
+version: ## Show current version
+	@echo $(VERSION)
