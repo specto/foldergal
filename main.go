@@ -271,7 +271,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	folderInfo, _ := storage.Root.Stat(folderPath)
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
-		parentUrl = path.Join(folderPath, "..")
+		parentUrl = path.Join(urlPrefix, folderPath, "..")
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
