@@ -290,8 +290,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		thumb := urlPrefix + "/?static=folder.svg"
 		class := "folder"
 		if !child.IsDir() {
-			thumbPath := gallery.EscapePath(filepath.Join(folderPath, child.Name()))
-			thumb = thumbPath + "?thumb"
+			thumb = gallery.EscapePath(filepath.Join(urlPrefix, folderPath, child.Name())) + "?thumb"
 			class = mediaClass
 		}
 		if child.ModTime().Before(faultyDate) {
