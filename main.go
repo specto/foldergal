@@ -206,20 +206,26 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	runtime.ReadMemStats(&m)
 
 	var rowData [][2]string
-	rowData = append(rowData, [2]string{"Total Files:", fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))})
-	rowData = append(rowData, [2]string{"Media Size:", bToMb(uint64(folderSize(config.Global.Root)))})
-	rowData = append(rowData, [2]string{"Cache Size:", bToMb(uint64(folderSize(config.Global.Cache)))})
-	rowData = append(rowData, [2]string{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)})
+	rowData = append(rowData, [2]string{"Total Files:",
+		fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Media Size:",
+		bToMb(uint64(folderSize(config.Global.Root)))})
+	rowData = append(rowData, [2]string{"Cache Size:",
+		bToMb(uint64(folderSize(config.Global.Cache)))})
+	rowData = append(rowData, [2]string{"Folders Watched:",
+		fmt.Sprint(gallery.WatchedFolders)})
 	rowData = append(rowData, [2]string{"Public Url:", config.Global.PublicUrl})
 	rowData = append(rowData, [2]string{"Prefix:", config.Global.Prefix})
 	rowData = append(rowData, [2]string{"-", ""})
 	rowData = append(rowData, [2]string{"Alloc Memory:", bToMb(m.Alloc)})
 	rowData = append(rowData, [2]string{"Sys Memory:", bToMb(m.Sys)})
-	rowData = append(rowData, [2]string{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())})
+	rowData = append(rowData, [2]string{"Goroutines:",
+		fmt.Sprint(runtime.NumGoroutine())})
 	rowData = append(rowData, [2]string{"-", ""})
 	rowData = append(rowData, [2]string{"App Version:", BuildVersion})
 	rowData = append(rowData, [2]string{"App Build Date:", BuildTimestamp})
-	rowData = append(rowData, [2]string{"Service Uptime:", fmt.Sprint(time.Since(startTime))})
+	rowData = append(rowData, [2]string{"Service Uptime:",
+		fmt.Sprint(time.Since(startTime))})
 
 	page := templates.TwoColTable{
 		Page: templates.Page{
