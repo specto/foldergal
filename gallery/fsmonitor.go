@@ -71,8 +71,8 @@ func notify(items []interface{}) {
 
 	for _, item := range items {
 		sItem := fmt.Sprint(item)
-		if filepath.Ext(sItem) == "" {
-			// Ignore non files
+		if filepath.Ext(sItem) == "" || !IsValidMedia(sItem) {
+			// Ignore non files and non media files
 			continue
 		}
 		if path, err := filepath.Rel(config.Global.Root, sItem); err == nil {
