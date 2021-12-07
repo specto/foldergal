@@ -1,25 +1,27 @@
 package storage
 
-import "github.com/spf13/afero"
+import (
+	"embed"
+	"net/http"
+	"github.com/spf13/afero"
+)
 
 var (
 	// Internal resources: images, html, css...
-	Internal afero.Fs
+	//go:embed res
+	Internal embed.FS
+	InternalHttp http.FileSystem
 	// The main storage
 	Root afero.Fs
 	// Thumbnails live here
 	Cache afero.Fs
 )
 
+
 func init() {
-	Internal = afero.NewMemMapFs()
-	for name, data := range generateFiles() {
-		file, err := Internal.Create(name)
-		if err != nil {
-			panic(err)
-		}
-		_, _ = file.Write(data)
-	}
-	// Seal as readonly
-	Internal = afero.NewReadOnlyFs(Internal)
+	InternalHttp = http.FS(Internal)
+// 	fmt.Println(content)
+// 	fmt.Println("LISTING CONTENT...")
+// 	fmt.Println(content.ReadDir("static"))
+// // 	Internal = content
 }

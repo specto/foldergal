@@ -27,8 +27,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-//go:generate go run storage/embed.go
-
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
 		return false
@@ -395,7 +393,8 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
-	f, err := storage.Internal.Open(resFile)
+	f, err := storage.InternalHttp.Open(resFile)
+	defer f.Close()
 	if err != nil {
 		fail404(w, r)
 		return

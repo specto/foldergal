@@ -148,14 +148,14 @@ func (f *SvgFile) Thumb() *afero.File {
 	return &file
 }
 
-func (f *SvgFile) ThumbExists() (exists bool) {
-	exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
+func (f *SvgFile) ThumbExists() bool {
+	exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
 	// Ensure we refresh Thumb stat
 	f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-	return
+	return exists
 }
 
-func (f *SvgFile) ThumbExpired() (expired bool) {
+func (f *SvgFile) ThumbExpired() bool {
 	if !f.ThumbExists() {
 		return true
 	}
@@ -203,29 +203,31 @@ type AudioFile struct {
 
 func (f *AudioFile) Thumb() *afero.File {
 	thumb, _ := storage.Internal.Open("res/audio.svg")
+	defer thumb.Close()
 	return &thumb
 }
 
-func (f *AudioFile) ThumbExists() (exists bool) {
+func (f *AudioFile) ThumbExists() bool {
 	var err error
-	exists, err = afero.Exists(storage.Internal, "res/audio.svg")
+	thumb, err := storage.Internal.Open("res/audio.svg")
+	defer thumb.Close()
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = storage.Internal.Stat("res/audio.svg")
+	f.Media().ThumbInfo, err = thumb.Stat()
 	if err != nil {
 		return false
 	}
-	return
-}
-
-func (f *AudioFile) ThumbExpired() (expired bool) {
 	return true
 }
 
-func (f *AudioFile) ThumbGenerate() (err error) {
+func (f *AudioFile) ThumbExpired() bool {
+	return true
+}
+
+func (f *AudioFile) ThumbGenerate() error {
 	_ = f.ThumbExists()
-	return
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +241,8 @@ func (f *VideoFile) Thumb() *afero.File {
 	}
 	if config.Global.Ffmpeg == "" {
 		thumb, _ := storage.Internal.Open("res/video.svg")
-		return &thumb
+		athumb := thumb.(afero.File)
+		return &athumb
 	}
 	file, err := storage.Cache.Open(f.ThumbPath)
 	if err != nil {
@@ -248,27 +251,27 @@ func (f *VideoFile) Thumb() *afero.File {
 	return &file
 }
 
-func (f *VideoFile) ThumbExists() (exists bool) {
+func (f *VideoFile) ThumbExists() bool {
 	if config.Global.Ffmpeg != "" { // Check if we generated thumbnail already
-		exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
+		exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
 		// Ensure we refresh Thumb stat
 		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-		return
+		return exists
 	}
 	// Using internal images
-	var err error
-	exists, err = afero.Exists(storage.Internal, "res/video.svg")
+	thumb, err := storage.Internal.Open("res/video.svg")
+	defer thumb.Close()
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = storage.Internal.Stat("res/video.svg")
+	f.Media().ThumbInfo, err = thumb.Stat()
 	if err != nil {
 		return false
 	}
-	return
+	return true
 }
 
-func (f *VideoFile) ThumbExpired() (expired bool) {
+func (f *VideoFile) ThumbExpired() bool {
 	if !f.ThumbExists() {
 		return true
 	}
@@ -332,31 +335,32 @@ type PdfFile struct {
 
 func (f *PdfFile) Thumb() *afero.File {
 	thumb, _ := storage.Internal.Open("res/pdf.svg")
-	return &thumb
+	athumb := thumb.(afero.File)
+	return &athumb
 }
 
-func (f *PdfFile) ThumbExists() (exists bool) {
-	var err error
-	exists, err = afero.Exists(storage.Internal, "res/pdf.svg")
+func (f *PdfFile) ThumbExists() bool {
+	thumb, err := storage.Internal.Open("res/pdf.svg")
+	defer thumb.Close()
 	if err != nil {
 		return false
 	}
-	f.Media().ThumbInfo, err = storage.Internal.Stat("res/pdf.svg")
+	f.Media().ThumbInfo, err = thumb.Stat()
 	if err != nil {
 		return false
 	}
-	return
-}
-
-func (f *PdfFile) ThumbExpired() (expired bool) {
 	return true
 }
 
-func (f *PdfFile) ThumbGenerate() (err error) {
+func (f *PdfFile) ThumbExpired() bool {
+	return true
+}
+
+func (f *PdfFile) ThumbGenerate() error {
 	if !f.ThumbExists() {
 		return errors.New("no video thumbnail")
 	}
-	return
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
