@@ -104,7 +104,7 @@ func (f *ImageFile) ThumbGenerate() (err error) {
 		img  image.Image
 	)
 	file, err = storage.Root.Open(f.FullPath)
-	defer func() { _ = file.Close() }()
+	defer file.Close()
 	if err != nil {
 		return
 	}
@@ -170,7 +170,7 @@ func (f *SvgFile) ThumbGenerate() (err error) {
 		contents []byte
 	)
 	file, err = storage.Root.Open(f.FullPath)
-	defer func() { _ = file.Close() }()
+	defer file.Close()
 	if err != nil {
 		return
 	}
@@ -203,7 +203,6 @@ type AudioFile struct {
 
 func (f *AudioFile) Thumb() *afero.File {
 	thumb, _ := storage.Internal.Open("res/audio.svg")
-	defer thumb.Close()
 	return &thumb
 }
 
@@ -225,7 +224,7 @@ func (f *AudioFile) ThumbExpired() bool {
 	return true
 }
 
-func (f *AudioFile) ThumbGenerate() error {
+func (f *AudioFile) ThumbGenerate() (err error) {
 	_ = f.ThumbExists()
 	return nil
 }
@@ -241,8 +240,7 @@ func (f *VideoFile) Thumb() *afero.File {
 	}
 	if config.Global.Ffmpeg == "" {
 		thumb, _ := storage.Internal.Open("res/video.svg")
-		athumb := thumb.(afero.File)
-		return &athumb
+		return &thumb
 	}
 	file, err := storage.Cache.Open(f.ThumbPath)
 	if err != nil {
@@ -335,8 +333,7 @@ type PdfFile struct {
 
 func (f *PdfFile) Thumb() *afero.File {
 	thumb, _ := storage.Internal.Open("res/pdf.svg")
-	athumb := thumb.(afero.File)
-	return &athumb
+	return &thumb
 }
 
 func (f *PdfFile) ThumbExists() bool {

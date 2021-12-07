@@ -9,7 +9,8 @@ import (
 var (
 	// Internal resources: images, html, css...
 	//go:embed res
-	Internal embed.FS
+	embedded embed.FS
+	Internal afero.Fs
 	InternalHttp http.FileSystem
 	// The main storage
 	Root afero.Fs
@@ -19,7 +20,8 @@ var (
 
 
 func init() {
-	InternalHttp = http.FS(Internal)
+	InternalHttp = http.FS(embedded)
+	Internal = afero.NewReadOnlyFs(afero.FromIOFS{embedded})
 // 	fmt.Println(content)
 // 	fmt.Println("LISTING CONTENT...")
 // 	fmt.Println(content.ReadDir("static"))

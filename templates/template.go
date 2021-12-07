@@ -92,6 +92,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 		if errF != nil {
 			panic(errF)
 		}
+		defer listFile.Close()
 		listBytes, _ := ioutil.ReadAll(listFile)
 		if _, err = t.New(fmt.Sprint("_", i)).Funcs(
 			template.FuncMap{"formatDate": formatDate},
@@ -111,6 +112,7 @@ func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
 		if errF != nil {
 			panic(errF)
 		}
+		defer listFile.Close()
 		listBytes, _ := ioutil.ReadAll(listFile)
 		if _, err = t.New(fmt.Sprint("_", i)).Parse(
 			string(listBytes)); err != nil {

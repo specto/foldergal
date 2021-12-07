@@ -46,6 +46,7 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 	if file, err = os.Open(configFile); err != nil {
 		return
 	}
+	defer file.Close()
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&c)
