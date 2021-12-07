@@ -113,7 +113,8 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 			FullPath: fullPath, ThumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "audio/") {
 		contentType = "image/svg+xml"
-		f = &gallery.AudioFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
+		f = &gallery.AudioFile{MediaFile: gallery.MediaFile{
+			FullPath: fullPath, ThumbPath: thumbPath}}
 	} else if strings.HasPrefix(mimeType, "video/") {
 		contentType = "image/svg+xml"
 		f = &gallery.VideoFile{MediaFile: gallery.MediaFile{

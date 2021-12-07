@@ -170,6 +170,17 @@ main .title b
 
 main li:not(.folder) .title b { font-weight: normal; }
 
+main .audio a > span::before
+{
+	content: "🔈";
+	display: block;
+	position: absolute;
+	left: 0.2em;
+	bottom: 0.5em;
+	color: black;
+	font-size: 2em;
+}
+
 main .video a > span::before
 {
 	content: "🎥";

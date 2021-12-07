@@ -148,6 +148,7 @@ TODO
 ---
 
 * [ ] Generate pdf thumbnails (imagemagick?)
+* [x] Generate audio file thumbnails 
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
 * [ ] Use touch events for overlay media navigation

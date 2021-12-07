@@ -202,12 +202,27 @@ type AudioFile struct {
 }
 
 func (f *AudioFile) Thumb() *afero.File {
-	thumb, _ := storage.Internal.Open("res/audio.svg")
-	return &thumb
+	if !f.ThumbExists() {
+		return nil
+	}
+	if config.Global.Ffmpeg == "" {
+		thumb, _ := storage.Internal.Open("res/audio.svg")
+		return &thumb
+	}
+	file, err := storage.Cache.Open(f.ThumbPath)
+	if err != nil {
+		return nil
+	}
+	return &file
 }
 
 func (f *AudioFile) ThumbExists() bool {
-	var err error
+	if config.Global.Ffmpeg != "" { // Check if we generated thumbnail already
+		exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
+		// Ensure we refresh Thumb stat
+		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
+		return exists
+	}
 	thumb, err := storage.Internal.Open("res/audio.svg")
 	defer thumb.Close()
 	if err != nil {
@@ -221,12 +236,95 @@ func (f *AudioFile) ThumbExists() bool {
 }
 
 func (f *AudioFile) ThumbExpired() bool {
-	return true
+	if !f.ThumbExists() {
+		return true
+	}
+	m := f.Media()
+	diff := m.ThumbInfo.ModTime().Sub(m.FileInfo.ModTime())
+	return diff < 0*time.Second
 }
 
 func (f *AudioFile) ThumbGenerate() (err error) {
-	_ = f.ThumbExists()
-	return nil
+	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
+		return
+	}
+	audioFile := filepath.Join(config.Global.Root, f.FullPath)
+	thumbSize := fmt.Sprintf("%dx%d", config.Global.ThumbWidth, config.Global.ThumbHeight)
+
+	// Check for cover art
+	// ffmpeg -i mp3.mp3 -an -vcodec copy cover.png
+	// ffmpeg -i ?? -filter:v scale={thumbw}:-2 -an ??.jpg
+	coverCmd := exec.Command(config.Global.Ffmpeg,
+		"-hide_banner",
+		"-loglevel", "quiet",
+		"-i", audioFile,
+		"-filter:v", fmt.Sprintf("scale=%d:-2", config.Global.ThumbWidth),
+		"-an", "-f", "image2pipe", "-")
+	outCover, _ := coverCmd.Output()
+	if len(outCover) != 0 {
+		err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+		if err != nil {
+			return
+		}
+		_, err = storage.Cache.Create(f.ThumbPath)
+		if err != nil {
+			return
+		}
+		// Save the cover art as thumbnail
+		err = afero.WriteFile(storage.Cache, f.ThumbPath, outCover, os.ModePerm)
+		f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+		return
+	}
+	// Generate waveform
+
+	// ffmpeg \
+	// -hide_banner -loglevel panic \
+	// -i "{in}" \
+	// -filter_complex \
+	// 		"[0:a]aformat=channel_layouts=mono, \
+	// 		compand=gain=5, \
+	// 		showwavespic=s=400x400:colors=#0c8cc8[fg]; \
+	// 		color=s=400x400:color=#d7ebf2, \
+	// 		drawgrid=width=iw/6:height=ih/6:color=#0c8cc8@0.3[bg]; \
+	// 		[bg][fg]overlay=format=rgb, \
+	// 		drawbox=x=(iw-w)/2:y=(ih-h)/2:w=iw:h=1:color=#d7ebf2" \
+	// -vframes 1 \
+	// -y "{out}"
+	filter := []string{
+		"[0:a]aformat=channel_layouts=mono,",
+		"compand=gain=5,",
+		"showwavespic=s="+thumbSize+":colors=#0c8cc8[fg];",
+		"color=s="+thumbSize+":color=#d7ebf2,",
+		"drawgrid=width=iw/6:height=ih/6:color=#0c8cc8@0.3[bg];",
+		"[bg][fg]overlay=format=rgb,",
+		"drawbox=x=(iw-w)/2:y=(ih-h)/2:w=iw:h=1:color=#d7ebf2",
+	}
+	// Generate the waveform to stdout
+	thumbCmd := exec.Command(config.Global.Ffmpeg,
+		"-hide_banner",
+		"-loglevel", "quiet",
+		"-i", audioFile,
+		"-filter_complex", strings.Join(filter, " "),
+		"-vframes", "1",
+		"-f", "image2pipe", "-")
+	outThumb, _ := thumbCmd.Output()
+	if len(outThumb) == 0 { // Failed thumbnail
+		return errors.New("error: empty thumbnail: " + f.ThumbPath)
+	}
+
+	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	if err != nil {
+		return
+	}
+	_, err = storage.Cache.Create(f.ThumbPath)
+	if err != nil {
+		return
+	}
+	// Save thumbnail
+	err = afero.WriteFile(storage.Cache, f.ThumbPath, outThumb, os.ModePerm)
+	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
