@@ -741,11 +741,15 @@ func main() {
 	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
+	ffmpegPath := config.Global.Ffmpeg
 	if config.Global.Ffmpeg == "" {
-		if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
-			config.Global.Ffmpeg = ffmpegPath
-			logger.Printf("Found ffmpeg at: %v", ffmpegPath)
-		}
+		ffmpegPath = "ffmpeg"
+	}
+	if ffmpegPath, err := exec.LookPath(ffmpegPath); err == nil {
+		config.Global.Ffmpeg = ffmpegPath
+		logger.Printf("Found ffmpeg at: %v", ffmpegPath)
+	} else {
+		config.Global.Ffmpeg = ""
 	}
 
 	// Server start sequence

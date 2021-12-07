@@ -278,6 +278,8 @@ func (f *VideoFile) ThumbExpired() bool {
 	return diff < 0*time.Second
 }
 
+var reDuration = regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
+
 func (f *VideoFile) ThumbGenerate() (err error) {
 	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
 		return
@@ -289,8 +291,8 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 	cmd := exec.Command(config.Global.Ffmpeg, "-hide_banner", "-i",
 		movieFile) // #nosec Configuration is provided by the admin
 	out, _ := cmd.CombinedOutput()
-	re := regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
-	match := re.FindSubmatch(out)
+
+	match := reDuration.FindSubmatch(out)
 	if len(match) < 2 {
 		return errors.New("error: cannot find video duration: " + f.FullPath)
 	}

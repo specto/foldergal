@@ -97,7 +97,6 @@ file descriptor limit. Like running `ulimit -n 100000` in the current terminal.
 Developer notes
 ---
 
-
 1. `go generate`
 1. `go build`
 1. ... run
