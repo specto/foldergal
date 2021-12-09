@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"testing"
@@ -10,9 +11,8 @@ import (
 func TestFromJson(t *testing.T) {
 	var testCfg Configuration
 
-	fileNotFound := "open ./testdata/non_existing.json: no such file or directory"
-	if err := testCfg.FromJson("./testdata/non_existing.json"); err == nil || err.Error() != fileNotFound {
-		t.Errorf("Expected error '%v', got '%v'", fileNotFound, err)
+	if err := testCfg.FromJson("./testdata/non_existing.json"); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Expected ErrNotExist error, got '%v'", err)
 	}
 
 	badKeyErr := `json: unknown field "evil"`

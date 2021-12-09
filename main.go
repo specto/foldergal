@@ -3,13 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"foldergal/config"
 	"foldergal/gallery"
 	"foldergal/storage"
 	"foldergal/templates"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -43,9 +43,8 @@ var (
 	startTime       time.Time
 	urlPrefix       string
 	rssFreshness    = 2 * 168 * time.Hour
+	faultyDate, _   = time.Parse("2006-01-02", "0001-01-02")
 )
-
-var faultyDate, _ = time.Parse("2006-01-02", "0001-01-02")
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -80,14 +79,14 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	_ = templates.Html.ExecuteTemplate(w, "error", &page)
 }
 
-var dangerousPathSymbols = regexp.MustCompile("[:]")
+var dangerousPathSymbols = regexp.MustCompile(":")
 
-func sanitizePath(path string) (sanitized string) {
-	if vol := filepath.VolumeName(path); vol != "" {
-		sanitized = strings.TrimPrefix(path, vol)
+func sanitizePath(p string) (sanitized string) {
+	if vol := filepath.VolumeName(p); vol != "" {
+		sanitized = strings.TrimPrefix(p, vol)
 		sanitized = strings.TrimPrefix(sanitized, "\\")
 	} else {
-		sanitized = path
+		sanitized = p
 	}
 	dangerousPathSymbols.ReplaceAllString(sanitized, "_")
 	return
@@ -95,58 +94,67 @@ func sanitizePath(path string) (sanitized string) {
 
 // Serve image previews of Media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
-	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
-	ext := filepath.Ext(fullPath)
-	mimeType := mime.TypeByExtension(ext)
-	var f gallery.Media
-	// All thumbnails are jpeg... most of the time
-	thumbPath := sanitizePath(fullPath) + ".jpg"
-	contentType := "image/jpeg"
-
-	if strings.HasPrefix(mimeType, "image/svg") {
-		contentType = mimeType
-		thumbPath = fullPath // SVG are their own thumbnails
-		f = &gallery.SvgFile{MediaFile: gallery.MediaFile{
-			FullPath: fullPath, ThumbPath: thumbPath}}
-	} else if strings.HasPrefix(mimeType, "image/") {
-		f = &gallery.ImageFile{MediaFile: gallery.MediaFile{
-			FullPath: fullPath, ThumbPath: thumbPath}}
-	} else if strings.HasPrefix(mimeType, "audio/") {
+	var (
+		err         error
+		f           gallery.Media
+		contentType = "image/jpeg"
+		fullPath    = strings.TrimPrefix(r.URL.Path, urlPrefix)
+		// All thumbnails are jpegs... most of the time
+		thumbPath = sanitizePath(fullPath) + ".jpg"
+		mediaType = mime.TypeByExtension(filepath.Ext(fullPath))
+	)
+	switch {
+	case strings.HasPrefix(mediaType, "image/svg"):
+		contentType = mediaType
+		f, err = gallery.NewSvg(fullPath)
+	case strings.HasPrefix(mediaType, "image/"):
+		f, err = gallery.NewImage(fullPath, thumbPath)
+	case strings.HasPrefix(mediaType, "audio/"):
 		contentType = "image/svg+xml"
-		f = &gallery.AudioFile{MediaFile: gallery.MediaFile{
-			FullPath: fullPath, ThumbPath: thumbPath}}
-	} else if strings.HasPrefix(mimeType, "video/") {
+		f, err = gallery.NewAudio(fullPath, thumbPath)
+	case strings.HasPrefix(mediaType, "video/"):
 		contentType = "image/svg+xml"
-		f = &gallery.VideoFile{MediaFile: gallery.MediaFile{
-			FullPath: fullPath, ThumbPath: thumbPath}}
-	} else if strings.HasPrefix(mimeType, "application/pdf") {
+		f, err = gallery.NewVideo(fullPath, thumbPath)
+	case strings.HasPrefix(mediaType, "application/pdf"):
 		contentType = "image/svg+xml"
-		f = &gallery.PdfFile{MediaFile: gallery.MediaFile{FullPath: fullPath}}
-	} else { // Unrecognized mime type
+		f, err = gallery.NewPdf(fullPath, thumbPath)
+	default: // Unrecognized mime type
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
-	if !f.FileExists() {
-		renderEmbeddedFile("res/broken.svg", w, r)
-		return
-	}
-	if f.ThumbExpired() {
-		err := f.ThumbGenerate()
-		if err != nil {
-			logger.Print(err)
-			renderEmbeddedFile("res/broken.svg", w, r)
+	if err != nil {
+		if errors.Is(err, gallery.ErrNotValid) || errors.Is(err, gallery.ErrFileNotFound) {
+			fail404(w, r)
 			return
 		}
-	}
-	thumb := f.Thumb()
-	if thumb == nil || *thumb == nil {
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
-	if !strings.HasSuffix(f.Media().ThumbInfo.Name(), ".jpg") {
+	err = gallery.GenerateThumb(f)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+	thumb, err := f.Thumb()
+	if err != nil {
+		if errors.Is(err, gallery.ErrThumbNotPossible) {
+			switch {
+			case strings.HasPrefix(mediaType, "audio/"):
+				renderEmbeddedFile("res/audio.svg", w, r)
+				return
+			case strings.HasPrefix(mediaType, "video/"):
+				renderEmbeddedFile("res/video.svg", w, r)
+				return
+			}
+		}
+		logger.Print(err)
+		renderEmbeddedFile("res/broken.svg", w, r)
+		return
+	}
+	if !strings.HasSuffix(f.ThumbName(), ".jpg") {
 		w.Header().Set("Content-Type", contentType)
 	}
-	http.ServeContent(w, r, f.Media().ThumbPath, f.Media().ThumbInfo.ModTime(), *thumb)
+	http.ServeContent(w, r, f.ThumbPath(), f.ThumbModTime(), thumb)
 }
 
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
@@ -204,27 +212,22 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	var rowData [][2]string
-	rowData = append(rowData, [2]string{"Total Files:",
-		fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))})
-	rowData = append(rowData, [2]string{"Media Size:",
-		bToMb(uint64(folderSize(config.Global.Root)))})
-	rowData = append(rowData, [2]string{"Cache Size:",
-		bToMb(uint64(folderSize(config.Global.Cache)))})
-	rowData = append(rowData, [2]string{"Folders Watched:",
-		fmt.Sprint(gallery.WatchedFolders)})
-	rowData = append(rowData, [2]string{"Public Url:", config.Global.PublicUrl})
-	rowData = append(rowData, [2]string{"Prefix:", config.Global.Prefix})
-	rowData = append(rowData, [2]string{"-", ""})
-	rowData = append(rowData, [2]string{"Alloc Memory:", bToMb(m.Alloc)})
-	rowData = append(rowData, [2]string{"Sys Memory:", bToMb(m.Sys)})
-	rowData = append(rowData, [2]string{"Goroutines:",
-		fmt.Sprint(runtime.NumGoroutine())})
-	rowData = append(rowData, [2]string{"-", ""})
-	rowData = append(rowData, [2]string{"App Version:", BuildVersion})
-	rowData = append(rowData, [2]string{"App Build Date:", BuildTimestamp})
-	rowData = append(rowData, [2]string{"Service Uptime:",
-		fmt.Sprint(time.Since(startTime))})
+	rowData := [][2]string{
+		{"Total Files:", fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))},
+		{"Media Folder Size:", bToMb(uint64(folderSize(config.Global.Root)))},
+		{"Thumbnail Folder Size:", bToMb(uint64(folderSize(config.Global.Cache)))},
+		{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)},
+		{"Public Url:", config.Global.PublicUrl},
+		{"Prefix:", config.Global.Prefix},
+		{"-", ""},
+		{"Alloc Memory:", bToMb(m.Alloc)},
+		{"Sys Memory:", bToMb(m.Sys)},
+		{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())},
+		{"-", ""},
+		{"App Version:", BuildVersion},
+		{"App Build Date:", BuildTimestamp},
+		{"Service Uptime:", time.Since(startTime).String()},
+	}
 
 	page := templates.TwoColTable{
 		Page: templates.Page{
@@ -297,6 +300,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		if !child.IsDir() {
 			thumb = gallery.EscapePath(filepath.Join(urlPrefix, folderPath, child.Name())) + "?thumb"
 			class = mediaClass
+			if config.Global.Ffmpeg == "" {
+				class += " nothumb"
+			}
 		}
 		if child.ModTime().Before(faultyDate) {
 			// TODO: find the reason for afero bad dates and remove this fix
@@ -313,7 +319,6 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 			W:       config.Global.ThumbWidth,
 			H:       config.Global.ThumbHeight,
 		})
-		//logger.Printf("%40v %v\n", child.ModTime(), childPath)
 	}
 	if opts.Sort == "date" {
 		sort.Slice(children, func(i, j int) bool {
@@ -339,7 +344,6 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
-
 	err = templates.Html.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
@@ -369,28 +373,27 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
-	thumbPath := strings.TrimSuffix(fullPath, filepath.Ext(fullPath)) + ".jpg"
-	var err error
-	m := gallery.MediaFile{
-		FullPath:  fullPath,
-		ThumbPath: thumbPath,
-	}
-	m.FileInfo, err = storage.Root.Stat(fullPath)
+	media, err := gallery.NewMedia(fullPath)
 	if err != nil {
+		if errors.Is(err, gallery.ErrNotValid) {
+			// Hide invalid media as non-existing
+			fail404(w, r)
+			return
+		}
 		fail500(w, err, r)
 		return
 	}
-	if m.FileInfo.IsDir() || !gallery.IsValidMedia(fullPath) {
-		fail404(w, r)
-		return
-	}
-	contents := m.File()
-	if contents == nil {
-		fail404(w, r)
+	contents, err := media.File()
+	if err != nil {
+		if errors.Is(err, gallery.ErrFileNotFound) {
+			fail404(w, r)
+			return
+		}
+		fail500(w, err, r)
 		return
 	}
 
-	http.ServeContent(w, r, fullPath, m.FileInfo.ModTime(), *contents)
+	http.ServeContent(w, r, fullPath, media.FileModTime(), contents)
 }
 
 func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
@@ -409,7 +412,7 @@ func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) 
 	http.ServeContent(w, r, name, BuildTime, f)
 }
 
-func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
+func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	loc, _ := time.LoadLocation("UTC")
 
 	// Limit rss items only to the most fresh
@@ -482,7 +485,9 @@ func rssHandler(t string, w http.ResponseWriter, _ *http.Request) {
 		LastDate:  lastDateStr,
 		Items:     rssItems,
 	}
-	_ = templates.Rss.ExecuteTemplate(w, typeRss, &rss)
+	if err := templates.Rss.ExecuteTemplate(w, typeRss, &rss); err != nil {
+		fail500(w, err, r)
+	}
 }
 
 // A secondary router.
@@ -677,12 +682,11 @@ func main() {
 	// Set up log file
 	logFile := filepath.Join(config.Global.Home, "foldergal.log")
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0644) // #nosec Permit everybody to read the log file
+		0o0644) // #nosec Permit everybody to read the log file
 	if err != nil {
 		log.Print("Error: Log File cannot be created.")
 		log.Fatal(err)
 	}
-	defer func() { _ = logging.Close() }()
 	config.Global.Log = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
 	logger = config.Global.Log
 	if !config.Global.Quiet {
@@ -710,7 +714,7 @@ func main() {
 
 	// Set up caching folder
 	config.Global.Cache = filepath.Join(config.Global.Home, cacheFolderName)
-	err = os.MkdirAll(config.Global.Cache, 0750)
+	err = os.MkdirAll(config.Global.Cache, 0o0750)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -780,7 +784,7 @@ func main() {
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
-		pem, _ := ioutil.ReadFile(config.Global.TlsCrt)
+		pem, _ := os.ReadFile(config.Global.TlsCrt)
 		caCertPool.AppendCertsFromPEM(pem)
 		tlsConfig.RootCAs = caCertPool
 

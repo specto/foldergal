@@ -170,27 +170,22 @@ main .title b
 
 main li:not(.folder) .title b { font-weight: normal; }
 
-main .audio a > span::before
+main .video:not(.nothumb) a > span::before,
+main .audio:not(.nothumb) a > span::before
 {
-	content: "🔈";
-	display: block;
-	position: absolute;
-	left: 0.2em;
-	bottom: 0.5em;
-	color: black;
-	font-size: 2em;
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 1em;
+    font-size: 2em;
+    background-color: rgba(237, 237, 237, 0.8);
+    border-bottom-right-radius: 0.2em;
+    border-top-right-radius: 0.2em;
+    padding: 0.2em;
 }
 
-main .video a > span::before
-{
-	content: "🎥";
-	display: block;
-	position: absolute;
-	left: 0.2em;
-	bottom: 0.5em;
-	color: black;
-	font-size: 2em;
-}
+main .audio:not(.nothumb) a > span::before { content: "🔈"; }
+main .video:not(.nothumb) a > span::before { content: "🎥"; }
 
 header nav
 {

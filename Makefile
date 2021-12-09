@@ -34,7 +34,7 @@ run: build ## Run with current config
 	./$(DEST_DIR)/$(PRODUCT) --config config.json
 
 .PHONY: release
-release: $(DEST_DIR) $(PRODUCT_FILES) ## Build all release binaries
+release: $(DEST_DIR) lint $(PRODUCT_FILES) ## Build all release binaries
 
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-intel: $(SOURCES)
 	go generate
@@ -87,8 +87,12 @@ test: ## Run go tests
 	go tool cover -func=cover.out
 	# go tool cover -html=cover.out -o cover.html
 	rm cover.out
-	go vet ./...
+	go vet -composites=false ./...
 	gosec ./...
+
+.PHONY: lint
+lint: ## Run go-critic lint
+	gocritic check -enableAll ./...
 
 .PHONY: benchmark
 benchmark: ## Run go benchmarks

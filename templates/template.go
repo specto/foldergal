@@ -5,7 +5,7 @@ import (
 	"foldergal/config"
 	"foldergal/storage"
 	"html/template"
-	"io/ioutil"
+	"io"
 	textTpl "text/template"
 	"time"
 )
@@ -93,7 +93,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 			panic(errF)
 		}
 		defer listFile.Close()
-		listBytes, _ := ioutil.ReadAll(listFile)
+		listBytes, _ := io.ReadAll(listFile)
 		if _, err = t.New(fmt.Sprint("_", i)).Funcs(
 			template.FuncMap{"formatDate": formatDate},
 		).Parse(string(listBytes)); err != nil {
@@ -113,7 +113,7 @@ func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
 			panic(errF)
 		}
 		defer listFile.Close()
-		listBytes, _ := ioutil.ReadAll(listFile)
+		listBytes, _ := io.ReadAll(listFile)
 		if _, err = t.New(fmt.Sprint("_", i)).Parse(
 			string(listBytes)); err != nil {
 			return

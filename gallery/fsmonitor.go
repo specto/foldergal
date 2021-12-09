@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"foldergal/config"
-	"github.com/charithe/timedbuf"
-	"github.com/fsnotify/fsnotify"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"time"
+
+	"github.com/charithe/timedbuf"
+	"github.com/fsnotify/fsnotify"
 )
 
 var (
@@ -44,8 +45,6 @@ func sendDiscord(jsonData discordMessage) {
 	if errj != nil {
 		(*logger).Printf("error: invalid json: %v", errj)
 	}
-	// debug
-	//(*logger).Print(jsonBuf.String())
 	resp, errp := http.Post(config.Global.DiscordWebhook,
 		"application/json; charset=utf-8", jsonBuf)
 	if resp != nil {

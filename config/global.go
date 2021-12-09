@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -42,11 +43,11 @@ type Configuration struct {
 
 func (c *Configuration) FromJson(configFile string) (err error) {
 	var file *os.File
-	/* #nosec */
-	if file, err = os.Open(configFile); err != nil {
+
+	if file, err = os.Open(filepath.Clean(configFile)); err != nil {
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&c)
@@ -54,10 +55,6 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 }
 
 type JsonDuration time.Duration
-
-//func (d JsonDuration) MarshalJSON() ([]byte, error) {
-//	return json.Marshal(time.Duration(d).String())
-//}
 
 func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 	var v interface{}
@@ -88,13 +85,13 @@ func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
 }
 
 // Get a string from env or use default
-func SfromEnv(envName string, defaultVal string) string {
+func SfromEnv(envName, defaultVal string) string {
 	s := fromEnv(envName, func(s string) interface{} {
 		return s
 	})
-	switch s.(type) {
+	switch v := s.(type) {
 	case string:
-		return s.(string)
+		return v
 	default:
 		return defaultVal
 	}
@@ -109,9 +106,9 @@ func BfromEnv(envName string, defaultVal bool) bool {
 		}
 		return b
 	})
-	switch b.(type) {
+	switch v := b.(type) {
 	case bool:
-		return b.(bool)
+		return v
 	default:
 		return defaultVal
 	}
@@ -126,9 +123,9 @@ func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 		}
 		return JsonDuration(d)
 	})
-	switch d.(type) {
+	switch v := d.(type) {
 	case JsonDuration:
-		return d.(JsonDuration)
+		return v
 	default:
 		return defaultVal
 	}
@@ -143,9 +140,9 @@ func IfromEnv(envName string, defaultVal int) int {
 		}
 		return i
 	})
-	switch i.(type) {
+	switch v := i.(type) {
 	case int:
-		return i.(int)
+		return v
 	default:
 		return defaultVal
 	}

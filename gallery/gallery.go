@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"foldergal/config"
 	"foldergal/storage"
-	"github.com/disintegration/imaging"
-	"github.com/spf13/afero"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -22,88 +20,133 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/disintegration/imaging"
+	"github.com/spf13/afero"
+)
+
+var (
+	ErrNotValid         = errors.New("invalid media")
+	ErrFileNotFound     = errors.New("file for media not found")
+	ErrThumbNotFound    = errors.New("thumbnail for media not found")
+	ErrThumbNotPossible = errors.New("thumbnail cannot be generated (missing ffmpeg)")
 )
 
 type Media interface {
-	Media() *MediaFile // Expose our basic data structure in interface
-	Thumb() *afero.File
-	ThumbExists() bool
-	ThumbGenerate() error
-	ThumbExpired() bool
+	thumbGenerate() error
+	thumbExists() bool
+	thumbExpired() bool
 
-	File() *afero.File
-	FileExists() bool
+	Thumb() (afero.File, error)
+	ThumbModTime() time.Time
+	ThumbPath() string
+	ThumbName() string
+
+	File() (afero.File, error)
+	FileModTime() time.Time
+}
+
+func GenerateThumb(m Media) error {
+	if m.thumbExpired() {
+		return m.thumbGenerate()
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-type MediaFile struct {
-	FullPath  string
-	FileInfo  os.FileInfo
-	ThumbPath string
-	ThumbInfo os.FileInfo
+type mediaFile struct {
+	fullPath  string
+	fileInfo  os.FileInfo
+	thumbPath string
+	thumbInfo os.FileInfo
 }
 
-func (f *MediaFile) Media() *MediaFile {
-	return f
-}
-
-func (f *MediaFile) File() *afero.File {
-	file, err := storage.Root.Open(f.FullPath)
+func NewMedia(fullPath string) (Media, error) {
+	fileInfo, err := storage.Root.Stat(fullPath)
 	if err != nil {
-		return nil
+		return nil, ErrFileNotFound
 	}
-	return &file
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
+	}
+	return &mediaFile{fullPath: fullPath, fileInfo: fileInfo}, nil
 }
 
-func (f *MediaFile) FileExists() (exists bool) {
+func (f *mediaFile) Thumb() (afero.File, error) {
+	return storage.Cache.Open(f.thumbPath)
+}
+
+func (f *mediaFile) thumbExists() bool {
 	var err error
-	exists, err = afero.Exists(storage.Root, f.FullPath)
-	// Ensure we refresh File stat
-	f.FileInfo, err = storage.Root.Stat(f.FullPath)
+	// Ensure we refresh Thumb stat
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	if err != nil {
 		return false
 	}
-	return
+	return true
 }
 
-////////////////////////////////////////////////////////////////////////////////
-type ImageFile struct {
-	MediaFile
-}
-
-func (f *ImageFile) Thumb() *afero.File {
-	if !f.ThumbExists() {
-		return nil
-	}
-	file, err := storage.Cache.Open(f.ThumbPath)
-	if err != nil {
-		return nil
-	}
-	return &file
-}
-
-func (f *ImageFile) ThumbExists() (exists bool) {
-	exists, _ = afero.Exists(storage.Cache, f.ThumbPath)
-	// Ensure we refresh Thumb stat
-	f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-	return
-}
-
-func (f *ImageFile) ThumbExpired() (expired bool) {
-	if !f.ThumbExists() {
+func (f *mediaFile) thumbExpired() bool {
+	if !f.thumbExists() {
 		return true
 	}
-	m := f.Media()
-	diff := m.ThumbInfo.ModTime().Sub(m.FileInfo.ModTime())
+	diff := f.thumbInfo.ModTime().Sub(f.fileInfo.ModTime())
 	return diff < 0*time.Second
 }
 
-func (f *ImageFile) ThumbGenerate() (err error) {
+func (f *mediaFile) thumbGenerate() (err error) {
+	return errors.New("not implemented")
+}
+
+func (f *mediaFile) ThumbName() string {
+	if f.thumbInfo == nil {
+		return ""
+	}
+	return f.thumbInfo.Name()
+}
+
+func (f *mediaFile) ThumbPath() string {
+	return f.thumbPath
+}
+
+func (f *mediaFile) ThumbModTime() time.Time {
+	if f.thumbInfo == nil {
+		return time.Time{}
+	}
+	return f.thumbInfo.ModTime()
+}
+
+func (f *mediaFile) File() (afero.File, error) {
+	return storage.Root.Open(f.fullPath)
+}
+
+func (f *mediaFile) FileModTime() time.Time {
+	return f.fileInfo.ModTime()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+type imageFile struct {
+	mediaFile
+}
+
+func NewImage(fullPath, thumbPath string) (Media, error) {
+	fileInfo, err := storage.Root.Stat(fullPath)
+	if err != nil {
+		return nil, ErrFileNotFound
+	}
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
+	}
+	return &imageFile{mediaFile{
+		fullPath: fullPath, fileInfo: fileInfo, thumbPath: thumbPath}}, nil
+}
+
+func (f *imageFile) thumbGenerate() (err error) {
 	var (
 		file afero.File
 		img  image.Image
 	)
-	file, err = storage.Root.Open(f.FullPath)
+	file, err = storage.Root.Open(f.mediaFile.fullPath)
 	defer file.Close()
 	if err != nil {
 		return
@@ -119,57 +162,42 @@ func (f *ImageFile) ThumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
 	if err != nil {
 		return
 	}
-	_ = afero.WriteFile(storage.Cache, f.ThumbPath, buf.Bytes(), os.ModePerm)
-	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+	_ = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, buf.Bytes(), os.ModePerm)
+	f.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-type SvgFile struct {
-	MediaFile
+type svgFile struct {
+	mediaFile
 }
 
-func (f *SvgFile) Thumb() *afero.File {
-	if !f.ThumbExists() {
-		return nil
-	}
-	file, err := storage.Cache.Open(f.ThumbPath)
+func NewSvg(fullPath string) (Media, error) { // SVGs are their own thumbnails
+	fileInfo, err := storage.Root.Stat(fullPath)
 	if err != nil {
-		return nil
+		return nil, ErrFileNotFound
 	}
-	return &file
-}
-
-func (f *SvgFile) ThumbExists() bool {
-	exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
-	// Ensure we refresh Thumb stat
-	f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-	return exists
-}
-
-func (f *SvgFile) ThumbExpired() bool {
-	if !f.ThumbExists() {
-		return true
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
 	}
-	m := f.Media()
-	diff := m.ThumbInfo.ModTime().Sub(m.FileInfo.ModTime())
-	return diff < 0*time.Second
+	return &svgFile{mediaFile{
+		fullPath: fullPath, fileInfo: fileInfo, thumbPath: fullPath}}, nil
 }
 
-func (f *SvgFile) ThumbGenerate() (err error) {
+func (f *svgFile) thumbGenerate() (err error) {
 	var (
 		file     afero.File
 		contents []byte
 	)
-	file, err = storage.Root.Open(f.FullPath)
+	file, err = storage.Root.Open(f.mediaFile.fullPath)
 	defer file.Close()
 	if err != nil {
 		return
@@ -178,221 +206,175 @@ func (f *SvgFile) ThumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
 	if err != nil {
 		return
 	}
-	err = afero.WriteFile(storage.Cache, f.ThumbPath, contents, os.ModePerm)
+	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, contents, os.ModePerm)
 	if err != nil {
 		return
 	}
 	// Since we just copy SVGs the Thumb File is the same as the original
-	f.ThumbPath = f.FullPath
-	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+	f.thumbPath = f.mediaFile.fullPath
+	f.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-type AudioFile struct {
-	MediaFile
+type audioFile struct {
+	mediaFile
 }
 
-func (f *AudioFile) Thumb() *afero.File {
-	if !f.ThumbExists() {
-		return nil
+func NewAudio(fullPath, thumbPath string) (Media, error) {
+	fileInfo, err := storage.Root.Stat(fullPath)
+	if err != nil {
+		return nil, ErrFileNotFound
+	}
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
+	}
+	return &audioFile{mediaFile{
+		fullPath: fullPath, fileInfo: fileInfo, thumbPath: thumbPath}}, nil
+}
+
+func (f *audioFile) Thumb() (afero.File, error) {
+	if !f.thumbExists() {
+		return nil, ErrThumbNotFound
 	}
 	if config.Global.Ffmpeg == "" {
-		thumb, _ := storage.Internal.Open("res/audio.svg")
-		return &thumb
+		return nil, ErrThumbNotPossible
 	}
-	file, err := storage.Cache.Open(f.ThumbPath)
-	if err != nil {
-		return nil
-	}
-	return &file
+	return storage.Cache.Open(f.mediaFile.thumbPath)
 }
 
-func (f *AudioFile) ThumbExists() bool {
-	if config.Global.Ffmpeg != "" { // Check if we generated thumbnail already
-		exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
-		// Ensure we refresh Thumb stat
-		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-		return exists
+func (f *audioFile) thumbExists() bool {
+	if config.Global.Ffmpeg == "" {
+		return true
 	}
-	thumb, err := storage.Internal.Open("res/audio.svg")
-	defer thumb.Close()
-	if err != nil {
-		return false
-	}
-	f.Media().ThumbInfo, err = thumb.Stat()
+	var err error
+	// Ensure we refresh Thumb stat
+	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 	if err != nil {
 		return false
 	}
 	return true
 }
 
-func (f *AudioFile) ThumbExpired() bool {
-	if !f.ThumbExists() {
-		return true
-	}
-	m := f.Media()
-	diff := m.ThumbInfo.ModTime().Sub(m.FileInfo.ModTime())
-	return diff < 0*time.Second
-}
-
-func (f *AudioFile) ThumbGenerate() (err error) {
+func (f *audioFile) thumbGenerate() error {
 	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
-		return
+		return nil
 	}
-	audioFile := filepath.Join(config.Global.Root, f.FullPath)
-	thumbSize := fmt.Sprintf("%dx%d", config.Global.ThumbWidth, config.Global.ThumbHeight)
+	audioFile := filepath.Join(config.Global.Root, f.mediaFile.fullPath)
+	var thumbData []byte
 
 	// Check for cover art
-	// ffmpeg -i mp3.mp3 -an -vcodec copy cover.png
-	// ffmpeg -i ?? -filter:v scale={thumbw}:-2 -an ??.jpg
 	coverCmd := exec.Command(config.Global.Ffmpeg,
-		"-hide_banner",
-		"-loglevel", "quiet",
+		"-hide_banner", "-loglevel", "quiet",
 		"-i", audioFile,
 		"-filter:v", fmt.Sprintf("scale=%d:-2", config.Global.ThumbWidth),
-		"-an", "-f", "image2pipe", "-")
-	outCover, _ := coverCmd.Output()
-	if len(outCover) != 0 {
-		err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
-		if err != nil {
-			return
+		"-an", "-f", "image2pipe", "-") // #nosec Executable path is provided by config
+	if outCover, _ := coverCmd.Output(); len(outCover) != 0 {
+		thumbData = outCover
+	} else {
+		// Generate waveform
+		thumbSize := fmt.Sprintf("%dx%d", config.Global.ThumbWidth, config.Global.ThumbHeight)
+		filter := []string{
+			"color=c=black[color];",
+			"aformat=channel_layouts=mono,",
+			"showwavespic=s=" + thumbSize + ":colors=white[wave];",
+			"[color][wave]scale2ref[bg][fg];",
+			"[bg][fg]overlay=format=auto",
 		}
-		_, err = storage.Cache.Create(f.ThumbPath)
-		if err != nil {
-			return
+		// ffmpeg to stdout
+		thumbCmd := exec.Command(config.Global.Ffmpeg,
+			"-hide_banner", "-loglevel", "quiet",
+			"-i", audioFile,
+			"-filter_complex", strings.Join(filter, " "),
+			"-frames:v", "1",
+			"-f", "image2pipe", "-") // #nosec Executable path is provided by config
+		outThumb, _ := thumbCmd.Output()
+		if len(outThumb) == 0 { // Failed thumbnail
+			return errors.New("failed to generate thumbnail: " + f.mediaFile.thumbPath)
 		}
-		// Save the cover art as thumbnail
-		err = afero.WriteFile(storage.Cache, f.ThumbPath, outCover, os.ModePerm)
-		f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
-		return
+		thumbData = outThumb
 	}
-	// Generate waveform
-
-	// ffmpeg \
-	// -hide_banner -loglevel panic \
-	// -i "{in}" \
-	// -filter_complex \
-	// 		"[0:a]aformat=channel_layouts=mono, \
-	// 		compand=gain=5, \
-	// 		showwavespic=s=400x400:colors=#0c8cc8[fg]; \
-	// 		color=s=400x400:color=#d7ebf2, \
-	// 		drawgrid=width=iw/6:height=ih/6:color=#0c8cc8@0.3[bg]; \
-	// 		[bg][fg]overlay=format=rgb, \
-	// 		drawbox=x=(iw-w)/2:y=(ih-h)/2:w=iw:h=1:color=#d7ebf2" \
-	// -vframes 1 \
-	// -y "{out}"
-	filter := []string{
-		"[0:a]aformat=channel_layouts=mono,",
-		"compand=gain=5,",
-		"showwavespic=s="+thumbSize+":colors=#0c8cc8[fg];",
-		"color=s="+thumbSize+":color=#d7ebf2,",
-		"drawgrid=width=iw/6:height=ih/6:color=#0c8cc8@0.3[bg];",
-		"[bg][fg]overlay=format=rgb,",
-		"drawbox=x=(iw-w)/2:y=(ih-h)/2:w=iw:h=1:color=#d7ebf2",
-	}
-	// Generate the waveform to stdout
-	thumbCmd := exec.Command(config.Global.Ffmpeg,
-		"-hide_banner",
-		"-loglevel", "quiet",
-		"-i", audioFile,
-		"-filter_complex", strings.Join(filter, " "),
-		"-vframes", "1",
-		"-f", "image2pipe", "-")
-	outThumb, _ := thumbCmd.Output()
-	if len(outThumb) == 0 { // Failed thumbnail
-		return errors.New("error: empty thumbnail: " + f.ThumbPath)
-	}
-
-	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	// Create all folders needed
+	err := storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
 	if err != nil {
-		return
+		return err
 	}
-	_, err = storage.Cache.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
 	if err != nil {
-		return
+		return err
 	}
 	// Save thumbnail
-	err = afero.WriteFile(storage.Cache, f.ThumbPath, outThumb, os.ModePerm)
-	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, thumbData, os.ModePerm)
+	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 
-	return
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-type VideoFile struct {
-	MediaFile
+type videoFile struct {
+	mediaFile
 }
 
-func (f *VideoFile) Thumb() *afero.File {
-	if !f.ThumbExists() {
-		return nil
+func NewVideo(fullPath, thumbPath string) (Media, error) {
+	fileInfo, err := storage.Root.Stat(fullPath)
+	if err != nil {
+		return nil, ErrFileNotFound
+	}
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
+	}
+	return &videoFile{mediaFile{
+		fullPath: fullPath, fileInfo: fileInfo, thumbPath: thumbPath}}, nil
+}
+
+func (f *videoFile) Thumb() (afero.File, error) {
+	if !f.thumbExists() {
+		return nil, ErrThumbNotFound
 	}
 	if config.Global.Ffmpeg == "" {
-		thumb, _ := storage.Internal.Open("res/video.svg")
-		return &thumb
+		return nil, ErrThumbNotPossible
 	}
-	file, err := storage.Cache.Open(f.ThumbPath)
-	if err != nil {
-		return nil
-	}
-	return &file
+	return storage.Cache.Open(f.mediaFile.thumbPath)
 }
 
-func (f *VideoFile) ThumbExists() bool {
-	if config.Global.Ffmpeg != "" { // Check if we generated thumbnail already
-		exists, _ := afero.Exists(storage.Cache, f.ThumbPath)
-		// Ensure we refresh Thumb stat
-		f.Media().ThumbInfo, _ = storage.Cache.Stat(f.ThumbPath)
-		return exists
+func (f *videoFile) thumbExists() bool {
+	if config.Global.Ffmpeg == "" {
+		return true
 	}
-	// Using internal images
-	thumb, err := storage.Internal.Open("res/video.svg")
-	defer thumb.Close()
-	if err != nil {
-		return false
-	}
-	f.Media().ThumbInfo, err = thumb.Stat()
+	var err error
+	// Ensure we refresh Thumb stat
+	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 	if err != nil {
 		return false
 	}
 	return true
-}
-
-func (f *VideoFile) ThumbExpired() bool {
-	if !f.ThumbExists() {
-		return true
-	}
-	m := f.Media()
-	diff := m.ThumbInfo.ModTime().Sub(m.FileInfo.ModTime())
-	return diff < 0*time.Second
 }
 
 var reDuration = regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
 
-func (f *VideoFile) ThumbGenerate() (err error) {
+func (f *videoFile) thumbGenerate() error {
 	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
-		return
+		return nil
 	}
-
-	movieFile := filepath.Join(config.Global.Root, f.FullPath)
+	movieFile := filepath.Join(config.Global.Root, f.mediaFile.fullPath)
 
 	// Get the duration of the movie
-	cmd := exec.Command(config.Global.Ffmpeg, "-hide_banner", "-i",
-		movieFile) // #nosec Configuration is provided by the admin
+	cmd := exec.Command(config.Global.Ffmpeg,
+		"-hide_banner",
+		"-i", movieFile) // #nosec Executable path is provided by config
 	out, _ := cmd.CombinedOutput()
 
 	match := reDuration.FindSubmatch(out)
 	if len(match) < 2 {
-		return errors.New("error: cannot find video duration: " + f.FullPath)
+		return errors.New("cannot find video duration: " + f.mediaFile.fullPath)
 	}
 	// Target the first third of the movie
 	targetTime := toTimeCode(fromTimeCode(match[1]) / 3)
@@ -406,57 +388,52 @@ func (f *VideoFile) ThumbGenerate() (err error) {
 		"-ss", targetTime, "-i", movieFile,
 		"-vf", "scale="+thumbSize+":flags=lanczos:force_original_aspect_ratio=decrease",
 		"-vframes", "1",
-		"-f", "image2pipe", "-") // #nosec Configuration is provided by the admin
+		"-f", "image2pipe", "-") // #nosec Executable path is provided by config
 	outThumb, _ := thumbCmd.Output()
 	if len(outThumb) == 0 { // Failed thumbnail
-		return errors.New("error: empty thumbnail: " + f.ThumbPath)
+		return errors.New("failed to generate thumbnail: " + f.mediaFile.thumbPath)
 	}
-	err = storage.Cache.MkdirAll(filepath.Dir(f.ThumbPath), os.ModePerm)
+	err := storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
 	if err != nil {
-		return
+		return err
 	}
-	_, err = storage.Cache.Create(f.ThumbPath)
+	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
 	if err != nil {
-		return
+		return err
 	}
 	// Save thumbnail
-	err = afero.WriteFile(storage.Cache, f.ThumbPath, outThumb, os.ModePerm)
-	f.Media().ThumbInfo, err = storage.Cache.Stat(f.ThumbPath)
+	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, outThumb, os.ModePerm)
+	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
 
-	return
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-type PdfFile struct {
-	MediaFile
+type pdfFile struct {
+	mediaFile
 }
 
-func (f *PdfFile) Thumb() *afero.File {
-	thumb, _ := storage.Internal.Open("res/pdf.svg")
-	return &thumb
+func NewPdf(fullPath, thumbPath string) (Media, error) {
+	fileInfo, err := storage.Root.Stat(fullPath)
+	if err != nil {
+		return nil, ErrFileNotFound
+	}
+	if fileInfo.IsDir() || !IsValidMedia(fullPath) {
+		return nil, ErrNotValid
+	}
+	return &pdfFile{mediaFile{
+		fullPath: fullPath, fileInfo: fileInfo, thumbPath: thumbPath}}, nil
 }
 
-func (f *PdfFile) ThumbExists() bool {
-	thumb, err := storage.Internal.Open("res/pdf.svg")
-	defer thumb.Close()
-	if err != nil {
-		return false
-	}
-	f.Media().ThumbInfo, err = thumb.Stat()
-	if err != nil {
-		return false
-	}
+func (f *pdfFile) Thumb() (afero.File, error) {
+	return storage.Internal.Open("res/pdf.svg")
+}
+
+func (f *pdfFile) thumbExists() bool {
 	return true
 }
 
-func (f *PdfFile) ThumbExpired() bool {
-	return true
-}
-
-func (f *PdfFile) ThumbGenerate() error {
-	if !f.ThumbExists() {
-		return errors.New("no video thumbnail")
-	}
+func (f *pdfFile) thumbGenerate() error {
 	return nil
 }
 
@@ -483,15 +460,13 @@ func EscapePath(s string) (r string) {
 	return strings.Join(eparts, "/")
 }
 
-var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
-
 // Find the type of a file
 //
 // Careful: on unix uses specific files
 //   /etc/mime.types
 //   /etc/apache2/mime.types
 //   /etc/apache/mime.types
-func GetMediaClass(name string) (class string) {
+func GetMediaClass(name string) string {
 	switch contentType := mime.TypeByExtension(filepath.Ext(name)); {
 	case strings.HasPrefix(contentType, "image/"):
 		return "image"
@@ -502,9 +477,11 @@ func GetMediaClass(name string) (class string) {
 	case strings.HasPrefix(contentType, "application/pdf"):
 		return "pdf"
 	default:
-		return
+		return ""
 	}
 }
+
+var mimePrefixes = regexp.MustCompile("^(image|video|audio|application/pdf)")
 
 // Check for valid media by content-type
 func IsValidMedia(name string) bool {
@@ -532,12 +509,11 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	return
 }
 
-func isdigit(b byte) bool { return '0' <= b && b <= '9' }
-
 // From
 // https://github.com/fvbommel/util/blob/master/sortorder/natsort.go
 func NaturalLess(str1, str2 string) bool {
 	idx1, idx2 := 0, 0
+	isdigit := func(b byte) bool { return '0' <= b && b <= '9' }
 	for idx1 < len(str1) && idx2 < len(str2) {
 		c1, c2 := str1[idx1], str2[idx2]
 		dig1, dig2 := isdigit(c1), isdigit(c2)
