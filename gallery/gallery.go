@@ -7,6 +7,8 @@ import (
 	"foldergal/config"
 	"foldergal/storage"
 	"image"
+	"image/draw"
+	"image/color"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
@@ -156,9 +158,17 @@ func (f *imageFile) thumbGenerate() (err error) {
 		return
 	}
 	resized := imaging.Fit(img, config.Global.ThumbWidth,
-		config.Global.ThumbHeight, imaging.Lanczos)
+		config.Global.ThumbHeight, imaging.CatmullRom)
+
+	// Merge onto white background
+	backgroundColor := color.RGBA{0xff, 0xff, 0xff, 0xff} // white
+	dst := image.NewRGBA(resized.Bounds())
+	draw.Draw(dst, dst.Bounds(), image.NewUniform(backgroundColor),
+		image.Point{}, draw.Src)
+	draw.Draw(dst, dst.Bounds(), resized, resized.Bounds().Min, draw.Over)
+
 	buf := new(bytes.Buffer)
-	err = jpeg.Encode(buf, resized, nil)
+	err = jpeg.Encode(buf, dst, nil)
 	if err != nil {
 		return
 	}
