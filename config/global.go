@@ -41,6 +41,7 @@ type Configuration struct {
 	Log               *log.Logger    `json:"-"`
 }
 
+// Loads configuration from json file
 func (c *Configuration) FromJson(configFile string) (err error) {
 	var file *os.File
 
@@ -56,6 +57,7 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 
 type JsonDuration time.Duration
 
+// Parses duration from float64 or string
 func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 	var v interface{}
 	_ = json.Unmarshal(b, &v)
@@ -84,7 +86,7 @@ func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
 	return nil
 }
 
-// Get a string from env or use default
+// Gets a string from env with fallback to default value
 func SfromEnv(envName, defaultVal string) string {
 	s := fromEnv(envName, func(s string) interface{} {
 		return s
@@ -97,7 +99,7 @@ func SfromEnv(envName, defaultVal string) string {
 	}
 }
 
-// Get a boolean from env or use default
+// Gets a boolean from env with fallback to default value
 func BfromEnv(envName string, defaultVal bool) bool {
 	b := fromEnv(envName, func(s string) interface{} {
 		b, err := strconv.ParseBool(s)
@@ -114,7 +116,7 @@ func BfromEnv(envName string, defaultVal bool) bool {
 	}
 }
 
-// Get a (json)Duration from env or use default
+// Gets a (json)Duration from env with fallback to default value
 func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 	d := fromEnv(envName, func(s string) interface{} {
 		d, err := time.ParseDuration(s)
@@ -131,7 +133,7 @@ func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 	}
 }
 
-// Get an integer from env or use default
+// Gets an integer from env with fallback to default value
 func IfromEnv(envName string, defaultVal int) int {
 	i := fromEnv(envName, func(s string) interface{} {
 		i, err := strconv.Atoi(s)

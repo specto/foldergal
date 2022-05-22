@@ -116,7 +116,7 @@ func notify(items []interface{}) {
 	}
 }
 
-// Watch every folder in config.Global.Root and send notification on new file
+// Watches every folder in config.Global.Root and sends notification on new file
 func StartFsWatcher() {
 	var err error
 	watcher, err = fsnotify.NewWatcher()

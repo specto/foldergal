@@ -48,6 +48,7 @@ type Media interface {
 	FileModTime() time.Time
 }
 
+// Generates the media thumbnail
 func GenerateThumb(m Media) error {
 	if m.thumbExpired() {
 		return m.thumbGenerate()
@@ -449,7 +450,7 @@ func (f *pdfFile) thumbGenerate() error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Check if any /path/./starts/with/.dot/somewhere
+// Checks if any /path/./starts/with/.dot/somewhere
 func ContainsDotFile(name string) bool {
 	parts := strings.Split(name, "/")
 	for _, part := range parts {
@@ -460,7 +461,7 @@ func ContainsDotFile(name string) bool {
 	return false
 }
 
-// Escape a path while keeping slashes unchanged
+// Escapes a path with URL escape codes while keeping slashes unchanged
 func EscapePath(s string) (r string) {
 	parts := strings.Split(s, "/")
 	eparts := make([]string, 0, len(parts))
@@ -470,8 +471,7 @@ func EscapePath(s string) (r string) {
 	return strings.Join(eparts, "/")
 }
 
-// Find the type of a file
-//
+// Finds the type of a file
 // Careful: on unix uses specific files
 //   /etc/mime.types
 //   /etc/apache2/mime.types
@@ -519,11 +519,15 @@ func fromTimeCode(timecode []byte) (d time.Duration) {
 	return
 }
 
-// From
-// https://github.com/fvbommel/util/blob/master/sortorder/natsort.go
+
+func isdigit(b byte) bool {
+	return '0' <= b && b <= '9'
+}
+
+// Natural digit sort
+// From https://github.com/fvbommel/sortorder/blob/master/natsort.go
 func NaturalLess(str1, str2 string) bool {
 	idx1, idx2 := 0, 0
-	isdigit := func(b byte) bool { return '0' <= b && b <= '9' }
 	for idx1 < len(str1) && idx2 < len(str2) {
 		c1, c2 := str1[idx1], str2[idx2]
 		dig1, dig2 := isdigit(c1), isdigit(c2)

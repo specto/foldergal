@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/afero"
 )
 
+// Verifies if file exists and is not a folder
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
 		return false
@@ -81,6 +82,8 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 
 var dangerousPathSymbols = regexp.MustCompile(":")
 
+// Removes windows drive or network share from p.
+// Also replaces semicolon (:) with underscore (_).
 func sanitizePath(p string) (sanitized string) {
 	if vol := filepath.VolumeName(p); vol != "" {
 		sanitized = strings.TrimPrefix(p, vol)
@@ -92,7 +95,7 @@ func sanitizePath(p string) (sanitized string) {
 	return
 }
 
-// Serve image previews of Media files
+// Route for image previews of media files
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		err         error
@@ -157,6 +160,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, f.ThumbPath(), f.ThumbModTime(), thumb)
 }
 
+// Splits a url "path" to separate tokens
 func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 	deepcrumb := urlPrefix + "/"
 	currentUrl := strings.TrimPrefix(pageUrl.Path, urlPrefix)
@@ -172,6 +176,7 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 	return
 }
 
+// Counts recursively all valid media files in startPath
 func fileCount(startPath string) (totalCount int64) {
 	err := filepath.Walk(startPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -190,6 +195,7 @@ func fileCount(startPath string) (totalCount int64) {
 	return
 }
 
+// Retrieves the byte size of all valid media files in startPath
 func folderSize(startPath string) (totalSize int64) {
 	err := filepath.Walk(startPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -205,6 +211,7 @@ func folderSize(startPath string) (totalSize int64) {
 	return
 }
 
+// Route for status report
 func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	bToMb := func(b uint64) string {
 		return fmt.Sprintf("%v MiB", b/1024/1024)
@@ -366,7 +373,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	}
 }
 
-// Serve actual files
+// Route to serve actual files
 func fileHandler(w http.ResponseWriter, r *http.Request) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
@@ -396,6 +403,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, fullPath, media.FileModTime(), contents)
 }
 
+// Delivers file contents for static resources
 func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
 	f, err := storage.InternalHttp.Open(resFile)
 	defer f.Close()
@@ -412,6 +420,7 @@ func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) 
 	http.ServeContent(w, r, name, BuildTime, f)
 }
 
+// Route for RSS/Atom
 func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	loc, _ := time.LoadLocation("UTC")
 
