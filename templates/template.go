@@ -98,7 +98,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 		).Parse(string(listBytes)); err != nil {
 			return
 		}
-		listFile.Close()
+		_ = listFile.Close()
 	}
 
 	return
@@ -117,7 +117,7 @@ func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
 			string(listBytes)); err != nil {
 			return
 		}
-		listFile.Close()
+		_ = listFile.Close()
 	}
 
 	return

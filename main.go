@@ -783,7 +783,9 @@ func main() {
 	}
 
 	if useTls { // Prepare the TLS
-		tlsConfig := &tls.Config{}
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
 
 		// Use separate certificate pool to avoid warnings with self-signed certs
 		caCertPool := x509.NewCertPool()
