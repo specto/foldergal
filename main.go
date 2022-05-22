@@ -248,20 +248,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	_ = templates.Html.ExecuteTemplate(w, "table", &page)
 }
 
-func readDir(fs afero.Fs, dirname string) (list []os.FileInfo, err error) {
-	f, err := fs.Open(dirname)
-	if err != nil {
-		return
-	}
-	list, err = f.Readdir(-1)
-	_ = f.Close()
-	return
-}
-
-// Show the list of files
-//
-// sortBy can be "date" or "name"
-// displayMode "inline" or "files"
+// Route for lists of files
 func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSettings, isOverlay bool) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
@@ -278,12 +265,19 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 	if isOverlay {
 		folderPath = filepath.Dir(folderPath)
 	}
-	contents, err = readDir(storage.Root, folderPath)
+	fs, err := storage.Root.Open(folderPath)
 	if err != nil {
 		fail500(w, err, r)
 		return
 	}
-	folderInfo, _ := storage.Root.Stat(folderPath)
+	defer fs.Close()
+	contents, err = fs.Readdir(-1)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+
+	folderInfo, _ := fs.Stat()
 	if folderPath != "/" && folderPath != "" {
 		title = filepath.Base(r.URL.Path)
 		parentUrl = path.Join(urlPrefix, folderPath, "..")
