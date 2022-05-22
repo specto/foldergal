@@ -178,13 +178,12 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 
 // Counts recursively all valid media files in startPath
 func fileCount(startPath string) (totalCount int64) {
-	err := filepath.Walk(startPath,
-		func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(startPath,
+		func(path string, entry os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() && gallery.IsValidMedia(path) {
-				logger.Print(path)
+			if !entry.IsDir() && gallery.IsValidMedia(path) {
 				totalCount += 1
 			}
 			return nil
@@ -195,14 +194,20 @@ func fileCount(startPath string) (totalCount int64) {
 	return
 }
 
-// Retrieves the byte size of all valid media files in startPath
+// Retrieves the byte size of all files in startPath
 func folderSize(startPath string) (totalSize int64) {
-	err := filepath.Walk(startPath,
-		func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(startPath,
+		func(path string, entry os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			totalSize += info.Size()
+			if !entry.IsDir() {
+				info, err := entry.Info()
+				if err != nil {
+					return err
+				}
+				totalSize += info.Size()
+			}
 			return nil
 		})
 	if err != nil {
@@ -445,23 +450,25 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rssItems []templates.RssItem
-	err := filepath.Walk(config.Global.Root,
-		func(walkPath string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(config.Global.Root,
+		func(walkPath string, entry os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() && !gallery.ContainsDotFile(walkPath) &&
-				gallery.IsValidMedia(walkPath) && isFresh(info.ModTime()) {
-				urlStr := pathToUrl(walkPath)
-				rssItems = append(rssItems, templates.RssItem{
-					Type:  gallery.GetMediaClass(walkPath),
-					Title: filepath.Base(walkPath),
-					Url:   urlStr,
-					Thumb: urlStr + "?thumb",
-					Id:    urlStr,
-					Mdate: info.ModTime(),
-					Date:  formatTime(info.ModTime()),
-				})
+			if !entry.IsDir() && !gallery.ContainsDotFile(walkPath) &&
+				gallery.IsValidMedia(walkPath) {
+				if info, err := entry.Info(); err == nil && isFresh(info.ModTime()) {
+					urlStr := pathToUrl(walkPath)
+					rssItems = append(rssItems, templates.RssItem{
+						Type:  gallery.GetMediaClass(walkPath),
+						Title: filepath.Base(walkPath),
+						Url:   urlStr,
+						Thumb: urlStr + "?thumb",
+						Id:    urlStr,
+						Mdate: info.ModTime(),
+						Date:  formatTime(info.ModTime()),
+					})
+				}
 				return nil
 			}
 			return nil
