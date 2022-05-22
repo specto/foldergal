@@ -9,7 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/spf13/afero v1.8.2
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 )
 
 require golang.org/x/text v0.3.7 // indirect
