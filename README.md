@@ -162,3 +162,5 @@ TODO
 * [ ] Rewrite HTTP handlers using middleware e.g.
   https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/
 * [ ] Exclude thumbs.db files
+* [ ] (maybe) Use webauthn for authentication  
+  https://github.com/duo-labs/webauthn
