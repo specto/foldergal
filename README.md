@@ -151,6 +151,8 @@ TODO
 * [x] Generate audio file thumbnails 
 * [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
+* [ ] Add fuzz tests  
+  <https://blog.fuzzbuzz.io/go-fuzzing-basics>
 * [ ] Use touch events for overlay media navigation
 * [ ] Loading indicator for overlay image next and prev
 * [ ] (maybe) Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
@@ -159,8 +161,8 @@ TODO
 * [ ] Combine svg icons in a single file and `<use>` sprites 
 * [ ] Fix misterious date bug 0001-01-01 on freebsd
 * [x] Rewrite embedded files using the `go:embed` directive available in go 1.16
-* [ ] Rewrite HTTP handlers using middleware e.g.
-  https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/
+* [ ] Rewrite HTTP handlers using middleware e.g.  
+  <https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/>
 * [ ] Exclude thumbs.db files
 * [ ] (maybe) Use webauthn for authentication  
-  https://github.com/duo-labs/webauthn
+  <https://github.com/duo-labs/webauthn>
