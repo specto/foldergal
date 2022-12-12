@@ -617,23 +617,16 @@ func init() {
 	}
 
 	// Environment variables
-	config.Global.Host = config.SfromEnv("HOST", "localhost")
-	config.Global.Port = config.IfromEnv("PORT", 8080)
-	config.Global.Home = config.SfromEnv("HOME", execFolder)
-	config.Global.Root = config.SfromEnv("ROOT", execFolder)
-	config.Global.Prefix = config.SfromEnv("PREFIX", "")
-	config.Global.TlsCrt = config.SfromEnv("TLS_CRT", "")
-	config.Global.TlsKey = config.SfromEnv("TLS_KEY", "")
-	config.Global.Http2 = config.BfromEnv("HTTP2", false)
-	config.Global.CacheExpiresAfter = config.DfromEnv("CACHE_EXPIRES_AFTER", 0)
-	config.Global.NotifyAfter = config.DfromEnv("NOTIFY_AFTER", config.JsonDuration(30*time.Second))
-	config.Global.DiscordWebhook = config.SfromEnv("DISCORD_WEBHOOK", "")
-	config.Global.DiscordName = config.SfromEnv("DISCORD_NAME", "Gallery")
-	config.Global.PublicHost = config.SfromEnv("PUBLIC_HOST", "")
-	config.Global.Quiet = config.BfromEnv("QUIET", false)
-	config.Global.ConfigFile = config.SfromEnv("CONFIG", "")
-	config.Global.ThumbWidth = config.IfromEnv("THUMB_W", 400)
-	config.Global.ThumbHeight = config.IfromEnv("THUMB_H", 400)
+	config.Global.FromEnv(execFolder)
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\tNotice: most command line arguments\n")
+		fmt.Fprintf(os.Stderr, "\tare avalable as environment variables, \n")
+		fmt.Fprintf(os.Stderr, "\te.g. %sPORT=8080\n\n", config.EnvPrefix)
+
+		flag.PrintDefaults()
+	}
 
 	// Command line arguments, they override env
 	flag.StringVar(&config.Global.Host, "host", config.Global.Host, "host address to bind to")

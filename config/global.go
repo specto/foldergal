@@ -12,7 +12,7 @@ import (
 
 var (
 	Global    Configuration
-	envPrefix = "FOLDERGAL_"
+	EnvPrefix = "FOLDERGAL_"
 )
 
 type Configuration struct {
@@ -48,11 +48,31 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 	if file, err = os.Open(filepath.Clean(configFile)); err != nil {
 		return
 	}
-	defer func() { _ = file.Close() }()
+	defer file.Close()
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&c)
 	return
+}
+
+func (c *Configuration) FromEnv(execFolder string) {
+	c.Host = strFromEnv("HOST", "localhost")
+	c.Port = intFromEnv("PORT", 8080)
+	c.Home = strFromEnv("HOME", execFolder)
+	c.Root = strFromEnv("ROOT", execFolder)
+	c.Prefix = strFromEnv("PREFIX", "")
+	c.TlsCrt = strFromEnv("TLS_CRT", "")
+	c.TlsKey = strFromEnv("TLS_KEY", "")
+	c.Http2 = boolFromEnv("HTTP2", false)
+	c.CacheExpiresAfter = durationFromEnv("CACHE_EXPIRES_AFTER", 0)
+	c.NotifyAfter = durationFromEnv("NOTIFY_AFTER", JsonDuration(30*time.Second))
+	c.DiscordWebhook = strFromEnv("DISCORD_WEBHOOK", "")
+	c.DiscordName = strFromEnv("DISCORD_NAME", "Gallery")
+	c.PublicHost = strFromEnv("PUBLIC_HOST", "")
+	c.Quiet = boolFromEnv("QUIET", false)
+	c.ConfigFile = strFromEnv("CONFIG", "")
+	c.ThumbWidth = intFromEnv("THUMB_W", 400)
+	c.ThumbHeight = intFromEnv("THUMB_H", 400)
 }
 
 type JsonDuration time.Duration
@@ -80,14 +100,14 @@ func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 ////////////////////////////////////////////////////////////////////////////////
 
 func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
-	if env, ok := os.LookupEnv(envPrefix + envName); ok {
+	if env, ok := os.LookupEnv(EnvPrefix + envName); ok {
 		return parseVal(env)
 	}
 	return nil
 }
 
 // Gets a string from env with fallback to default value
-func SfromEnv(envName, defaultVal string) string {
+func strFromEnv(envName, defaultVal string) string {
 	s := fromEnv(envName, func(s string) interface{} {
 		return s
 	})
@@ -100,7 +120,7 @@ func SfromEnv(envName, defaultVal string) string {
 }
 
 // Gets a boolean from env with fallback to default value
-func BfromEnv(envName string, defaultVal bool) bool {
+func boolFromEnv(envName string, defaultVal bool) bool {
 	b := fromEnv(envName, func(s string) interface{} {
 		b, err := strconv.ParseBool(s)
 		if err != nil {
@@ -117,7 +137,7 @@ func BfromEnv(envName string, defaultVal bool) bool {
 }
 
 // Gets a (json)Duration from env with fallback to default value
-func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
+func durationFromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 	d := fromEnv(envName, func(s string) interface{} {
 		d, err := time.ParseDuration(s)
 		if err != nil {
@@ -134,7 +154,7 @@ func DfromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 }
 
 // Gets an integer from env with fallback to default value
-func IfromEnv(envName string, defaultVal int) int {
+func intFromEnv(envName string, defaultVal int) int {
 	i := fromEnv(envName, func(s string) interface{} {
 		i, err := strconv.Atoi(s)
 		if err != nil {
