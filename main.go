@@ -806,9 +806,10 @@ func main() {
 			tlsConfig.NextProtos = []string{"http/1.1"}
 		}
 		srv := &http.Server{
-			Addr:      bind,
-			Handler:   httpmux,
-			TLSConfig: tlsConfig,
+			ReadHeaderTimeout: 30 * time.Second,
+			Addr:              bind,
+			Handler:           httpmux,
+			TLSConfig:         tlsConfig,
 		}
 		config.Global.PublicUrl = "https://" + config.Global.PublicUrl
 		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)

@@ -43,74 +43,74 @@ func TestFromJson(t *testing.T) {
 	}
 }
 
-func TestSfromEnv(t *testing.T) {
+func TestStrFromEnv(t *testing.T) {
 	key := "stringval"
 	val := "A web gallery"
 
-	_ = os.Setenv(envPrefix+key, val)
-	if res := SfromEnv(key, ""); res != val {
+	_ = os.Setenv(EnvPrefix+key, val)
+	if res := strFromEnv(key, ""); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
 	val = "what"
-	if res := SfromEnv("non_existing", val); res != val {
+	if res := strFromEnv("non_existing", val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 }
 
-func TestBfromEnv(t *testing.T) {
+func TestBoolFromEnv(t *testing.T) {
 	key := "boolval"
 	val := true
 
-	_ = os.Setenv(envPrefix+key, "1")
-	if res := BfromEnv(key, false); res != val {
+	_ = os.Setenv(EnvPrefix+key, "1")
+	if res := boolFromEnv(key, false); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
 	val = true
-	if res := BfromEnv("non_existing", val); res != val {
+	if res := boolFromEnv("non_existing", val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
-	_ = os.Setenv(envPrefix+key, "invalid")
+	_ = os.Setenv(EnvPrefix+key, "invalid")
 	val = true
-	if res := BfromEnv(key, val); res != val {
+	if res := boolFromEnv(key, val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 }
 
-func TestIfromEnv(t *testing.T) {
+func TestIntFromEnv(t *testing.T) {
 	key := "intval"
 	val := 1234
 
-	_ = os.Setenv(envPrefix+key, strconv.Itoa(val))
-	if res := IfromEnv(key, 0); res != val {
+	_ = os.Setenv(EnvPrefix+key, strconv.Itoa(val))
+	if res := intFromEnv(key, 0); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
 	val = 9876
-	if res := IfromEnv("non_existing", val); res != val {
+	if res := intFromEnv("non_existing", val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
-	_ = os.Setenv(envPrefix+key, "impossible")
+	_ = os.Setenv(EnvPrefix+key, "impossible")
 	val = 10
-	if res := IfromEnv(key, val); res != val {
+	if res := intFromEnv(key, val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 }
 
-func TestDfromEnv(t *testing.T) {
+func TestDurationFromEnv(t *testing.T) {
 	key := "durval"
 	val := JsonDuration(30 * time.Second)
 
-	_ = os.Setenv(envPrefix+key, "30s")
-	if res := DfromEnv(key, 0); res != val {
+	_ = os.Setenv(EnvPrefix+key, "30s")
+	if res := durationFromEnv(key, 0); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 
-	_ = os.Setenv(envPrefix+key, "this is not a valid duration")
-	if res := DfromEnv(key, val); res != val {
+	_ = os.Setenv(EnvPrefix+key, "this is not a valid duration")
+	if res := durationFromEnv(key, val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 }
