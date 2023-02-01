@@ -36,15 +36,16 @@ func fileExists(filename string) bool {
 }
 
 var (
-	logger          *log.Logger
-	cacheFolderName = "_foldergal_cache"
-	BuildVersion    = "dev"
-	BuildTimestamp  = "now"
-	BuildTime       time.Time
-	startTime       time.Time
-	urlPrefix       string
-	rssFreshness    = 2 * 168 * time.Hour
-	faultyDate, _   = time.Parse("2006-01-02", "0001-01-02")
+	logger           *log.Logger
+	cacheFolderName  = "_foldergal_cache"
+	BuildVersion     = "dev"
+	BuildTimestamp   = "now"
+	BuildTime        time.Time
+	startTime        time.Time
+	urlPrefix        string
+	rssFreshness     = 2 * 168 * time.Hour // Two weeks
+	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
+	faultyDate, _    = time.Parse("2006-01-02", "0001-01-02")
 )
 
 func fail404(w http.ResponseWriter, r *http.Request) {
@@ -423,11 +424,6 @@ func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) 
 func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	loc, _ := time.LoadLocation("UTC")
 
-	// Limit rss items only to the most fresh
-	then := time.Now().Add(-rssFreshness) // negative duration to subtract
-	isFresh := func(t time.Time) bool {
-		return t.After(then)
-	}
 	typeRss := "atom"
 	var formatTime func(time.Time) string
 	if t == "rss" {
@@ -457,7 +453,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 			}
 			if !entry.IsDir() && !gallery.ContainsDotFile(walkPath) &&
 				gallery.IsValidMedia(walkPath) {
-				if info, err := entry.Info(); err == nil && isFresh(info.ModTime()) {
+				if info, err := entry.Info(); err == nil {
 					urlStr := pathToUrl(walkPath)
 					rssItems = append(rssItems, templates.RssItem{
 						Type:  gallery.GetMediaClass(walkPath),
@@ -481,9 +477,18 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 		return rssItems[i].Mdate.After(rssItems[j].Mdate)
 	})
 
+	// Filter latest entries
+	var latestItems []templates.RssItem
+	freshPeriod := time.Now().Add(-rssFreshness) // negative duration to subtract
+	for _, entry := range rssItems {
+		if entry.Mdate.After(freshPeriod) || len(latestItems) < rssNotFreshCount {
+			latestItems = append(latestItems, entry)
+		}
+	}
+
 	lastDate := time.Now()
-	if len(rssItems) > 0 {
-		lastDate = rssItems[0].Mdate
+	if len(latestItems) > 0 {
+		lastDate = latestItems[0].Mdate
 	}
 	lastDateStr := formatTime(lastDate)
 	w.Header().Set("Last-modified", lastDateStr)
@@ -493,7 +498,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 		SiteTitle: config.Global.PublicHost,
 		SiteUrl:   config.Global.PublicUrl,
 		LastDate:  lastDateStr,
-		Items:     rssItems,
+		Items:     latestItems,
 	}
 	if err := templates.Rss.ExecuteTemplate(w, typeRss, &rss); err != nil {
 		fail500(w, err, r)
@@ -506,9 +511,9 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 // for our internal resources.
 //
 // Three types of content are served:
-//    * internal resource (image, css, etc.)
-//    * html to show folder lists
-//    * media file (thumbnail or larger file)
+//   - internal resource (image, css, etc.)
+//   - html to show folder lists
+//   - media file (thumbnail or larger file)
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q := r.URL.Query()
