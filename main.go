@@ -18,7 +18,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -81,19 +80,17 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	_ = templates.Html.ExecuteTemplate(w, "error", &page)
 }
 
-var dangerousPathSymbols = regexp.MustCompile(":")
-
-// Removes windows drive or network share from p.
-// Also replaces semicolon (:) with underscore (_).
-func sanitizePath(p string) (sanitized string) {
-	if vol := filepath.VolumeName(p); vol != "" {
-		sanitized = strings.TrimPrefix(p, vol)
-		sanitized = strings.TrimPrefix(sanitized, "\\")
-	} else {
-		sanitized = p
+// Get a subpath to a path
+func sanitizePath(p string) string {
+	base := "."
+	if filepath.IsLocal(p) {
+		return filepath.Clean(p)
 	}
-	dangerousPathSymbols.ReplaceAllString(sanitized, "_")
-	return
+	result := filepath.Join(base, filepath.Clean(filepath.Base(p)))
+	if result == ".." {
+		return "."
+	}
+	return result
 }
 
 // Route for image previews of media files
@@ -123,14 +120,12 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		contentType = "image/svg+xml"
 		f, err = gallery.NewPdf(fullPath, thumbPath)
 	default: // Unrecognized mime type
+		w.WriteHeader(http.StatusNotFound)
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
 	if err != nil {
-		if errors.Is(err, gallery.ErrNotValid) || errors.Is(err, gallery.ErrFileNotFound) {
-			fail404(w, r)
-			return
-		}
+		w.WriteHeader(http.StatusNotFound)
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
@@ -152,6 +147,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		logger.Print(err)
+		w.WriteHeader(http.StatusNotFound)
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
 	}
@@ -607,7 +603,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func init() {
+func realInit() {
 	startTime = time.Now()
 	var errTime error
 	BuildTime, errTime = time.Parse(time.RFC3339, BuildTimestamp)
@@ -660,10 +656,10 @@ func init() {
 	flag.IntVar(&config.Global.ThumbHeight, "thumb-height", config.Global.ThumbHeight, "height for thumbnails")
 	flag.StringVar(&config.Global.ConfigFile, "config", config.Global.ConfigFile,
 		"json file to get all the parameters from")
-}
 
-func main() {
 	showVersion := flag.Bool("version", false, "show program version and build time")
+
+	// ??? Move below to main
 
 	flag.Parse()
 
@@ -681,7 +677,6 @@ func main() {
 	config.Global.Home, _ = filepath.Abs(config.Global.Home)
 	config.Global.Root, _ = filepath.Abs(config.Global.Root)
 
-	var err error
 	config.Global.TimeLocation, err = time.LoadLocation(config.Global.TimeZone)
 	if err != nil {
 		log.Fatal(err)
@@ -740,6 +735,10 @@ func main() {
 		logger.Printf("Cache in-memory expiration after %v",
 			time.Duration(config.Global.CacheExpiresAfter))
 	}
+}
+
+func main() {
+	realInit()
 
 	// Routing
 	httpmux := http.NewServeMux()

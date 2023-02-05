@@ -1,6 +1,6 @@
 module foldergal
 
-go 1.19
+go 1.20
 
 require (
 	github.com/charithe/timedbuf v0.0.0-20160717160936-e4a8ee453eb4
