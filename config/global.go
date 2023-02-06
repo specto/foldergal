@@ -79,7 +79,7 @@ type JsonDuration time.Duration
 
 // Parses duration from float64 or string
 func (d *JsonDuration) UnmarshalJSON(b []byte) error {
-	var v interface{}
+	var v any
 	_ = json.Unmarshal(b, &v)
 	switch value := v.(type) {
 	case float64:
@@ -99,7 +99,7 @@ func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
+func fromEnv(envName string, parseVal func(string) any) any {
 	if env, ok := os.LookupEnv(EnvPrefix + envName); ok {
 		return parseVal(env)
 	}
@@ -108,7 +108,7 @@ func fromEnv(envName string, parseVal func(string) interface{}) interface{} {
 
 // Gets a string from env with fallback to default value
 func strFromEnv(envName, defaultVal string) string {
-	s := fromEnv(envName, func(s string) interface{} {
+	s := fromEnv(envName, func(s string) any {
 		return s
 	})
 	switch v := s.(type) {
@@ -121,7 +121,7 @@ func strFromEnv(envName, defaultVal string) string {
 
 // Gets a boolean from env with fallback to default value
 func boolFromEnv(envName string, defaultVal bool) bool {
-	b := fromEnv(envName, func(s string) interface{} {
+	b := fromEnv(envName, func(s string) any {
 		b, err := strconv.ParseBool(s)
 		if err != nil {
 			return nil
@@ -138,7 +138,7 @@ func boolFromEnv(envName string, defaultVal bool) bool {
 
 // Gets a (json)Duration from env with fallback to default value
 func durationFromEnv(envName string, defaultVal JsonDuration) JsonDuration {
-	d := fromEnv(envName, func(s string) interface{} {
+	d := fromEnv(envName, func(s string) any {
 		d, err := time.ParseDuration(s)
 		if err != nil {
 			return nil
@@ -155,7 +155,7 @@ func durationFromEnv(envName string, defaultVal JsonDuration) JsonDuration {
 
 // Gets an integer from env with fallback to default value
 func intFromEnv(envName string, defaultVal int) int {
-	i := fromEnv(envName, func(s string) interface{} {
+	i := fromEnv(envName, func(s string) any {
 		i, err := strconv.Atoi(s)
 		if err != nil {
 			return nil

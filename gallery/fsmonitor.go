@@ -61,7 +61,7 @@ func sendDiscord(jsonData discordMessage) {
 
 var slashes = regexp.MustCompile(`/`)
 
-func notify(items []interface{}) {
+func notify(items []any) {
 	jsonData := discordMessage{
 		Username: config.Global.DiscordName,
 		Embeds:   []discordEmbed{},
