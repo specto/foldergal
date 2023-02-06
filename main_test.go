@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
     "net/http/httptest"
+    "os"
 	"testing"
 )
 
@@ -52,12 +53,12 @@ func assertStatus(t testing.TB, got, want int) {
 // //     }
 // // }
 
-// func TestMain(m *testing.M) {
-// 	// Before main
-// 	exitCode := m.Run()
-// 	// Cleanup after main
-// 	os.Exit(exitCode)
-// }
+func TestMain(m *testing.M) {
+	// Before main
+	exitCode := m.Run()
+	// Cleanup after main
+	os.Exit(exitCode)
+}
 
 func TestPreviewHandler(t *testing.T) {
 	// TODO: test existing audio
