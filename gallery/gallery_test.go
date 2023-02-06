@@ -2,9 +2,11 @@ package gallery
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strconv"
 	"testing"
+	"time"
 )
 
 type generator struct {
@@ -223,6 +225,47 @@ func TestEscapePath(t *testing.T) {
 		actual := EscapePath(tt.in)
 		if tt.out != actual {
 			t.Errorf("PathEscape(%q) = %q, want %q", tt.in, actual, tt.out)
+		}
+	}
+}
+
+func TestFromTimeCode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  time.Duration
+	}{
+		{"00:20:00", 20 * time.Minute},
+		{"00:-20:00", 20 * time.Minute},
+		{"", 0},
+		{"totally:invalid:this:is", 0},
+		{"-1:invalid:10", 1*time.Hour + 10*time.Second},
+	}
+
+	for _, tc := range tests {
+		if result := fromTimeCode(tc.input); result != tc.want {
+			t.Fatalf("fromTimeCode(%v) = %v, want %v", tc.input, result, tc.want)
+		}
+	}
+}
+
+func TestToTimeCode(t *testing.T) {
+	tests := []struct {
+		input time.Duration
+		want  string
+	}{
+		{0, `00:00:00`},
+		{1 * time.Hour, `01:00:00`},
+		{200 * time.Minute, `03:20:00`},
+		{23*time.Hour + 59*time.Minute + 59*time.Second, `23:59:59`},
+		{1200 * time.Hour, `1200:00:00`},
+		{(100 * time.Hour) + 10*time.Second, `100:00:10`},
+		{-30 * time.Second, "00:00:30"},
+		{-math.MaxInt64, "2562047:47:16"},
+	}
+
+	for _, tc := range tests {
+		if result := toTimeCode(tc.input); result != tc.want {
+			t.Fatalf("toTimeCode(%v) = %v, want %v", tc.input, result, tc.want)
 		}
 	}
 }

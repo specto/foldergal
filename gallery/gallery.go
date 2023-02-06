@@ -388,7 +388,7 @@ func (f *videoFile) thumbGenerate() error {
 		return errors.New("cannot find video duration: " + f.mediaFile.fullPath)
 	}
 	// Target the first third of the movie
-	targetTime := toTimeCode(fromTimeCode(match[1]) / 3)
+	targetTime := toTimeCode(fromTimeCode(string(match[1])) / 3)
 	thumbSize := fmt.Sprintf("%dx%d", config.Global.ThumbWidth, config.Global.ThumbHeight)
 
 	// Generate the thumbnail to stdout
@@ -501,24 +501,30 @@ func IsValidMedia(name string) bool {
 	return match != nil
 }
 
-// duration -> 00:00:00
+// Converts duration to timecode string 00:00:00
+// negative time becomes positive
 func toTimeCode(d time.Duration) string {
-	h := int64(math.Mod(d.Hours(), 24))
-	m := int64(math.Mod(d.Minutes(), 60))
-	s := int64(math.Mod(d.Seconds(), 60))
+	h := int64(math.Abs(d.Hours()))
+	m := int64(math.Mod(math.Abs(d.Minutes()), 60))
+	s := int64(math.Mod(math.Abs(d.Seconds()), 60))
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
 // 00:00:00 -> duration
-func fromTimeCode(timecode []byte) (d time.Duration) {
+func fromTimeCode(timecode string) (d time.Duration) {
 	m1, m2, m3 := 0, 0, 0
-	m1, _ = strconv.Atoi(string(timecode[0:2]))
-	m2, _ = strconv.Atoi(string(timecode[3:5]))
-	m3, _ = strconv.Atoi(string(timecode[6:8]))
-	d, _ = time.ParseDuration(fmt.Sprintf("%dh%dm%ds", m1, m2, m3))
+	tc := strings.Split(timecode, ":")
+	for i := len(tc); i <= 3; i++ {
+		tc = append(tc, "")
+	}
+	m1, _ = strconv.Atoi(tc[0])
+	m2, _ = strconv.Atoi(tc[1])
+	m3, _ = strconv.Atoi(tc[2])
+	d = time.Duration(math.Abs(float64(m1)))*time.Hour +
+		time.Duration(math.Abs(float64(m2)))*time.Minute +
+		time.Duration(math.Abs(float64(m3)))*time.Second
 	return
 }
-
 
 func isdigit(b byte) bool {
 	return '0' <= b && b <= '9'
