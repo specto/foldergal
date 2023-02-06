@@ -27,6 +27,7 @@ $(DEST_DIR)/$(PRODUCT): $(SOURCES)
 
 .PHONY: clean
 clean: $(DEST_DIR) ## Clean all build artifacts
+	go clean
 	rm -rf $(DEST_DIR)/*
 
 .PHONY: run
@@ -78,12 +79,9 @@ $(RES_DIR)/favicon.png: $(RES_DIR)/favicon.svg
 $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 	cd $(RES_DIR); convert favicon.png -define icon:auto-resize=64,48,32,16 favicon.ico
 
-favicon: $(RES_DIR)/favicon.ico
-	cd $(RES_DIR); go-bindata favicon.ico
-
 .PHONY: test
-test: ## Run go tests
-	go test ./... -coverprofile cover.out
+test: lint ## Run go tests
+	go test -coverprofile cover.out ./...
 	go tool cover -func=cover.out
 	# go tool cover -html=cover.out -o cover.html
 	rm cover.out
