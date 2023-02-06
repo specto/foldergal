@@ -817,11 +817,16 @@ func main() {
 		}
 		srvErr = srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
 	} else { // Normal start
+		srv := &http.Server{
+			ReadHeaderTimeout: 30 * time.Second,
+			Addr:              bind,
+			Handler:           httpmux,
+		}
 		config.Global.PublicUrl = "http://" + config.Global.PublicUrl
 		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)
 		if !config.Global.Quiet {
 			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.Global.PublicUrl)
 		}
-		srvErr = http.ListenAndServe(bind, httpmux)
+		srvErr = srv.ListenAndServe()
 	}
 }

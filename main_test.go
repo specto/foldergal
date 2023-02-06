@@ -57,9 +57,9 @@ func assertStatus(t testing.TB, got, want int) {
 // // }
 
 func TestMain(m *testing.M) {
-	// Before main
+	// MARK Before main
 	exitCode := m.Run()
-	// Cleanup after main
+	// MARK Cleanup after main
 	os.Exit(exitCode)
 }
 
@@ -67,7 +67,7 @@ func TestPreviewHandler(t *testing.T) {
 	// TODO: test existing audio
 	// TODO: test existing video without preview
 	t.Run("returns preview media", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/thisshouldnotexist-", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/thisshouldnotexist-", http.NoBody)
 		response := httptest.NewRecorder()
 		previewHandler(response, request)
 		assertStatus(t, response.Code, http.StatusNotFound)
@@ -76,7 +76,7 @@ func TestPreviewHandler(t *testing.T) {
 
 func TestFail404(t *testing.T) {
 	t.Run("returns 404", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "", nil)
+		request, _ := http.NewRequest(http.MethodGet, "", http.NoBody)
 		response := httptest.NewRecorder()
 		fail404(response, request)
 		assertStatus(t, response.Code, http.StatusNotFound)
@@ -86,7 +86,7 @@ func TestFail404(t *testing.T) {
 func TestFail500(t *testing.T) {
 	realInit()
 	t.Run("returns 500", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 		response := httptest.NewRecorder()
 		e := errors.New("this sucks")
 		fail500(response, e, request)
@@ -148,6 +148,24 @@ func TestSplitUrlToBreadCrumbs(t *testing.T) {
 		if !reflect.DeepEqual(result, tc.want) {
 			t.Fatalf("splitUrlToBreadCrumbs(%v)\n%v\n===\n%v",
 				tc.input, result, tc.want)
+		}
+	}
+}
+
+func TestFileExists(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"storage/res", false},
+		{"storage/", false},
+		{"", false},
+		{"storage/res/folder.svg", true},
+	}
+
+	for _, tc := range tests {
+		if result := fileExists(tc.path); result != tc.want {
+			t.Fatalf("fileExists(%v) = %v, want %v", tc.path, result, tc.want)
 		}
 	}
 }
