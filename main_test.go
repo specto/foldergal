@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,55 +16,55 @@ import (
 func assertResponseBody(t testing.TB, got, want string) {
 	t.Helper()
 	if got != want {
-		t.Errorf("response body is wrong, got %q want %q", got, want)
+		t.Errorf("wrong response body, got %q want %q", got, want)
 	}
 }
 
 func assertStatus(t testing.TB, got, want int) {
 	t.Helper()
 	if got != want {
-		t.Errorf("did not get correct status, got %d, want %d", got, want)
+		t.Errorf("incorrect status, got %d, want %d", got, want)
 	}
 }
 
-// // func TestHttpHandler(t *testing.T) {
-// //     // Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-// //     // pass 'nil' as the third parameter.
-// //     req, err := http.NewRequest("GET", "/", nil)
-// //     if err != nil {
-// //         t.Fatal(err)
-// //     }
+// func TestHttpHandler(t *testing.T) {
+//     // Create a request to pass to our handler. We don't have any query parameters for now, so we'll
+//     // pass 'nil' as the third parameter.
+//     req, err := http.NewRequest("GET", "/", nil)
+//     if err != nil {
+//         t.Fatal(err)
+//     }
 
-// //     // We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-// //     rr := httptest.NewRecorder()
-// //     handler := http.HandlerFunc(HttpHandler)
+//     // We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+//     rr := httptest.NewRecorder()
+//     handler := http.HandlerFunc(HttpHandler)
 
-// //     // Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-// //     // directly and pass in our Request and ResponseRecorder.
-// //     handler.ServeHTTP(rr, req)
+//     // Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+//     // directly and pass in our Request and ResponseRecorder.
+//     handler.ServeHTTP(rr, req)
 
-// //     // Check the status code is what we expect.
-// //     if status := rr.Code; status != http.StatusOK {
-// //         t.Errorf("handler returned wrong status code: got %v want %v",
-// //             status, http.StatusOK)
-// //     }
+//     // Check the status code is what we expect.
+//     if status := rr.Code; status != http.StatusOK {
+//         t.Errorf("handler returned wrong status code: got %v want %v",
+//             status, http.StatusOK)
+//     }
 
-// //     // Check the response body is what we expect.
-// //     expected := `{"alive": true}`
-// //     if rr.Body.String() != expected {
-// //         t.Errorf("handler returned unexpected body: got %v want %v",
-// //             rr.Body.String(), expected)
-// //     }
-// // }
+//     // Check the response body is what we expect.
+//     expected := `{"alive": true}`
+//     if rr.Body.String() != expected {
+//         t.Errorf("handler returned unexpected body: got %v want %v",
+//             rr.Body.String(), expected)
+//     }
+// }
 
 func TestMain(m *testing.M) {
-	// MARK Before main
-	exitCode := m.Run()
-	// MARK Cleanup after main
-	os.Exit(exitCode)
+	fmt.Println("-> Preparing...")
+    result := m.Run()
+    fmt.Println("-> Finishing...")
+    os.Exit(result)
 }
 
-func TestPreviewHandler(t *testing.T) {
+func Test_previewHandler(t *testing.T) {
 	// TODO: test existing audio
 	// TODO: test existing video without preview
 	t.Run("returns preview media", func(t *testing.T) {
@@ -74,7 +75,7 @@ func TestPreviewHandler(t *testing.T) {
 	})
 }
 
-func TestFail404(t *testing.T) {
+func Test_fail404(t *testing.T) {
 	t.Run("returns 404", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodGet, "", http.NoBody)
 		response := httptest.NewRecorder()
@@ -83,7 +84,7 @@ func TestFail404(t *testing.T) {
 	})
 }
 
-func TestFail500(t *testing.T) {
+func Test_fail500(t *testing.T) {
 	realInit()
 	t.Run("returns 500", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
@@ -94,7 +95,7 @@ func TestFail500(t *testing.T) {
 	})
 }
 
-func TestSanitizePath(t *testing.T) {
+func Test_sanitizePath(t *testing.T) {
 
 	tests := []struct {
 		path string
@@ -116,7 +117,7 @@ func TestSanitizePath(t *testing.T) {
 	}
 }
 
-func TestSplitUrlToBreadCrumbs(t *testing.T) {
+func Test_splitUrlToBreadCrumbs(t *testing.T) {
 	defaultTitle := "#:\\"
 	toUrl := func(u string) *url.URL {
 		uu, _ := url.Parse(u)
@@ -152,7 +153,7 @@ func TestSplitUrlToBreadCrumbs(t *testing.T) {
 	}
 }
 
-func TestFileExists(t *testing.T) {
+func Test_fileExists(t *testing.T) {
 	tests := []struct {
 		path string
 		want bool
@@ -169,3 +170,5 @@ func TestFileExists(t *testing.T) {
 		}
 	}
 }
+
+// TODO Find a way to test fatal errors in main?
