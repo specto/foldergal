@@ -618,7 +618,7 @@ func realInit() {
 	}
 
 	// Environment variables
-	config.Global.FromEnv(execFolder)
+	config.Global.LoadEnv(execFolder)
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])

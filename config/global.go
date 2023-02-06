@@ -55,7 +55,7 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 	return
 }
 
-func (c *Configuration) FromEnv(execFolder string) {
+func (c *Configuration) LoadEnv(execFolder string) {
 	c.Host = strFromEnv("HOST", "localhost")
 	c.Port = intFromEnv("PORT", 8080)
 	c.Home = strFromEnv("HOME", execFolder)

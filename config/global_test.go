@@ -114,3 +114,8 @@ func TestDurationFromEnv(t *testing.T) {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
 }
+
+func TestLoadEnv(t *testing.T) {
+	execFolder, _ := os.Getwd()
+	Global.LoadEnv(execFolder)
+}
