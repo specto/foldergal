@@ -3,9 +3,13 @@ package main
 import (
 	"errors"
 	"net/http"
-    "net/http/httptest"
-    "os"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"reflect"
 	"testing"
+
+	"foldergal/templates"
 )
 
 func assertResponseBody(t testing.TB, got, want string) {
@@ -14,7 +18,6 @@ func assertResponseBody(t testing.TB, got, want string) {
 		t.Errorf("response body is wrong, got %q want %q", got, want)
 	}
 }
-
 
 func assertStatus(t testing.TB, got, want int) {
 	t.Helper()
@@ -94,8 +97,8 @@ func TestFail500(t *testing.T) {
 func TestSanitizePath(t *testing.T) {
 
 	tests := []struct {
-		path   string
-		want   string
+		path string
+		want string
 	}{
 		{`/windows/system32`, `system32`},
 		{`../apath/like:this`, "like:this"},
@@ -109,6 +112,42 @@ func TestSanitizePath(t *testing.T) {
 	for _, tc := range tests {
 		if result := sanitizePath(tc.path); result != tc.want {
 			t.Fatalf("sanitizePath(%v) = %v, want %v", tc.path, result, tc.want)
+		}
+	}
+}
+
+func TestSplitUrlToBreadCrumbs(t *testing.T) {
+	defaultTitle := "#:\\"
+	toUrl := func(u string) *url.URL {
+		uu, _ := url.Parse(u)
+		return uu
+	}
+	tests := []struct {
+		input *url.URL
+		want  []templates.BreadCrumb
+	}{
+		{toUrl("http://example.com/what/is/this"),
+			[]templates.BreadCrumb{
+				{Url: "/", Title: defaultTitle},
+				{Url: "/what", Title: "what"},
+				{Url: "/what/is", Title: "is"},
+				{Url: "/what/is/this", Title: "this"},
+			}},
+		{toUrl(""),
+			[]templates.BreadCrumb{
+				{Url: "/", Title: defaultTitle},
+			}},
+		{toUrl("some text ."),
+			[]templates.BreadCrumb{
+				{Url: "/", Title: defaultTitle},
+				{Url: "/some text .", Title: "some text ."},
+			}},
+	}
+	for _, tc := range tests {
+		result := splitUrlToBreadCrumbs(tc.input)
+		if !reflect.DeepEqual(result, tc.want) {
+			t.Fatalf("splitUrlToBreadCrumbs(%v)\n%v\n===\n%v",
+				tc.input, result, tc.want)
 		}
 	}
 }
