@@ -462,6 +462,7 @@ func ContainsDotFile(name string) bool {
 }
 
 // Escapes a path with URL escape codes while keeping slashes unchanged
+// TODO: look for built-in functions in stdlib for escaping a path
 func EscapePath(s string) (r string) {
 	parts := strings.Split(s, "/")
 	eparts := make([]string, 0, len(parts))
@@ -472,11 +473,11 @@ func EscapePath(s string) (r string) {
 }
 
 // Finds the type of a file
-// Careful: on unix uses specific files
-//   /etc/mime.types
-//   /etc/apache2/mime.types
-//   /etc/apache/mime.types
 func GetMediaClass(name string) string {
+	// NOTE: on unix this uses specific files
+	//   /etc/mime.types
+	//   /etc/apache2/mime.types
+	//   /etc/apache/mime.types
 	switch contentType := mime.TypeByExtension(filepath.Ext(name)); {
 	case strings.HasPrefix(contentType, "image/"):
 		return "image"
