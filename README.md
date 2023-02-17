@@ -166,3 +166,5 @@ TODO
 * [ ] Exclude thumbs.db files
 * [ ] (maybe) Use webauthn for authentication  
   <https://github.com/duo-labs/webauthn>
+* [ ] Make sure thumbnail generation uses correct resizing
+  <https://zuru.tech/blog/the-dangers-behind-image-resizing>
