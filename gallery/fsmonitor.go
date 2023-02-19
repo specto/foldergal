@@ -48,7 +48,8 @@ func sendDiscord(jsonData discordMessage) {
 	resp, errp := http.Post(config.Global.DiscordWebhook,
 		"application/json; charset=utf-8", jsonBuf)
 	if resp != nil {
-		defer resp.Body.Close() // Prevent leaks?!
+		// Prevent leaks?!
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if errp != nil {
 		(*logger).Printf("error: cannot send discord notification: %v", errp)
