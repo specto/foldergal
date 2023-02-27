@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fvbommel/sortorder"
 	"github.com/spf13/afero"
 )
 
@@ -335,7 +336,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 			if opts.Order {
 				j, i = i, j
 			}
-			return gallery.NaturalLess(
+			return sortorder.NaturalLess(
 				strings.ToLower(children[i].Name),
 				strings.ToLower(children[j].Name))
 		})
