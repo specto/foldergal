@@ -403,11 +403,11 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 // Delivers file contents for static resources
 func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
 	f, err := storage.InternalHttp.Open(resFile)
-	defer f.Close()
 	if err != nil {
 		fail404(w, r)
 		return
 	}
+	defer f.Close()
 	var name string
 	if qName, inQuery := r.URL.Query()["static"]; inQuery {
 		name = qName[0]

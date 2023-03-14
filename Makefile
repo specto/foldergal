@@ -92,6 +92,7 @@ test: lint ## Run go tests
 .PHONY: lint
 lint: ## Run go-critic lint
 	gocritic check -enableAll ./...
+	staticcheck ./...
 
 .PHONY: benchmark
 benchmark: ## Run go benchmarks

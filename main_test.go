@@ -13,12 +13,12 @@ import (
 	"foldergal/templates"
 )
 
-func assertResponseBody(t testing.TB, got, want string) {
-	t.Helper()
-	if got != want {
-		t.Errorf("wrong response body, got %q want %q", got, want)
-	}
-}
+// func assertResponseBody(t testing.TB, got, want string) {
+// 	t.Helper()
+// 	if got != want {
+// 		t.Errorf("wrong response body, got %q want %q", got, want)
+// 	}
+// }
 
 func assertStatus(t testing.TB, got, want int) {
 	t.Helper()

@@ -83,10 +83,7 @@ func (f *mediaFile) thumbExists() bool {
 	var err error
 	// Ensure we refresh Thumb stat
 	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (f *mediaFile) thumbExpired() bool {
@@ -150,10 +147,10 @@ func (f *imageFile) thumbGenerate() (err error) {
 		img  image.Image
 	)
 	file, err = storage.Root.Open(f.mediaFile.fullPath)
-	defer file.Close()
 	if err != nil {
 		return
 	}
+	defer file.Close()
 	img, err = imaging.Decode(file, imaging.AutoOrientation(true))
 	if err != nil {
 		return
@@ -209,10 +206,10 @@ func (f *svgFile) thumbGenerate() (err error) {
 		contents []byte
 	)
 	file, err = storage.Root.Open(f.mediaFile.fullPath)
-	defer file.Close()
 	if err != nil {
 		return
 	}
+	defer file.Close()
 	contents, err = afero.ReadAll(file)
 	if err != nil {
 		return
@@ -269,10 +266,7 @@ func (f *audioFile) thumbExists() bool {
 	var err error
 	// Ensure we refresh Thumb stat
 	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (f *audioFile) thumbGenerate() error {
@@ -324,8 +318,13 @@ func (f *audioFile) thumbGenerate() error {
 	}
 	// Save thumbnail
 	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, thumbData, os.ModePerm)
+	if err != nil {
+		return err
+	}
 	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
-
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -363,10 +362,7 @@ func (f *videoFile) thumbExists() bool {
 	var err error
 	// Ensure we refresh Thumb stat
 	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 var reDuration = regexp.MustCompile(`Duration: (\d{2}:\d{2}:\d{2})`)
@@ -414,8 +410,13 @@ func (f *videoFile) thumbGenerate() error {
 	}
 	// Save thumbnail
 	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, outThumb, os.ModePerm)
+	if err != nil {
+		return err
+	}
 	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
-
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
