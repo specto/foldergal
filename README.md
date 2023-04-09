@@ -168,3 +168,4 @@ TODO
   <https://github.com/duo-labs/webauthn>
 * [ ] Make sure thumbnail generation uses correct resizing
   <https://zuru.tech/blog/the-dangers-behind-image-resizing>
+* [ ] Use context derived from http
