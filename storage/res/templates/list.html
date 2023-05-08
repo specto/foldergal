@@ -78,7 +78,11 @@
         {{ if .ParentUrl }}
             <li>
                 <a tabindex="0" class="folder" href="{{- .ParentUrl -}}">
-                    <span><img src="{{ .Prefix }}/?static=up.svg" alt=".." title="{{ .ParentUrl }}" /></span>
+                    <span title="{{ .ParentUrl }}">
+                    <svg class="icon iconUp">
+                        <use xlink:href="{{ .Prefix }}/?static=ui.svg#iconUp"></use>
+                    </svg>
+                    </span>
                 </a></li>
         {{ end }}
         {{ range .Items }}
@@ -90,7 +94,12 @@
     {{- if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}?overlay{{- end -}}"
             title="{{ .Name }} [{{ .ModTime | formatDate }}]">
                 <span>
-                    {{ if .Thumb -}}
+                    {{ if eq .Class "folder" }}
+                    <svg class="icon iconFolder">
+                        <use xlink:href="{{ .Thumb }}"></use>
+                    </svg>
+
+                    {{ else if .Thumb -}}
                         <img src="{{ .Thumb }}" alt="{{ .Name }}" />
                     {{- end }}
 

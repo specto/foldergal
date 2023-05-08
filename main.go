@@ -299,7 +299,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		}
 		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
 		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
-		thumb := urlPrefix + "/?static=folder.svg"
+		thumb := urlPrefix + "/?static=ui.svg#iconFolder"
 		class := "folder"
 		if !child.IsDir() {
 			thumb = gallery.EscapePath(filepath.Join(urlPrefix, folderPath, child.Name())) + "?thumb"
