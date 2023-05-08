@@ -158,7 +158,8 @@ TODO
 * [ ] (maybe) Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
 * [ ] (maybe) Dynamic folder icons generated from the full folder path
 * [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
-* [ ] Combine svg icons in a single file and `<use>` sprites 
+* [~] Combine svg icons in a single file and `<use>` sprites 
+  Add dark theme support
 * [ ] Fix misterious date bug 0001-01-01 on freebsd
 * [x] Rewrite embedded files using the `go:embed` directive available in go 1.16
 * [ ] Rewrite HTTP handlers using middleware e.g.  

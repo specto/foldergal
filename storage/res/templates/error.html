@@ -3,7 +3,9 @@
     <header><h1>{{ .Title }}</h1></header>
     <main>
     <p class="error">
-        <img src="/?broken" width="100" alt="error" />
+        <svg style="width: 100px;" class="icon iconError">
+            <use xlink:href="{{ .Prefix }}/?static=ui.svg#iconBroken"></use>
+        </svg>
         <span>{{ .Message }}</span>
     </p>
     </main>
