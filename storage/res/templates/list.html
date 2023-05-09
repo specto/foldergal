@@ -34,6 +34,12 @@
     });
 </script>
 {{ end }}
+<script type="text/javascript">
+    window.addEventListener("load", function initAnyway() {
+        document.querySelectorAll(".requiresJavascript").forEach(
+            el => el.style.visibility = "visible");
+    });
+</script>
 {{end}}
 {{ define "body" }}
 
@@ -45,7 +51,7 @@
                 {{- end -}}
 				<span>{{ .ItemCount }}&gt;</span>
             </h1>
-			<div class="toolbar">
+			<div class="toolbar requiresJavascript">
 			    <span class="title">view files:</span>
 				<span class="buttons"><a {{ if eq .DisplayMode "inline" -}}
 					class="current"

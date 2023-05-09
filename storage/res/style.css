@@ -266,6 +266,8 @@ header nav h1
 	border-collapse: collapse;
 }
 
+.requiresJavascript { visibility: hidden; }
+
 #slideshow
 {
 	display: none;
