@@ -319,14 +319,22 @@ header nav h1
 }
 
 #slideshowOverlay a:hover { background: none; }
+/*
 #slideshowOverlay a:active { filter: invert(1); }
+ */
 
-.icon {
+svg.icon {
     width: 100%;
     stroke-width: 64;
     stroke-miterlimit: 10;
     fill: #e4e4e4;
     stroke: #4b4b4b;
+}
+
+svg.button {
+    stroke-width: 14;
+    width: 35px;
+    height: 35px;
 }
 
 
@@ -336,12 +344,13 @@ header nav h1
         color: #EDEDED;
         background: #272727;
     }
+    a { color: #9da3e2; }
     a.media { background: black; }
     a:hover { background-color: #494949; }
     a:active, a:focus
     {
         background-color: #5c6a81;
-        color: #3c598e;
+        color: white;
 	}
     nav .path a { color: silver; }
     nav .path a:hover { border-bottom-color: silver; }
@@ -349,7 +358,7 @@ header nav h1
     nav .path a:only-of-type { color: #797979; }
     main li.folder .title { color: #EDEDED; }
 
-    .icon {
+    svg.icon {
         fill: #494949;
         stroke: #797979;
     }

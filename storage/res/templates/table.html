@@ -10,8 +10,9 @@
         </tr>
     {{ end }}
     </table>
-        <a style="display:block; width:4em; height: 3em; min-height: auto;" href="{{ .Prefix }}/">
-            <img style="width:4em; height: 3em;" src="{{ .Prefix }}/?static=up.svg" alt=".." /></a>
+        <a style="display:block; padding: 0.5em 1em;" href="{{ .Prefix }}/">
+        &lt; back
+        </a>
     </main>
     {{template "footer" .}}
     {{template "layout_end" .}}

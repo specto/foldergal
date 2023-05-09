@@ -79,8 +79,8 @@
             <li>
                 <a tabindex="0" class="folder" href="{{- .ParentUrl -}}">
                     <span title="{{ .ParentUrl }}">
-                    <svg class="icon iconUp">
-                        <use xlink:href="{{ .Prefix }}/?static=ui.svg#iconUp"></use>
+                    <svg class="icon iconParent">
+                        <use xlink:href="{{ .Prefix }}/?static=ui.svg#iconParent"></use>
                     </svg>
                     </span>
                 </a></li>
@@ -110,9 +110,21 @@
     </main>
     <div id="slideshow">
     <div id="slideshowOverlay">
-    <a id="slideshowClose" href="#"><img src="{{ .Prefix }}/?static=close.svg" alt="x" title="close" /></a>
-    <a id="slideshowNext"  href="#"><img src="{{ .Prefix }}/?static=rarr.svg" alt="&gt;" title="next" /></a>
-    <a id="slideshowPrev"  href="#"><img src="{{ .Prefix }}/?static=larr.svg" alt="&lt;" title="previous" /></a>
+    <a id="slideshowClose" href="#" title="close">
+    <svg class="button buttonClose">
+        <use xlink:href="{{ .Prefix }}/?static=ui.svg#buttonClose"></use>
+    </svg>
+    </a>
+    <a id="slideshowNext" href="#" title="next">
+    <svg class="button buttonRight">
+        <use xlink:href="{{ .Prefix }}/?static=ui.svg#buttonRight"></use>
+    </svg>
+    </a>
+    <a id="slideshowPrev" href="#" title="previous">
+    <svg class="button buttonLeft">
+        <use xlink:href="{{ .Prefix }}/?static=ui.svg#buttonLeft"></use>
+    </svg>
+    </a>
     </div>
     <div id="slideshowContents"></div>
     </div>
