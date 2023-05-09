@@ -1,5 +1,5 @@
 "use strict";
-(function (global) { // We're green: no global pollution
+(function (global) { /* We're green: no global pollution */
     let currentlyShown;
     let toolbarHideTimeout;
 
@@ -11,8 +11,35 @@
         }, 3000);
     }
 
+    function displayLoading(target) {
+        let isLoading = false;
+        let shouldShowLoading = false;
+        let iv = setInterval(function() {
+            if (shouldShowLoading && !isLoading) {
+                target.classList.add("waiting");
+                console.log("Loading...");
+                isLoading = true;
+            }
+        }, 300);
+        setTimeout(function () {
+            shouldShowLoading = true;
+        }, 500)
+        return iv
+    }
+
+    function undisplayLoading(iv, target) {
+        if (target) {
+            target.classList.remove("waiting");
+        }
+        if (iv) {
+            console.log("CLEAR iv");
+            clearInterval(iv);
+        }
+        console.log("STOP loading");
+    }
+
     function showMedia(href, mediaClass) {
-        href = href.split("?")[0]; // clear querystring
+        href = href.split("?")[0]; /* clear querystring */
         const contents = document.getElementById("slideshowContents");
         if (mediaClass === "video") {
             contents.innerHTML = `<video controls="true" poster="${href}?thumb" playsinline="true" preload="metadata" autoplay="true">
@@ -23,13 +50,17 @@
                 <source src="${href}" /></video>`;
         }
         else {
-            const img = contents.querySelector("img");
-            if (img) { // Reuse image tag to have more fluid rendering
-                img.src = href;
+            let img = contents.querySelector("img");
+            if (!img) { /* Create IMG tag once */
+                contents.innerHTML = `<img />`;
+                img = contents.querySelector("img");
             }
-            else {
-                contents.innerHTML = `<img src="${href}" />`;
-            }
+            img.src = ""; /* Clear the old image */
+            const loading = displayLoading(img);
+            const offFunc = undisplayLoading.bind(null, loading, img);
+            img.addEventListener("load", offFunc);
+            img.addEventListener("error", offFunc);
+            img.src = href;
         }
         document.getElementById("slideshow").style.display = "block";
     }
@@ -140,10 +171,10 @@
             return nextSlide();
         case "Space":
             const videoElem = document.querySelector("#slideshow video");
-            if (videoElem) { // space key should pause video
+            if (videoElem) { /* space key should pause video */
                 ev.preventDefault();
                 return videoElem.paused ? videoElem.play() : videoElem.pause();
-            } // not a video so we continue our takeover...
+            } /* not a video so we continue our takeover... */
             case "Tab":
             case "Enter":
                 ev.preventDefault();
@@ -151,14 +182,14 @@
         }
     }
 
-    // Prevent default event handlers and cancel event bubbling
+    /* Prevent default event handlers and cancel event bubbling */
     function callOnly(f, e, ...args) {
         e.preventDefault();
         e.stopPropagation();
         f(e, ...args);
     }
 
-    // Exported so we can load an image in the overlay
+    /* Exported so we can load an image in the overlay */
     global.findAndShow = function () {
         const target = global.location.href;
         for (let a of document.querySelectorAll("main a").values()) {
@@ -171,7 +202,7 @@
 
     global.addEventListener("load", function init() {
         const targets = document.querySelectorAll("main a.overlay");
-        if (targets.length === 0) { // No inline image display is needed
+        if (targets.length === 0) { /* No inline image display is needed */
             return;
         }
         targets.forEach(function (item) {
@@ -180,7 +211,7 @@
         global.addEventListener("keydown", keyHandle);
         global.addEventListener("popstate", historyHandle);
         global.addEventListener("lostpointercapture", console.log);
-        // Mobile browsers seem to react to mousemove on touch
+        /* Mobile browsers seem to react to mousemove on touch */
         document.getElementById("slideshow").addEventListener("mousemove", pingToolbar);
         document.getElementById("slideshowClose").addEventListener("click", callOnly.bind(null, cancelSlide));
         document.getElementById("slideshowNext").addEventListener("click", callOnly.bind(null, nextSlide));

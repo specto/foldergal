@@ -293,6 +293,8 @@ header nav h1
 	object-position: 50% 50%;
 }
 
+.waiting { cursor: progress; }
+
 #slideshowOverlay
 {
 	position: fixed;
