@@ -2,6 +2,8 @@
 (function (global) { /* We're green: no global pollution */
     let currentlyShown;
     let toolbarHideTimeout;
+    let touchX = 0;
+    let touchY = 0;
 
     function pingToolbar() {
         document.querySelector("#slideshowOverlay").style.display = "block";
@@ -17,7 +19,6 @@
         let iv = setInterval(function() {
             if (shouldShowLoading && !isLoading) {
                 target.classList.add("waiting");
-                console.log("Loading...");
                 isLoading = true;
             }
         }, 300);
@@ -32,10 +33,8 @@
             target.classList.remove("waiting");
         }
         if (iv) {
-            console.log("CLEAR iv");
             clearInterval(iv);
         }
-        console.log("STOP loading");
     }
 
     function showMedia(href, mediaClass) {
@@ -200,6 +199,39 @@
         }
     };
 
+    function touchStartHandle (ev) {
+        if (!currentlyShown) {
+            return true;
+        }
+        touchX = ev.changedTouches[0].screenX;
+        touchY = ev.changedTouches[0].screenY;
+        ev.preventDefault();
+        return false;
+    }
+
+    function touchEndHandle (ev) {
+        if (!currentlyShown) {
+            return true;
+        }
+        let diffX = ev.changedTouches[0].screenX - touchX;
+        let diffY = ev.changedTouches[0].screenY - touchY;
+        // Ignore vertical swipes
+        if (Math.abs(diffY) > 60) {
+            return true;
+        }
+        // Ignore too small side swipes
+        if (Math.abs(diffX) < 30) {
+            return true;
+        }
+        if (diffX > 0) {
+            prevSlide();
+        } else {
+            nextSlide();
+        }
+        ev.preventDefault();
+        return false;
+    }
+    
     global.addEventListener("load", function init() {
         const targets = document.querySelectorAll("main a.overlay");
         if (targets.length === 0) { /* No inline image display is needed */
@@ -210,7 +242,8 @@
         });
         global.addEventListener("keydown", keyHandle);
         global.addEventListener("popstate", historyHandle);
-        global.addEventListener("lostpointercapture", console.log);
+        global.addEventListener("touchstart", touchStartHandle);
+        global.addEventListener("touchend", touchEndHandle);
         /* Mobile browsers seem to react to mousemove on touch */
         document.getElementById("slideshow").addEventListener("mousemove", pingToolbar);
         document.getElementById("slideshowClose").addEventListener("click", callOnly.bind(null, cancelSlide));

@@ -1,11 +1,5 @@
 {{ define "head" }}
 <link rel="stylesheet" type="text/css" href="{{ .Prefix }}/?static=style.css" />
-{{ if .ShowOverlay }}
-<script type="text/javascript" src="{{ .Prefix }}/?static=script.js"></script>
-<script type="text/javascript">
-    window.addEventListener("load", findAndShow);
-</script>
-{{ else }}
 <script type="text/javascript">
     function readCookie(name) {
         const nameEQ = name + "=";
@@ -21,7 +15,18 @@
         }
         return null;
     }
-
+    window.addEventListener("load", function initAnyway() {
+        document.querySelectorAll(".requiresJavascript").forEach(
+            el => el.style.visibility = "visible");
+    });
+</script>
+{{ if .ShowOverlay }}
+<script type="text/javascript" src="{{ .Prefix }}/?static=script.js"></script>
+<script type="text/javascript">
+    window.addEventListener("load", findAndShow);
+</script>
+{{ else }}
+<script type="text/javascript">
     window.addEventListener("load", function init() {
         // Try to load from url fragment
         const showCookie = readCookie("show");
@@ -34,12 +39,6 @@
     });
 </script>
 {{ end }}
-<script type="text/javascript">
-    window.addEventListener("load", function initAnyway() {
-        document.querySelectorAll(".requiresJavascript").forEach(
-            el => el.style.visibility = "visible");
-    });
-</script>
 {{end}}
 {{ define "body" }}
 

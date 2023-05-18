@@ -153,7 +153,7 @@ TODO
 * [ ] 100% test coverage
 * [ ] Add fuzz tests  
   <https://blog.fuzzbuzz.io/go-fuzzing-basics>
-* [ ] Use touch events (swipe left and right) for overlay media navigation
+* [x] Use touch events (swipe left and right) for overlay media navigation
 * [x] Loading indicator for overlay image next and prev
 * [ ] (maybe) Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
 * [ ] (maybe) Dynamic folder icons generated from the full folder path
