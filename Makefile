@@ -103,7 +103,7 @@ all: test release upx zip ## Test, build and compress all release binaries
 
 .PHONY: format
 format: ## Format all go code
-	gofmt -s -w .
+	go fmt ./...
 
 .PHONY: update
 update: ## Update go modules
