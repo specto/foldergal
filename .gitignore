@@ -2,7 +2,5 @@
 /config.json
 /.env
 /_foldergal_cache
-/.idea
-/tags
 /dist
-/storage/generated.go
+
