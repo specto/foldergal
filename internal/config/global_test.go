@@ -20,7 +20,7 @@ func TestFromJson(t *testing.T) {
 		t.Errorf("Expected error '%v', got '%v'", badKeyErr, err)
 	}
 
-	if err := testCfg.FromJson("../config.default.json"); err != nil {
+	if err := testCfg.FromJson("../../config.default.json"); err != nil {
 		t.Errorf("config.default.json: '%v'", err)
 	}
 

@@ -562,8 +562,6 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		_ = opts.Unmarshal(settingsCookie.Value)
 	}
 
-	// 	mustSaveSettings := false
-
 	// All these can be set simultaneously in the query string
 	reqOrder := q.Get("order")
 	if reqOrder != "" {
@@ -573,14 +571,6 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 			opts.Order = false
 		}
 	}
-	// 	if _, ok := q["asc"]; ok {
-	// 		opts.Order = false
-	// 		mustSaveSettings = true
-	// 	}
-	// 	if _, ok := q["desc"]; ok {
-	// 		opts.Order = true
-	// 		mustSaveSettings = true
-	// 	}
 	if reqSort := q.Get("sort"); reqSort != "" {
 		opts.Sort = reqSort
 		// Default order for date sorting must be descending
@@ -588,66 +578,27 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 			opts.Order = true
 		}
 	}
-	// 	if _, ok := q["by-date"]; ok {
-	// 		opts.Sort = "date"
-	// 		mustSaveSettings = true
-	// 	}
-	// 	if _, ok := q["by-name"]; ok {
-	// 		if !mustSaveSettings { // Default order for name is ascending
-	// 			opts.Order = false
-	// 		}
-	// 		opts.Sort = "name"
-	// 		mustSaveSettings = true
-	// 	}
 	if reqDisplay := q.Get("display"); reqDisplay != "" {
 		opts.Show = reqDisplay
 	}
-	// 	if _, ok := q["show-inline"]; ok {
-	// 		opts.Show = "inline"
-	// 		mustSaveSettings = true
-	// 	}
-	// 	if _, ok := q["show-files"]; ok {
-	// 		opts.Show = "files"
-	// 		mustSaveSettings = true
-	// 	}
-
-	// 	if mustSaveSettings {
-	// 		cookieData, err := opts.Marshal()
-	// 		if err == nil {
-	// 			cookiePath := urlPrefix
-	// 			if cookiePath == "" {
-	// 				cookiePath = "/"
-	// 			}
-	// 			http.SetCookie(w, &http.Cookie{Name: cookieName,
-	// 				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
-	// 		} else {
-	// 			log.Printf("Error creating cookie: %s", err)
-	// 		}
-	// 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
-	if q.Has("status") {
+	switch {
+	case q.Has("status"):
 		statusHandler(w, r)
-		return
-	} else if q.Has("thumb") {
+	case q.Has("thumb"):
 		previewHandler(w, r)
-		return
-	} else if q.Has("broken") { // Keep this separate from static, just in case...
+	case q.Has("broken"): // Keep this separate from static, just in case...
 		renderEmbeddedFile("res/broken.svg", w, r)
-		return
-	} else if q.Has("static") {
+	case q.Has("static"):
 		staticResource := q.Get("static")
 		renderEmbeddedFile("res/"+staticResource, w, r)
-		return
-	} else if q.Has("rss") {
+	case q.Has("rss"):
 		rssHandler("rss", w, r)
-		return
-	} else if q.Has("atom") {
+	case q.Has("atom"):
 		rssHandler("atom", w, r)
-		return
-	} else if q.Has("error") {
+	case q.Has("error"):
 		fail404(w, r)
-		return
 	}
 
 	stat, err := storage.Root.Stat(fullPath)

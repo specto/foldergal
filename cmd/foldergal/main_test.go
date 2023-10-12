@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"foldergal/templates"
+	"specto.org/projects/foldergal/internal/templates"
 )
 
 // func assertResponseBody(t testing.TB, got, want string) {
@@ -58,6 +58,7 @@ func assertStatus(t testing.TB, got, want int) {
 // }
 
 func TestMain(m *testing.M) {
+	os.Chdir("../..")
 	fmt.Println("-> Preparing...")
 	result := m.Run()
 	fmt.Println("-> Finishing...")
@@ -103,7 +104,7 @@ func Test_sanitizePath(t *testing.T) {
 	}{
 		{`/windows/system32`, `system32`},
 		{`../apath/like:this`, "like:this"},
-		{"storage/res", "storage/res"},
+		{"internal/storage/res", "internal/storage/res"},
 		{"", "."},
 		{"./../../../z", "z"},
 		{"./../../../", "."},
@@ -158,10 +159,10 @@ func Test_fileExists(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"storage/res", false},
+		{"internal/storage/res", false},
 		{"storage/", false},
 		{"", false},
-		{"storage/res/folder.svg", true},
+		{"internal/storage/res/folder.svg", true},
 	}
 
 	for _, tc := range tests {
