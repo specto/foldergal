@@ -2,10 +2,10 @@ package templates
 
 import (
 	"fmt"
-	"foldergal/config"
-	"foldergal/storage"
 	"html/template"
 	"io"
+	"specto.org/projects/foldergal/internal/config"
+	"specto.org/projects/foldergal/internal/storage"
 	textTpl "text/template"
 	"time"
 )

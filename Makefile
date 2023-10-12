@@ -1,5 +1,5 @@
-SRC_DIR = .
-SOURCES := $(shell find $(SRC_DIR) -name '*.go')
+SRC_DIR = "."
+SOURCES := $(shell find $(SRC_DIR) -type f -name 'main.go')
 DEST_DIR = dist
 RES_DIR = res
 PRODUCT = foldergal
@@ -23,7 +23,7 @@ $(DEST_DIR):
 
 $(DEST_DIR)/$(PRODUCT): $(SOURCES)
 	go generate
-	go build -v $(FLAGS) -o $@
+	go build -v $(FLAGS) -o $@ $^
 
 .PHONY: clean
 clean: $(DEST_DIR) ## Clean all build artifacts
@@ -32,32 +32,32 @@ clean: $(DEST_DIR) ## Clean all build artifacts
 
 .PHONY: run
 run: build ## Run with current config
-	./$(DEST_DIR)/$(PRODUCT) --config config.json
+	$(DEST_DIR)/$(PRODUCT) --config config.json
 
 .PHONY: release
 release: $(DEST_DIR) lint $(PRODUCT_FILES) ## Build all release binaries
 
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-intel: $(SOURCES)
 	go generate
-	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@
+	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-arm: $(SOURCES)
 	go generate
-	GOOS=darwin GOARCH=arm64 go build -v $(FLAGS) -o $@
+	GOOS=darwin GOARCH=arm64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION).exe: $(SOURCES)
 	go generate
-	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@
+	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-linux: $(SOURCES)
 	go generate
-	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@
+	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-freebsd: $(SOURCES)
 	go generate
-	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@
+	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-pi: $(SOURCES)
 	go generate
-	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@
+	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-openwrt: $(SOURCES)
 	go generate
-	GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v $(FLAGS) -o $@
+	GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v $(FLAGS) -o $@ $^
 
 .PHONY: rerun
 rerun: clean run ## Clean, build, run
@@ -116,3 +116,12 @@ tags: ## Create tags for all go code
 .PHONY: version
 version: ## Show current version
 	@echo $(VERSION)
+
+.PHONY: echo
+echo:
+	@echo VERSION: $(VERSION)
+	@echo PLATFORMS: $(PLATFORMS)
+	@echo SRC_DIR: $(SRC_DIR)
+	@echo DEST_DIR: $(DEST_DIR)
+	@echo FLAGS: $(FLAGS)
+	@echo SOURCES: $(SOURCES)

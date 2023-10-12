@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"foldergal/config"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"specto.org/projects/foldergal/internal/config"
 	"time"
 
 	"github.com/charithe/timedbuf"

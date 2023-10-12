@@ -6,10 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"foldergal/config"
-	"foldergal/gallery"
-	"foldergal/storage"
-	"foldergal/templates"
 	"log"
 	"mime"
 	"net/http"
@@ -20,6 +16,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"specto.org/projects/foldergal/internal/config"
+	"specto.org/projects/foldergal/internal/gallery"
+	"specto.org/projects/foldergal/internal/storage"
+	"specto.org/projects/foldergal/internal/templates"
 	"strings"
 	"time"
 
@@ -562,7 +562,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		_ = opts.Unmarshal(settingsCookie.Value)
 	}
 
-// 	mustSaveSettings := false
+	// 	mustSaveSettings := false
 
 	// All these can be set simultaneously in the query string
 	reqOrder := q.Get("order")
@@ -573,14 +573,14 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 			opts.Order = false
 		}
 	}
-// 	if _, ok := q["asc"]; ok {
-// 		opts.Order = false
-// 		mustSaveSettings = true
-// 	}
-// 	if _, ok := q["desc"]; ok {
-// 		opts.Order = true
-// 		mustSaveSettings = true
-// 	}
+	// 	if _, ok := q["asc"]; ok {
+	// 		opts.Order = false
+	// 		mustSaveSettings = true
+	// 	}
+	// 	if _, ok := q["desc"]; ok {
+	// 		opts.Order = true
+	// 		mustSaveSettings = true
+	// 	}
 	if reqSort := q.Get("sort"); reqSort != "" {
 		opts.Sort = reqSort
 		// Default order for date sorting must be descending
@@ -588,42 +588,42 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 			opts.Order = true
 		}
 	}
-// 	if _, ok := q["by-date"]; ok {
-// 		opts.Sort = "date"
-// 		mustSaveSettings = true
-// 	}
-// 	if _, ok := q["by-name"]; ok {
-// 		if !mustSaveSettings { // Default order for name is ascending
-// 			opts.Order = false
-// 		}
-// 		opts.Sort = "name"
-// 		mustSaveSettings = true
-// 	}
+	// 	if _, ok := q["by-date"]; ok {
+	// 		opts.Sort = "date"
+	// 		mustSaveSettings = true
+	// 	}
+	// 	if _, ok := q["by-name"]; ok {
+	// 		if !mustSaveSettings { // Default order for name is ascending
+	// 			opts.Order = false
+	// 		}
+	// 		opts.Sort = "name"
+	// 		mustSaveSettings = true
+	// 	}
 	if reqDisplay := q.Get("display"); reqDisplay != "" {
 		opts.Show = reqDisplay
 	}
-// 	if _, ok := q["show-inline"]; ok {
-// 		opts.Show = "inline"
-// 		mustSaveSettings = true
-// 	}
-// 	if _, ok := q["show-files"]; ok {
-// 		opts.Show = "files"
-// 		mustSaveSettings = true
-// 	}
+	// 	if _, ok := q["show-inline"]; ok {
+	// 		opts.Show = "inline"
+	// 		mustSaveSettings = true
+	// 	}
+	// 	if _, ok := q["show-files"]; ok {
+	// 		opts.Show = "files"
+	// 		mustSaveSettings = true
+	// 	}
 
-// 	if mustSaveSettings {
-// 		cookieData, err := opts.Marshal()
-// 		if err == nil {
-// 			cookiePath := urlPrefix
-// 			if cookiePath == "" {
-// 				cookiePath = "/"
-// 			}
-// 			http.SetCookie(w, &http.Cookie{Name: cookieName,
-// 				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
-// 		} else {
-// 			log.Printf("Error creating cookie: %s", err)
-// 		}
-// 	}
+	// 	if mustSaveSettings {
+	// 		cookieData, err := opts.Marshal()
+	// 		if err == nil {
+	// 			cookiePath := urlPrefix
+	// 			if cookiePath == "" {
+	// 				cookiePath = "/"
+	// 			}
+	// 			http.SetCookie(w, &http.Cookie{Name: cookieName,
+	// 				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
+	// 		} else {
+	// 			log.Printf("Error creating cookie: %s", err)
+	// 		}
+	// 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
 	if q.Has("status") {
