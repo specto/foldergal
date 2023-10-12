@@ -527,4 +527,3 @@ func fromTimeCode(timecode string) (d time.Duration) {
 		time.Duration(math.Abs(float64(m3)))*time.Second
 	return
 }
-

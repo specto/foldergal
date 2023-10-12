@@ -59,9 +59,9 @@ func assertStatus(t testing.TB, got, want int) {
 
 func TestMain(m *testing.M) {
 	fmt.Println("-> Preparing...")
-    result := m.Run()
-    fmt.Println("-> Finishing...")
-    os.Exit(result)
+	result := m.Run()
+	fmt.Println("-> Finishing...")
+	os.Exit(result)
 }
 
 func Test_previewHandler(t *testing.T) {
@@ -168,6 +168,144 @@ func Test_fileExists(t *testing.T) {
 		if result := fileExists(tc.path); result != tc.want {
 			t.Fatalf("fileExists(%v) = %v, want %v", tc.path, result, tc.want)
 		}
+	}
+}
+
+type Values url.Values
+
+type parseTest struct {
+	query string
+	out   Values
+	ok    bool
+}
+
+var parseTests = []parseTest{
+	{
+		query: "a/1",
+		out:   Values{"a": []string{"1"}},
+		ok:    true,
+	},
+	{
+		query: "a/1/b/2",
+		out:   Values{"a": []string{"1"}, "b": []string{"2"}},
+		ok:    true,
+	},
+	{
+		query: "a/1/a/2/a/banana",
+		out:   Values{"a": []string{"1", "2", "banana"}},
+		ok:    true,
+	},
+	{
+		query: "ascii/%3Ckey%3A+0x90%3E",
+		out:   Values{"ascii": []string{"<key: 0x90>"}},
+		ok:    true,
+	}, {
+		query: "a/1;b/2",
+		out:   Values{},
+		ok:    false,
+	}, {
+		query: "a;b/1",
+		out:   Values{},
+		ok:    false,
+	}, {
+		query: "a/%3B", // hex encoding for semicolon
+		out:   Values{"a": []string{";"}},
+		ok:    true,
+	},
+	{
+		query: "a%3Bb/1",
+		out:   Values{"a;b": []string{"1"}},
+		ok:    true,
+	},
+	{
+		query: "a/1/a/2;a/banana",
+		out:   Values{"a": []string{"1"}},
+		ok:    false,
+	},
+	{
+		query: "a;b/c/1",
+		out:   Values{"c": []string{"1"}},
+		ok:    false,
+	},
+	{
+		query: "a/1/b/2;a/3/c/4",
+		out:   Values{"a": []string{"1"}, "c": []string{"4"}},
+		ok:    false,
+	},
+	{
+		query: "a/1/b/2;c/3",
+		out:   Values{"a": []string{"1"}},
+		ok:    false,
+	},
+	{
+		query: ";",
+		out:   Values{},
+		ok:    false,
+	},
+	{
+		query: "a/1;",
+		out:   Values{},
+		ok:    false,
+	},
+	{
+		query: "a/1/;",
+		out:   Values{"a": []string{"1"}},
+		ok:    false,
+	},
+	{
+		query: ";a/b/2",
+		out:   Values{"b": []string{"2"}},
+		ok:    false,
+	},
+	{
+		query: "a/1/b/2;",
+		out:   Values{"a": []string{"1"}},
+		ok:    false,
+	},
+	{
+		query: "a/%A",
+		out:   Values{},
+		ok:    false,
+	},
+	{
+		query: "%A/1",
+		out:   Values{},
+		ok:    false,
+	},
+}
+
+// Copied from url tests
+func Test_parseQuery(t *testing.T) {
+	for _, test := range parseTests {
+		t.Run(test.query, func(t *testing.T) {
+			form, err := parseQuery(test.query)
+			if test.ok != (err == nil) {
+				want := "<error>"
+				if test.ok {
+					want = "<nil>"
+				}
+				t.Errorf("Unexpected error: %v, want %v", err, want)
+			}
+			if len(form) != len(test.out) {
+				t.Errorf("len(form) = %d, want %d", len(form), len(test.out))
+			}
+			for k, evs := range test.out {
+				vs, ok := form[k]
+				if !ok {
+					t.Errorf("Missing key %q", k)
+					continue
+				}
+				if len(vs) != len(evs) {
+					t.Errorf("len(form[%q]) = %d, want %d", k, len(vs), len(evs))
+					continue
+				}
+				for j, ev := range evs {
+					if v := vs[j]; v != ev {
+						t.Errorf("form[%q][%d] = %q, want %q", k, j, v, ev)
+					}
+				}
+			}
+		})
 	}
 }
 

@@ -101,7 +101,6 @@ func TestIsValidMedia(t *testing.T) {
 	}
 }
 
-
 func BenchmarkStdStringLess(b *testing.B) {
 	set := randomStringArray(1)
 	b.ResetTimer()

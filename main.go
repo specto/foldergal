@@ -35,6 +35,10 @@ func fileExists(filename string) bool {
 	return true
 }
 
+const (
+	QUERY_OVERLAY = "overlay"
+)
+
 var (
 	logger           *log.Logger
 	cacheFolderName  = "_foldergal_cache"
@@ -299,7 +303,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		}
 		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
 		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
-		thumb := urlPrefix + "/?static=ui.svg#iconFolder"
+		thumb := urlPrefix + "/?static/ui.svg#iconFolder"
 		class := "folder"
 		if !child.IsDir() {
 			thumb = gallery.EscapePath(filepath.Join(urlPrefix, folderPath, child.Name())) + "?thumb"
@@ -409,8 +413,8 @@ func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) 
 	}
 	defer f.Close()
 	var name string
-	if qName, inQuery := r.URL.Query()["static"]; inQuery {
-		name = qName[0]
+	if q, _ := parseQuery(r.URL.RawQuery); q.Has("static") {
+		name = q.Get("static")
 	} else {
 		name = filepath.Base(resFile)
 	}
@@ -502,6 +506,43 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Parses a string like key1/value1/key2/value2 to a map.
+func parseQuery(q string) (m url.Values, err error) {
+	m = make(url.Values)
+	if strings.HasPrefix(q, ";") || strings.HasSuffix(q, ";") {
+		err = fmt.Errorf("invalid semicolon separator in query")
+	}
+	parts := strings.Split(q, "/")
+	length := len(parts)
+	for i := 0; i < length; i += 2 {
+		if strings.Contains(parts[i], ";") {
+			err = fmt.Errorf("invalid semicolon separator in query")
+			i -= 1
+			continue
+		}
+		if i+1 >= length {
+			break
+		}
+		if strings.Contains(parts[i+1], ";") {
+			err = fmt.Errorf("invalid semicolon separator in query")
+			i += 1
+			continue
+		}
+		key, err1 := url.QueryUnescape(parts[i])
+		if err1 != nil {
+			err = err1
+			continue
+		}
+		val, err1 := url.QueryUnescape(parts[i+1])
+		if err1 != nil {
+			err = err1
+			continue
+		}
+		m.Add(key, val)
+	}
+	return m, err
+}
+
 // A secondary router.
 //
 // Since we are mapping URLs to filesystem resources we cannot use any names
@@ -513,7 +554,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 //   - media file (thumbnail or larger file)
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
-	q := r.URL.Query()
+	q, _ := parseQuery(r.URL.RawQuery)
 	cookieName := "settings"
 
 	opts := config.DefaultCookieSettings()
@@ -521,72 +562,90 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		_ = opts.Unmarshal(settingsCookie.Value)
 	}
 
-	mustSaveSettings := false
+// 	mustSaveSettings := false
 
 	// All these can be set simultaneously in the query string
-	if _, ok := q["asc"]; ok {
-		opts.Order = false
-		mustSaveSettings = true
-	}
-	if _, ok := q["desc"]; ok {
-		opts.Order = true
-		mustSaveSettings = true
-	}
-	if _, ok := q["by-date"]; ok {
-		opts.Sort = "date"
-		mustSaveSettings = true
-	}
-	if _, ok := q["by-name"]; ok {
-		if !mustSaveSettings { // Default order for name is ascending
+	reqOrder := q.Get("order")
+	if reqOrder != "" {
+		if reqOrder == "desc" {
+			opts.Order = true
+		} else {
 			opts.Order = false
 		}
-		opts.Sort = "name"
-		mustSaveSettings = true
 	}
-	if _, ok := q["show-inline"]; ok {
-		opts.Show = "inline"
-		mustSaveSettings = true
-	}
-	if _, ok := q["show-files"]; ok {
-		opts.Show = "files"
-		mustSaveSettings = true
-	}
-
-	if mustSaveSettings {
-		cookieData, err := opts.Marshal()
-		if err == nil {
-			cookiePath := urlPrefix
-			if cookiePath == "" {
-				cookiePath = "/"
-			}
-			http.SetCookie(w, &http.Cookie{Name: cookieName,
-				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
-		} else {
-			log.Printf("Error creating cookie: %s", err)
+// 	if _, ok := q["asc"]; ok {
+// 		opts.Order = false
+// 		mustSaveSettings = true
+// 	}
+// 	if _, ok := q["desc"]; ok {
+// 		opts.Order = true
+// 		mustSaveSettings = true
+// 	}
+	if reqSort := q.Get("sort"); reqSort != "" {
+		opts.Sort = reqSort
+		// Default order for date sorting must be descending
+		if reqSort == "date" && reqOrder == "" {
+			opts.Order = true
 		}
 	}
+// 	if _, ok := q["by-date"]; ok {
+// 		opts.Sort = "date"
+// 		mustSaveSettings = true
+// 	}
+// 	if _, ok := q["by-name"]; ok {
+// 		if !mustSaveSettings { // Default order for name is ascending
+// 			opts.Order = false
+// 		}
+// 		opts.Sort = "name"
+// 		mustSaveSettings = true
+// 	}
+	if reqDisplay := q.Get("display"); reqDisplay != "" {
+		opts.Show = reqDisplay
+	}
+// 	if _, ok := q["show-inline"]; ok {
+// 		opts.Show = "inline"
+// 		mustSaveSettings = true
+// 	}
+// 	if _, ok := q["show-files"]; ok {
+// 		opts.Show = "files"
+// 		mustSaveSettings = true
+// 	}
+
+// 	if mustSaveSettings {
+// 		cookieData, err := opts.Marshal()
+// 		if err == nil {
+// 			cookiePath := urlPrefix
+// 			if cookiePath == "" {
+// 				cookiePath = "/"
+// 			}
+// 			http.SetCookie(w, &http.Cookie{Name: cookieName,
+// 				Value: cookieData, MaxAge: 3e6, Path: cookiePath})
+// 		} else {
+// 			log.Printf("Error creating cookie: %s", err)
+// 		}
+// 	}
 
 	// We use query string parameters for internal resources. Isn't that novel!
-	if _, ok := q["status"]; ok {
+	if q.Has("status") {
 		statusHandler(w, r)
 		return
-	} else if _, ok := q["thumb"]; ok {
+	} else if q.Has("thumb") {
 		previewHandler(w, r)
 		return
-	} else if _, ok := q["broken"]; ok { // Keep this separate from static, just in case...
+	} else if q.Has("broken") { // Keep this separate from static, just in case...
 		renderEmbeddedFile("res/broken.svg", w, r)
 		return
-	} else if static, ok := q["static"]; ok {
-		staticResource := static[0]
+	} else if q.Has("static") {
+		staticResource := q.Get("static")
 		renderEmbeddedFile("res/"+staticResource, w, r)
 		return
-	} else if _, ok := q["rss"]; ok {
+	} else if q.Has("rss") {
 		rssHandler("rss", w, r)
 		return
-	} else if _, ok := q["atom"]; ok {
+	} else if q.Has("atom") {
 		rssHandler("atom", w, r)
 		return
-	} else if _, ok := q["error"]; ok {
+	} else if q.Has("error") {
 		fail404(w, r)
 		return
 	}
@@ -596,9 +655,9 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if _, overlay := q["overlay"]; stat.IsDir() || (opts.Show == "inline" && overlay) {
+	if stat.IsDir() || opts.Show == QUERY_OVERLAY {
 		// Prepare and render folder contents
-		listHandler(w, r, opts, overlay)
+		listHandler(w, r, opts, opts.Show == QUERY_OVERLAY)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}
