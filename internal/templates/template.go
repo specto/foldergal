@@ -2,7 +2,7 @@ package templates
 
 import (
 	"fmt"
-	"html/template"
+	htmlTpl "html/template"
 	"io"
 	"specto.org/projects/foldergal/internal/config"
 	"specto.org/projects/foldergal/internal/storage"
@@ -77,15 +77,15 @@ type RssPage struct {
 
 var (
 	Rss  *textTpl.Template
-	Html *template.Template
+	Html *htmlTpl.Template
 )
 
 func formatDate(date time.Time) string {
 	return date.In(config.Global.TimeLocation).Format("2006-01-02 15:04 Z07")
 }
 
-func parseTemplates(templs ...string) (t *template.Template, err error) {
-	t = template.New("_all")
+func parseHtmlTemplates(templs ...string) (t *htmlTpl.Template, err error) {
+	t = htmlTpl.New("_all")
 
 	for i, templ := range templs {
 		listFile, errF := storage.Internal.Open(templ)
@@ -94,7 +94,7 @@ func parseTemplates(templs ...string) (t *template.Template, err error) {
 		}
 		listBytes, _ := io.ReadAll(listFile)
 		if _, err = t.New(fmt.Sprint("_", i)).Funcs(
-			template.FuncMap{"formatDate": formatDate},
+			htmlTpl.FuncMap{"formatDate": formatDate},
 		).Parse(string(listBytes)); err != nil {
 			return
 		}
@@ -113,8 +113,8 @@ func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
 			panic(errF)
 		}
 		listBytes, _ := io.ReadAll(listFile)
-		if _, err = t.New(fmt.Sprint("_", i)).Parse(
-			string(listBytes)); err != nil {
+		if _, err = t.New(
+			fmt.Sprint("_", i)).Parse(string(listBytes)); err != nil {
 			return
 		}
 		_ = listFile.Close()
@@ -125,7 +125,7 @@ func parseTextTemplates(templs ...string) (t *textTpl.Template, err error) {
 
 func init() {
 	var err error
-	Html, err = parseTemplates(
+	Html, err = parseHtmlTemplates(
 		"res/templates/list.html",
 		"res/templates/footer.html",
 		"res/templates/error.html",

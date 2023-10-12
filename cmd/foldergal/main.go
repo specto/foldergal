@@ -36,7 +36,21 @@ func fileExists(filename string) bool {
 }
 
 const (
-	QUERY_OVERLAY = "overlay"
+	QueryDisplay = iota
+	QueryOrder
+	QuerySort
+)
+
+const (
+	QueryDisplayOverlay = "overlay"
+	QueryDisplayFile    = "file"
+	QueryDisplayDefault = QueryDisplayOverlay
+	QueryOrderName      = "name"
+	QueryOrderDate      = "date"
+	QueryOrderDefault   = QueryOrderName
+	QuerySortAsc        = "asc"
+	QuerySortDesc       = "desc"
+	QuerySortDefault    = QuerySortAsc
 )
 
 var (
@@ -50,7 +64,21 @@ var (
 	rssFreshness     = 2 * 168 * time.Hour // Two weeks
 	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
 	faultyDate, _    = time.Parse("2006-01-02", "0001-01-02")
+	queryParams      = map[QueryParam]string{
+		QueryDisplay: "display",
+		QueryOrder:   "order",
+		QuerySort:    "sort",
+	}
 )
+
+type QueryParam int
+
+func (s QueryParam) String() string {
+	if v, ok := queryParams[s]; ok {
+		return v
+	}
+	return ""
+}
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -69,10 +97,10 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 }
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
 	logger.Print(err)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusInternalServerError)
 	page := templates.ErrorPage{
 		Page: templates.Page{
 			Title:        "500 internal server error",
