@@ -187,6 +187,11 @@ var parseTests = []parseTest{
 		ok:    true,
 	},
 	{
+		query: "UPPERcase/Test",
+		out:   Values{"uppercase": []string{"test"}},
+		ok:    true,
+	},
+	{
 		query: "a/1/b/2",
 		out:   Values{"a": []string{"1"}, "b": []string{"2"}},
 		ok:    true,

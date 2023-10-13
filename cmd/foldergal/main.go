@@ -35,24 +35,6 @@ func fileExists(filename string) bool {
 	return true
 }
 
-const (
-	QueryDisplay = iota
-	QueryOrder
-	QuerySort
-)
-
-const (
-	QueryDisplayOverlay = "overlay"
-	QueryDisplayFile    = "file"
-	QueryDisplayDefault = QueryDisplayOverlay
-	QueryOrderName      = "name"
-	QueryOrderDate      = "date"
-	QueryOrderDefault   = QueryOrderName
-	QuerySortAsc        = "asc"
-	QuerySortDesc       = "desc"
-	QuerySortDefault    = QuerySortAsc
-)
-
 var (
 	logger           *log.Logger
 	cacheFolderName  = "_foldergal_cache"
@@ -64,21 +46,7 @@ var (
 	rssFreshness     = 2 * 168 * time.Hour // Two weeks
 	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
 	faultyDate, _    = time.Parse("2006-01-02", "0001-01-02")
-	queryParams      = map[QueryParam]string{
-		QueryDisplay: "display",
-		QueryOrder:   "order",
-		QuerySort:    "sort",
-	}
 )
-
-type QueryParam int
-
-func (s QueryParam) String() string {
-	if v, ok := queryParams[s]; ok {
-		return v
-	}
-	return ""
-}
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -284,7 +252,7 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Route for lists of files
-func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSettings, isOverlay bool) {
+func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -296,6 +264,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		contents   []os.FileInfo
 		folderPath string
 	)
+	isOverlay := opts.Display == config.QueryDisplayShow
 	folderPath = strings.TrimPrefix(r.URL.Path, urlPrefix)
 	if isOverlay {
 		folderPath = filepath.Dir(folderPath)
@@ -392,7 +361,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.CookieSetti
 		ItemCount:   itemCount,
 		SortedBy:    opts.Sort,
 		IsReversed:  opts.Order,
-		DisplayMode: opts.Show,
+		DisplayMode: opts.Display,
 		ParentUrl:   parentUrl,
 		Items:       children,
 	})
@@ -566,7 +535,7 @@ func parseQuery(q string) (m url.Values, err error) {
 			err = err1
 			continue
 		}
-		m.Add(key, val)
+		m.Add(strings.ToLower(key), strings.ToLower(val))
 	}
 	return m, err
 }
@@ -583,32 +552,7 @@ func parseQuery(q string) (m url.Values, err error) {
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q, _ := parseQuery(r.URL.RawQuery)
-	cookieName := "settings"
-
-	opts := config.DefaultCookieSettings()
-	if settingsCookie, nocookie := r.Cookie(cookieName); nocookie == nil {
-		_ = opts.Unmarshal(settingsCookie.Value)
-	}
-
-	// All these can be set simultaneously in the query string
-	reqOrder := q.Get("order")
-	if reqOrder != "" {
-		if reqOrder == "desc" {
-			opts.Order = true
-		} else {
-			opts.Order = false
-		}
-	}
-	if reqSort := q.Get("sort"); reqSort != "" {
-		opts.Sort = reqSort
-		// Default order for date sorting must be descending
-		if reqSort == "date" && reqOrder == "" {
-			opts.Order = true
-		}
-	}
-	if reqDisplay := q.Get("display"); reqDisplay != "" {
-		opts.Show = reqDisplay
-	}
+	opts := config.RequestSettingsFromQuery(q)
 
 	// We use query string parameters for internal resources. Isn't that novel!
 	switch {
@@ -634,9 +578,9 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if stat.IsDir() || opts.Show == QUERY_OVERLAY {
+	if stat.IsDir() || opts.Display == config.QueryDisplayShow {
 		// Prepare and render folder contents
-		listHandler(w, r, opts, opts.Show == QUERY_OVERLAY)
+		listHandler(w, r, opts)
 	} else { // This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	}

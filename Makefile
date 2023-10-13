@@ -83,11 +83,16 @@ $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 test: lint ## Run go tests
 	go test -coverprofile cover.out ./...
 	go tool cover -func=cover.out
-	# go tool cover -html=cover.out -o cover.html
 	rm cover.out
 	go vet -composites=false ./...
 	govulncheck ./...
 	gosec ./...
+
+.PHONY: coverage	
+coverage: ## Generate test coverage
+	go test -coverprofile cover.out ./...
+	go tool cover -html=cover.out -o cover.html
+	rm cover.out
 
 .PHONY: lint
 lint: ## Run go-critic lint
