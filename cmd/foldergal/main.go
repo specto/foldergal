@@ -65,10 +65,10 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 }
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
-	w.WriteHeader(http.StatusInternalServerError)
-	logger.Print(err)
+	logger.Print(fmt.Errorf("fail500 error: %w", err))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusInternalServerError)
 	page := templates.ErrorPage{
 		Page: templates.Page{
 			Title:        "500 internal server error",
@@ -78,7 +78,9 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 		},
 		Message: "see the logs for error details",
 	}
-	_ = templates.Html.ExecuteTemplate(w, "error", &page)
+	if err1 := templates.Html.ExecuteTemplate(w, "error", &page); err1 != nil {
+		panic("error while showing error template")
+	}
 }
 
 // Get a subpath to a path
@@ -264,9 +266,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		contents   []os.FileInfo
 		folderPath string
 	)
-	isOverlay := opts.Display == config.QueryDisplayShow
+	isSlideshow := opts.Display == config.QueryDisplayShow
 	folderPath = strings.TrimPrefix(r.URL.Path, urlPrefix)
-	if isOverlay {
+	if isSlideshow {
 		folderPath = filepath.Dir(folderPath)
 	}
 	fs, err := storage.Root.Open(folderPath)
@@ -355,7 +357,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
-			ShowOverlay:  isOverlay,
+			ShowOverlay:  isSlideshow,
 		},
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
@@ -518,6 +520,13 @@ func parseQuery(q string) (m url.Values, err error) {
 			continue
 		}
 		if i+1 >= length {
+			// Allow empty keys if they are the last element
+			key, err1 := url.QueryUnescape(parts[i])
+			if err1 != nil {
+				err = err1
+				continue
+			}
+			m.Add(strings.ToLower(key), "")
 			break
 		}
 		if strings.Contains(parts[i+1], ";") {
@@ -552,6 +561,7 @@ func parseQuery(q string) (m url.Values, err error) {
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q, _ := parseQuery(r.URL.RawQuery)
+	logger.Print(r.URL.RawQuery)
 	opts := config.RequestSettingsFromQuery(q)
 
 	// We use query string parameters for internal resources. Isn't that novel!

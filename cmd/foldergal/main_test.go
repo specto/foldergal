@@ -187,6 +187,11 @@ var parseTests = []parseTest{
 		ok:    true,
 	},
 	{
+		query: "a",
+		out:   Values{"a": []string{""}},
+		ok:    true,
+	},
+	{
 		query: "UPPERcase/Test",
 		out:   Values{"uppercase": []string{"test"}},
 		ok:    true,
@@ -210,8 +215,8 @@ var parseTests = []parseTest{
 		out:   Values{},
 		ok:    false,
 	}, {
-		query: "a;b/1",
-		out:   Values{},
+		query: "a;b/c",
+		out:   Values{"c": []string{""}},
 		ok:    false,
 	}, {
 		query: "a/%3B", // hex encoding for semicolon
@@ -294,6 +299,7 @@ func Test_parseQuery(t *testing.T) {
 			}
 			if len(form) != len(test.out) {
 				t.Errorf("len(form) = %d, want %d", len(form), len(test.out))
+				t.Log(form)
 			}
 			for k, evs := range test.out {
 				vs, ok := form[k]

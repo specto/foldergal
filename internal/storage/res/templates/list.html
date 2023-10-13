@@ -52,11 +52,11 @@
             </h1>
 			<div class="toolbar requiresJavascript">
 			    <span class="title">view files:</span>
-				<span class="buttons"><a {{ if eq .DisplayMode "inline" -}}
+				<span class="buttons"><a {{ if eq .DisplayMode "slideshow" -}}
 					class="current"
 				{{- end }} onclick="window.location.href='?display/overlay';return false;"
 				    href="/no_javascript?error">overlaid on page
-				</a><a {{ if eq .DisplayMode "files" -}}
+				</a><a {{ if eq .DisplayMode "direct" -}}
 					class="current"
 				{{- end }} href="?display/files">as separate links</a></span>
             </div>
@@ -92,11 +92,11 @@
         {{ end }}
         {{ range .Items }}
             <li class="{{ .Class }}"><a id="{{ .Id }}" tabindex="1"
-            {{ if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}
+            {{ if and (ne .Class "folder") (eq $.DisplayMode "slideshow") -}}
             class="overlay"
             {{- end }}
             href="{{- .Url -}}
-    {{- if and (ne .Class "folder") (eq $.DisplayMode "inline") -}}?display/overlay{{- end -}}"
+    {{- if and (ne .Class "folder") (eq $.DisplayMode "direct") -}}?display/slideshow{{- end -}}"
             title="{{ .Name }} [{{ .ModTime | formatDate }}]">
                 <span>
                     {{ if eq .Class "folder" }}
