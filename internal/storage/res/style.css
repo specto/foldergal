@@ -268,9 +268,32 @@ header nav h1
 
 .requiresJavascript { visibility: hidden; }
 
+#slideshowPrev, #slideshowNext, #slideshowParent {
+    display: inline-block;
+    position: absolute;
+    left: 0;
+    bottom: 10%;
+    height: 64px;
+    width: 64px;
+}
+
+#slideshowNext {
+    left: auto;
+    text-align: right;
+    right: 0;
+}
+
+#slideshowParent {
+    top: 0;
+    left: 20%;
+    width: 60%;
+    text-align: center;
+    color: gray;
+    text-shadow: 1px 1px 1px black;
+}
+
 #slideshow
 {
-	display: none;
 	position: fixed;
 	width: 100vw;
 	height: 100vh;
@@ -283,8 +306,11 @@ header nav h1
 
 #slideshowContents
 {
-	width: 100%;
-	height: 100%;
+    width: 100%;
+    height: 100%;
+    background-image: url(?static/loading.svg);
+    background-repeat: no-repeat;
+    background-position: center;
 }
 
 #slideshow img, #slideshow video, #slideshow audio
@@ -322,10 +348,11 @@ header nav h1
 	object-position: center top;
 }
 
-#slideshowOverlay a:hover { background: none; }
-/*
-#slideshowOverlay a:active { filter: invert(1); }
- */
+#slideshowOverlay a:hover {
+    background: none;
+    color: #ff9600;
+}
+#slideshowOverlay a:active { color: #8000ff; }
 
 svg.icon {
     width: 100%;

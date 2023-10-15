@@ -27,6 +27,13 @@ import (
 	"github.com/spf13/afero"
 )
 
+const (
+	MediaImage = "image"
+	MediaAudio = "audio"
+	MediaVideo = "video"
+	MediaPdf   = "pdf"
+)
+
 var (
 	ErrNotValid         = errors.New("invalid media")
 	ErrFileNotFound     = errors.New("file for media not found")
@@ -481,13 +488,13 @@ func GetMediaClass(name string) string {
 	//   /etc/apache/mime.types
 	switch contentType := mime.TypeByExtension(filepath.Ext(name)); {
 	case strings.HasPrefix(contentType, "image/"):
-		return "image"
+		return MediaImage
 	case strings.HasPrefix(contentType, "audio/"):
-		return "audio"
+		return MediaAudio
 	case strings.HasPrefix(contentType, "video/"):
-		return "video"
+		return MediaVideo
 	case strings.HasPrefix(contentType, "application/pdf"):
-		return "pdf"
+		return MediaPdf
 	default:
 		return ""
 	}

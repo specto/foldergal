@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"mime"
 	"net/http"
@@ -16,12 +17,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
+	"time"
+
 	"specto.org/projects/foldergal/internal/config"
 	"specto.org/projects/foldergal/internal/gallery"
 	"specto.org/projects/foldergal/internal/storage"
 	"specto.org/projects/foldergal/internal/templates"
-	"strings"
-	"time"
 
 	"github.com/fvbommel/sortorder"
 	"github.com/spf13/afero"
@@ -66,21 +68,22 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	logger.Print(fmt.Errorf("fail500 error: %w", err))
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusInternalServerError)
-	page := templates.ErrorPage{
-		Page: templates.Page{
-			Title:        "500 internal server error",
-			Prefix:       urlPrefix,
-			AppVersion:   BuildVersion,
-			AppBuildTime: BuildTimestamp,
-		},
-		Message: "see the logs for error details",
-	}
-	if err1 := templates.Html.ExecuteTemplate(w, "error", &page); err1 != nil {
-		panic("error while showing error template")
-	}
+	//	page := templates.ErrorPage{
+	//		Page: templates.Page{
+	//			Title:        "500 internal server error",
+	//			Prefix:       urlPrefix,
+	//			AppVersion:   BuildVersion,
+	//			AppBuildTime: BuildTimestamp,
+	//		},
+	//		Message: "see the logs for error details",
+	//	}
+	//
+	//	if err1 := templates.Html.ExecuteTemplate(w, "error", &page); err1 != nil {
+	//		panic("error while showing error template")
+	//	}
 }
 
 // Get a subpath to a path
@@ -124,12 +127,12 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		f, err = gallery.NewPdf(fullPath, thumbPath)
 	default: // Unrecognized mime type
 		w.WriteHeader(http.StatusNotFound)
-		renderEmbeddedFile("res/broken.svg", w, r)
+		staticHandler("res/broken.svg", w, r)
 		return
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		renderEmbeddedFile("res/broken.svg", w, r)
+		staticHandler("res/broken.svg", w, r)
 		return
 	}
 	err = gallery.GenerateThumb(f)
@@ -142,16 +145,16 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, gallery.ErrThumbNotPossible) {
 			switch {
 			case strings.HasPrefix(mediaType, "audio/"):
-				renderEmbeddedFile("res/audio.svg", w, r)
+				staticHandler("res/audio.svg", w, r)
 				return
 			case strings.HasPrefix(mediaType, "video/"):
-				renderEmbeddedFile("res/video.svg", w, r)
+				staticHandler("res/video.svg", w, r)
 				return
 			}
 		}
 		logger.Print(err)
 		w.WriteHeader(http.StatusNotFound)
-		renderEmbeddedFile("res/broken.svg", w, r)
+		staticHandler("res/broken.svg", w, r)
 		return
 	}
 	if !strings.HasSuffix(f.ThumbName(), ".jpg") {
@@ -253,8 +256,15 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 	_ = templates.Html.ExecuteTemplate(w, "table", &page)
 }
 
+func reverse(less func(i, j int) bool) func(i, j int) bool {
+	return func(i, j int) bool {
+		return !less(i, j)
+	}
+}
+
 // Route for lists of files
 func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
+	logger.Print(opts)
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -266,11 +276,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		contents   []os.FileInfo
 		folderPath string
 	)
-	isSlideshow := opts.Display == config.QueryDisplayShow
 	folderPath = strings.TrimPrefix(r.URL.Path, urlPrefix)
-	if isSlideshow {
-		folderPath = filepath.Dir(folderPath)
-	}
 	fs, err := storage.Root.Open(folderPath)
 	if err != nil {
 		fail500(w, err, r)
@@ -290,6 +296,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
+
+	querystring := opts.QueryString()
 
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -319,31 +327,30 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		children = append(children, templates.ListItem{
 			Id:      gallery.EscapePath(child.Name()),
 			ModTime: child.ModTime(),
-			Url:     childPath,
+			Url:     template.URL(childPath + querystring),
 			Name:    child.Name(),
-			Thumb:   thumb,
+			Thumb:   template.URL(thumb),
 			Class:   class,
 			W:       config.Global.ThumbWidth,
 			H:       config.Global.ThumbHeight,
 		})
 	}
+	var sortFunc func(i, j int) bool
 	if opts.Sort == "date" {
-		sort.Slice(children, func(i, j int) bool {
-			if opts.Order {
-				j, i = i, j
-			}
+		sortFunc = func(i, j int) bool {
 			return children[i].ModTime.Before(children[j].ModTime)
-		})
+		}
 	} else { // Sort by name
-		sort.Slice(children, func(i, j int) bool {
-			if opts.Order {
-				j, i = i, j
-			}
+		sortFunc = func(i, j int) bool {
 			return sortorder.NaturalLess(
 				strings.ToLower(children[i].Name),
 				strings.ToLower(children[j].Name))
-		})
+		}
 	}
+	if opts.Order {
+		sortFunc = reverse(sortFunc)
+	}
+	sort.Slice(children, sortFunc)
 	pUrl, _ := url.Parse(folderPath)
 	crumbs := splitUrlToBreadCrumbs(pUrl)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
@@ -357,15 +364,133 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 			Prefix:       urlPrefix,
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
-			ShowOverlay:  isSlideshow,
 		},
 		BreadCrumbs: crumbs,
 		ItemCount:   itemCount,
 		SortedBy:    opts.Sort,
 		IsReversed:  opts.Order,
-		DisplayMode: opts.Display,
-		ParentUrl:   parentUrl,
+		ParentUrl:   template.URL(parentUrl + querystring),
 		Items:       children,
+	})
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+}
+
+// Serve html containers for media
+func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
+	logger.Print(opts)
+	if gallery.ContainsDotFile(r.URL.Path) {
+		fail404(w, r)
+		return
+	}
+
+	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
+	mediaType := gallery.GetMediaClass(filepath.Base(fullPath))
+	var templateName string
+	switch mediaType {
+	case gallery.MediaImage:
+		templateName = "view_img"
+	case gallery.MediaAudio:
+		templateName = "view_audio"
+	case gallery.MediaVideo:
+		templateName = "view_video"
+	case gallery.MediaPdf:
+		templateName = "view_pdf"
+	default:
+		fail500(w, errors.New("unkown media type"), r)
+		return
+	}
+
+	// Get the parent folder
+	parentUrl := path.Join(urlPrefix, fullPath, "..")
+	folderPath := strings.TrimPrefix(parentUrl, urlPrefix)
+	fs, err := storage.Root.Open(folderPath)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+	defer fs.Close()
+	contents, err := fs.Readdir(-1)
+	if err != nil {
+		fail500(w, err, r)
+		return
+	}
+
+	querystring := opts.QueryString()
+	logger.Print(querystring)
+
+	totalItems := 0
+
+	// Collect all children of parent folder
+	children := make([]templates.ListItem, 0, len(contents))
+	for _, child := range contents {
+		if gallery.ContainsDotFile(child.Name()) {
+			continue
+		}
+		// Look only for media items
+		if mediaClass := gallery.GetMediaClass(child.Name()); child.IsDir() || (!child.IsDir() && mediaClass == "") {
+			continue
+		}
+		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
+		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
+
+		// Get total count of items in parent folder
+		totalItems += 1
+		path, _ := url.PathUnescape(childPath)
+		children = append(children, templates.ListItem{
+			ModTime: child.ModTime(),
+			Url:     template.URL(path),
+			Name:    child.Name(),
+		})
+	}
+
+	var sortFunc func(i, j int) bool
+	if opts.Sort == "date" {
+		sortFunc = func(i, j int) bool {
+			return children[i].ModTime.Before(children[j].ModTime)
+		}
+	} else { // Sort by name
+		sortFunc = func(i, j int) bool {
+			return sortorder.NaturalLess(
+				strings.ToLower(children[i].Name),
+				strings.ToLower(children[j].Name))
+		}
+	}
+	if opts.Order {
+		sortFunc = reverse(sortFunc)
+	}
+	sort.Slice(children, sortFunc)
+
+	// Get previous and next items according to the current sort order
+	var lastChild, nextChild templates.ListItem
+	for i, child := range children {
+		logger.Print(child.Url, template.URL(fullPath), child.Url == template.URL(fullPath))
+		if child.Url == template.URL(fullPath) {
+			if i == 0 {
+				// No previous child if we are the first one
+				lastChild = templates.ListItem{}
+			} else {
+				lastChild.Url += template.URL(querystring)
+			}
+			if totalItems > i+1 {
+				nextChild = children[i+1]
+				nextChild.Url += template.URL(querystring)
+			}
+			break
+		}
+		lastChild = child
+	}
+
+	err = templates.Html.ExecuteTemplate(w, templateName, &templates.ViewPage{
+		Page: templates.Page{
+			Title: fullPath,
+		},
+		MediaPath: template.URL(fullPath + "?display/direct"),
+		LinkPrev:  string(lastChild.Url),
+		LinkNext:  string(nextChild.Url),
+		ParentUrl: parentUrl + querystring,
 	})
 	if err != nil {
 		fail500(w, err, r)
@@ -404,20 +529,14 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delivers file contents for static resources
-func renderEmbeddedFile(resFile string, w http.ResponseWriter, r *http.Request) {
+func staticHandler(resFile string, w http.ResponseWriter, r *http.Request) {
 	f, err := storage.InternalHttp.Open(resFile)
 	if err != nil {
 		fail404(w, r)
 		return
 	}
 	defer f.Close()
-	var name string
-	if q, _ := parseQuery(r.URL.RawQuery); q.Has("static") {
-		name = q.Get("static")
-	} else {
-		name = filepath.Base(resFile)
-	}
-	http.ServeContent(w, r, name, BuildTime, f)
+	http.ServeContent(w, r, filepath.Base(resFile), BuildTime, f)
 }
 
 // Route for RSS/Atom
@@ -458,8 +577,8 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 					rssItems = append(rssItems, templates.RssItem{
 						Type:  gallery.GetMediaClass(walkPath),
 						Title: filepath.Base(walkPath),
-						Url:   urlStr,
-						Thumb: urlStr + "?thumb",
+						Url:   template.URL(urlStr),
+						Thumb: template.URL(urlStr + "?thumb"),
 						Id:    urlStr,
 						Mdate: info.ModTime(),
 						Date:  formatTime(info.ModTime()),
@@ -496,7 +615,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	rss := templates.RssPage{
 		FeedUrl:   config.Global.PublicUrl + "feed?" + typeRss,
 		SiteTitle: config.Global.PublicHost,
-		SiteUrl:   config.Global.PublicUrl,
+		SiteUrl:   template.URL(config.Global.PublicUrl),
 		LastDate:  lastDateStr,
 		Items:     latestItems,
 	}
@@ -554,33 +673,43 @@ func parseQuery(q string) (m url.Values, err error) {
 // Since we are mapping URLs to filesystem resources we cannot use any names
 // for our internal resources.
 //
-// Three types of content are served:
+// Types of content that are served:
 //   - internal resource (image, css, etc.)
-//   - html to show folder lists
-//   - media file (thumbnail or larger file)
+//   - list of folder items
+//   - view of an item (html)
+//   - preview image (thumbnail)
+//   - direct media file
+//   - info page about our running program
+//   - RSS (or atom) feed
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q, _ := parseQuery(r.URL.RawQuery)
-	logger.Print(r.URL.RawQuery)
 	opts := config.RequestSettingsFromQuery(q)
 
 	// We use query string parameters for internal resources. Isn't that novel!
 	switch {
 	case q.Has("status"):
 		statusHandler(w, r)
+		return
 	case q.Has("thumb"):
 		previewHandler(w, r)
+		return
 	case q.Has("broken"): // Keep this separate from static, just in case...
-		renderEmbeddedFile("res/broken.svg", w, r)
+		staticHandler("res/broken.svg", w, r)
+		return
 	case q.Has("static"):
 		staticResource := q.Get("static")
-		renderEmbeddedFile("res/"+staticResource, w, r)
+		staticHandler("res/"+staticResource, w, r)
+		return
 	case q.Has("rss"):
 		rssHandler("rss", w, r)
+		return
 	case q.Has("atom"):
 		rssHandler("atom", w, r)
+		return
 	case q.Has("error"):
 		fail404(w, r)
+		return
 	}
 
 	stat, err := storage.Root.Stat(fullPath)
@@ -588,11 +717,14 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if stat.IsDir() || opts.Display == config.QueryDisplayShow {
-		// Prepare and render folder contents
+	logger.Print(opts)
+	if stat.IsDir() {
 		listHandler(w, r, opts)
-	} else { // This is a media file and we should serve it in all it's glory
+	} else if q.Get("display") == config.QueryDisplayFile {
+		// This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
+	} else {
+		viewHandler(w, r, opts)
 	}
 }
 
@@ -741,7 +873,7 @@ func main() {
 			http.StripPrefix(urlPrefix, http.HandlerFunc(HttpHandler)))
 	}
 	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		renderEmbeddedFile("res/favicon.ico", w, r)
+		staticHandler("res/favicon.ico", w, r)
 	}))
 	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)

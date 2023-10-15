@@ -132,7 +132,9 @@ func TestGetMediaClass(t *testing.T) {
 		{"/some/path/file.jpeg", "image"},
 		{"/some/path/file.mp3", "audio"},
 		{"file.mp4", "video"},
+		{"/some/path/file.mp4", "video"},
 		{"file.pdf", "pdf"},
+		{"/some/path/file.pdf", "pdf"},
 		{"doc.docx", ""},
 	} {
 		if res := GetMediaClass(v.filepath); res != v.mediatype {

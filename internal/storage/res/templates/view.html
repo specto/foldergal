@@ -1,0 +1,84 @@
+
+{{ define "slideshow_start" }}
+    <script type="text/javascript" src="{{ .Prefix }}/?static/script.js"></script>
+
+    <div id="slideshow">
+    <div id="slideshowOverlay">
+    {{ if .LinkNext }}
+    <a id="slideshowNext" href="{{ .LinkNext }}" title="{{ .LinkNext }}">
+    <svg class="button buttonRight">
+        <use xlink:href="{{ .Prefix }}/?static/ui.svg#buttonRight"></use>
+    </svg>
+    </a>
+    {{ end }}
+
+    {{ if .ParentUrl }}
+    <a id="slideshowParent" href="{{ .ParentUrl }}">
+        {{ .ParentUrl }}
+    </a>
+    {{ end }}
+
+    {{ if .LinkPrev }}
+    <a id="slideshowPrev" href="{{ .LinkPrev }}" title="{{ .LinkPrev }}">
+    <svg class="button buttonLeft">
+        <use xlink:href="{{ .Prefix }}/?static/ui.svg#buttonLeft"></use>
+    </svg>
+    </a>
+    {{ end }}
+    </div>
+    <div id="slideshowContents">
+{{ end }}
+
+{{ define "slideshow_end" }}
+    </div>
+    </div>
+{{ end }}
+
+{{ define "view_img" }}
+
+    {{template "layout_start" .}}
+
+    {{template "slideshow_start" .}}
+    <picture>
+        <img src="{{ .MediaPath }}" alt="{{ .MediaPath }}" />
+    </picture>
+    {{template "slideshow_end" .}}
+    {{template "layout_end" .}}
+
+{{ end }}
+
+{{ define "view_video" }}
+
+    {{template "layout_start" .}}
+
+    {{template "slideshow_start" .}}
+    <video controls="true" poster="{{ .MediaPath }}?thumb" playsinline="true" preload="metadata" autoplay="true">
+    <source src="{{ .MediaPath }}" />
+    </video>
+    {{template "slideshow_end" .}}
+    {{template "layout_end" .}}
+
+{{ end }}
+
+{{ define "view_audio" }}
+
+    {{template "layout_start" .}}
+    {{template "slideshow_start" .}}
+    <video controls="true" poster="{{ .MediaPath }}?thumb" playsinline="true" preload="metadata" autoplay="true">
+    <source src="{{ .MediaPath }}" />
+    </video>
+    {{template "slideshow_end" .}}
+    {{template "layout_end" .}}
+
+{{ end }}
+
+{{ define "view_pdf" }}
+
+    {{template "layout_start" .}}
+    {{template "slideshow_start" .}}
+    PDF
+    <p>{{ .MediaPath }}</p>
+    {{template "slideshow_end" .}}
+    {{template "layout_end" .}}
+
+{{ end }}

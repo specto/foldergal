@@ -26,9 +26,9 @@ type Page struct {
 
 type ListItem struct {
 	Id      string
-	Url     string
+	Url     htmlTpl.URL
 	Name    string
-	Thumb   string
+	Thumb   htmlTpl.URL
 	ModTime time.Time
 	Class   string
 	W       int
@@ -37,13 +37,16 @@ type ListItem struct {
 
 // Page used for folder list
 type List struct {
-	ParentUrl   string
+	ParentUrl   htmlTpl.URL
+	LinkPrev    string
+	LinkNext    string
 	ItemCount   string
 	SortedBy    string
 	IsReversed  bool
 	DisplayMode string
 	Items       []ListItem
 	BreadCrumbs []BreadCrumb
+	QueryString htmlTpl.URL
 	Page
 }
 
@@ -60,8 +63,8 @@ type TwoColTable struct {
 type RssItem struct {
 	Title string
 	Type  string
-	Url   string
-	Thumb string
+	Url   htmlTpl.URL
+	Thumb htmlTpl.URL
 	Id    string
 	Mdate time.Time
 	Date  string
@@ -70,9 +73,18 @@ type RssItem struct {
 type RssPage struct {
 	FeedUrl   string
 	SiteTitle string
-	SiteUrl   string
+	SiteUrl   htmlTpl.URL
 	LastDate  string
 	Items     []RssItem
+}
+
+type ViewPage struct {
+	Page
+	MediaPath htmlTpl.URL
+	Poster    htmlTpl.URL
+	LinkPrev  string
+	LinkNext  string
+	ParentUrl string
 }
 
 var (
@@ -130,6 +142,7 @@ func init() {
 		"res/templates/footer.html",
 		"res/templates/error.html",
 		"res/templates/layout.html",
+		"res/templates/view.html",
 		"res/templates/table.html",
 	)
 	if err != nil {

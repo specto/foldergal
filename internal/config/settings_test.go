@@ -29,20 +29,25 @@ func TestRequestSettings(t *testing.T) {
 	}
 
 	fromValues := RequestSettingsFromQuery(url.Values{
-		"sort": []string{"name"},
+		"sort":    []string{"name"},
 		"display": []string{"direct"},
 	})
-	if expected, result := "display/direct/order/asc/sort/name", fromValues.QueryString();
-		result != expected {
+	if expected, result := "?display/direct/order/asc/sort/name", fromValues.QueryString(); result != expected {
 		t.Error("Bad query string:", result, "expected:", expected)
 	}
 
 	fromValues = RequestSettingsFromQuery(url.Values{
 		"order": []string{"asc"},
 	})
-	if expected, result := "order/asc", fromValues.QueryString();
-		result != expected {
+	if expected, result := "?order/asc", fromValues.QueryString(); result != expected {
 		t.Error("Bad query string:", result, "expected:", expected)
+	}
+
+	fromValues = RequestSettingsFromQuery(url.Values{
+		"order": []string{"desc"},
+	})
+	if expected, result := "", fromValues.QueryString(); result != expected {
+		t.Error("Expected empty query string:", result, "expected:", expected)
 	}
 
 	if queryParam(-1).String() != "" {

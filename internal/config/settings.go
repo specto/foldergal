@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 )
@@ -64,15 +65,22 @@ func (cs *RequestSettings) Unmarshal(from string) (err error) {
 func (cs *RequestSettings) QueryString() string {
 	qs := []string{}
 	if cs.Display != QueryDisplayDefault {
-		qs = append(qs, QueryParams[QueryDisplay]+"/"+cs.Display)
+		val := fmt.Sprintf("%s/%s", QueryParams[QueryDisplay], cs.Display)
+		qs = append(qs, val)
 	}
 	if !cs.Order && QueryOrderDesc == QueryOrderDefault {
-		qs = append(qs, QueryParams[QueryOrder]+"/"+QueryOrderAsc)
+		val := fmt.Sprintf("%s/%s", QueryParams[QueryOrder], QueryOrderAsc)
+		qs = append(qs, val)
 	}
 	if cs.Sort != QuerySortDefault {
-		qs = append(qs, QueryParams[QuerySort]+"/"+cs.Sort)
+		val := fmt.Sprintf("%s/%s", QueryParams[QuerySort], cs.Sort)
+		qs = append(qs, val)
 	}
-	return strings.Join(qs, "/")
+	result, _ := url.PathUnescape(strings.Join(qs, "/"))
+	if result == "" {
+		return result
+	}
+	return "?" + result
 }
 
 func NewRequestSettings() RequestSettings {

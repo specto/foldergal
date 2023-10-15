@@ -231,23 +231,24 @@
         ev.preventDefault();
         return false;
     }
-    
+
     global.addEventListener("load", function init() {
-        const targets = document.querySelectorAll("main a.overlay");
-        if (targets.length === 0) { /* No inline image display is needed */
-            return;
-        }
-        targets.forEach(function (item) {
-            item.addEventListener("click", callOnly.bind(null, showSlide.bind(null, item)));
-        });
+//         const targets = document.querySelectorAll("main a.overlay");
+//         if (targets.length === 0) { /* No inline image display is needed */
+//             return;
+//         }
+//         targets.forEach(function (item) {
+//             item.addEventListener("click", callOnly.bind(null, showSlide.bind(null, item)));
+//         });
         global.addEventListener("keydown", keyHandle);
-        global.addEventListener("popstate", historyHandle);
+//         global.addEventListener("popstate", historyHandle);
         global.addEventListener("touchstart", touchStartHandle);
         global.addEventListener("touchend", touchEndHandle);
         /* Mobile browsers seem to react to mousemove on touch */
         document.getElementById("slideshow").addEventListener("mousemove", pingToolbar);
-        document.getElementById("slideshowClose").addEventListener("click", callOnly.bind(null, cancelSlide));
-        document.getElementById("slideshowNext").addEventListener("click", callOnly.bind(null, nextSlide));
-        document.getElementById("slideshowPrev").addEventListener("click", callOnly.bind(null, prevSlide));
+        pingToolbar();
+//         document.getElementById("slideshowClose").addEventListener("click", callOnly.bind(null, cancelSlide));
+//         document.getElementById("slideshowNext").addEventListener("click", callOnly.bind(null, nextSlide));
+//         document.getElementById("slideshowPrev").addEventListener("click", callOnly.bind(null, prevSlide));
     });
 }(window));
