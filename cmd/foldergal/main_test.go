@@ -131,9 +131,9 @@ func Test_splitUrlToBreadCrumbs(t *testing.T) {
 		{toUrl("http://example.com/what/is/this"),
 			[]templates.BreadCrumb{
 				{Url: "/", Title: defaultTitle},
-				{Url: "/what", Title: "what"},
-				{Url: "/what/is", Title: "is"},
-				{Url: "/what/is/this", Title: "this"},
+				{Url: "/what?some/data", Title: "what"},
+				{Url: "/what/is?some/data", Title: "is"},
+				{Url: "/what/is/this?some/data", Title: "this"},
 			}},
 		{toUrl(""),
 			[]templates.BreadCrumb{
@@ -142,11 +142,11 @@ func Test_splitUrlToBreadCrumbs(t *testing.T) {
 		{toUrl("some text ."),
 			[]templates.BreadCrumb{
 				{Url: "/", Title: defaultTitle},
-				{Url: "/some text .", Title: "some text ."},
+				{Url: "/some text .?some/data", Title: "some text ."},
 			}},
 	}
 	for _, tc := range tests {
-		result := splitUrlToBreadCrumbs(tc.input)
+		result := splitUrlToBreadCrumbs(tc.input, "?some/data")
 		if !reflect.DeepEqual(result, tc.want) {
 			t.Fatalf("splitUrlToBreadCrumbs(%v)\n%v\n===\n%v",
 				tc.input, result, tc.want)

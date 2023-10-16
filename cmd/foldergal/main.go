@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"html/template"
 	"log"
 	"mime"
 	"net/http"
@@ -68,22 +67,7 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	logger.Print(fmt.Errorf("fail500 error: %w", err))
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusInternalServerError)
-	//	page := templates.ErrorPage{
-	//		Page: templates.Page{
-	//			Title:        "500 internal server error",
-	//			Prefix:       urlPrefix,
-	//			AppVersion:   BuildVersion,
-	//			AppBuildTime: BuildTimestamp,
-	//		},
-	//		Message: "see the logs for error details",
-	//	}
-	//
-	//	if err1 := templates.Html.ExecuteTemplate(w, "error", &page); err1 != nil {
-	//		panic("error while showing error template")
-	//	}
 }
 
 // Get a subpath to a path
@@ -326,9 +310,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		children = append(children, templates.ListItem{
 			Id:      gallery.EscapePath(child.Name()),
 			ModTime: child.ModTime(),
-			Url:     template.URL(childPath + querystring),
+			Url:     childPath + querystring,
 			Name:    child.Name(),
-			Thumb:   template.URL(thumb),
+			Thumb:   thumb,
 			Class:   class,
 			W:       config.Global.ThumbWidth,
 			H:       config.Global.ThumbHeight,
@@ -368,7 +352,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		ItemCount:   itemCount,
 		SortedBy:    opts.Sort,
 		IsReversed:  opts.Order,
-		ParentUrl:   template.URL(parentUrl + querystring),
+		ParentUrl:   parentUrl + querystring,
 		Items:       children,
 	})
 	if err != nil {
@@ -435,10 +419,10 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 
 		// Get total count of items in parent folder
 		totalItems += 1
-		path, _ := url.PathUnescape(childPath)
+		unescapedPath, _ := url.PathUnescape(childPath)
 		children = append(children, templates.ListItem{
 			ModTime: child.ModTime(),
-			Url:     template.URL(path),
+			Url:     unescapedPath,
 			Name:    child.Name(),
 		})
 	}
@@ -463,16 +447,16 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	// Get previous and next items according to the current sort order
 	var lastChild, nextChild templates.ListItem
 	for i, child := range children {
-		if child.Url == template.URL(fullPath) {
+		if child.Url == fullPath {
 			if i == 0 {
 				// No previous child if we are the first one
 				lastChild = templates.ListItem{}
 			} else {
-				lastChild.Url += template.URL(querystring)
+				lastChild.Url += querystring
 			}
 			if totalItems > i+1 {
 				nextChild = children[i+1]
-				nextChild.Url += template.URL(querystring)
+				nextChild.Url += querystring
 			}
 			break
 		}
@@ -483,7 +467,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		Page: templates.Page{
 			Title: fullPath,
 		},
-		MediaPath:  template.URL(fullPath + "?display/direct"),
+		MediaPath:  fullPath + "?display/direct",
 		LinkPrev:   string(lastChild.Url),
 		LinkNext:   string(nextChild.Url),
 		ParentUrl:  parentUrl + querystring,
@@ -574,8 +558,8 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 					rssItems = append(rssItems, templates.RssItem{
 						Type:  gallery.GetMediaClass(walkPath),
 						Title: filepath.Base(walkPath),
-						Url:   template.URL(urlStr),
-						Thumb: template.URL(urlStr + "?thumb"),
+						Url:   urlStr,
+						Thumb: urlStr + "?thumb",
 						Id:    urlStr,
 						Mdate: info.ModTime(),
 						Date:  formatTime(info.ModTime()),
@@ -612,7 +596,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	rss := templates.RssPage{
 		FeedUrl:   config.Global.PublicUrl + "feed?" + typeRss,
 		SiteTitle: config.Global.PublicHost,
-		SiteUrl:   template.URL(config.Global.PublicUrl),
+		SiteUrl:   config.Global.PublicUrl,
 		LastDate:  lastDateStr,
 		Items:     latestItems,
 	}
@@ -714,12 +698,13 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	if stat.IsDir() {
+	switch {
+	case stat.IsDir():
 		listHandler(w, r, opts)
-	} else if q.Get("display") == config.QueryDisplayFile {
+	case q.Get("display") == config.QueryDisplayFile:
 		// This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
-	} else {
+	default:
 		viewHandler(w, r, opts)
 	}
 }

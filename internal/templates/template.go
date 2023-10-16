@@ -26,9 +26,9 @@ type Page struct {
 
 type ListItem struct {
 	Id      string
-	Url     htmlTpl.URL
+	Url     string
 	Name    string
-	Thumb   htmlTpl.URL
+	Thumb   string
 	ModTime time.Time
 	Class   string
 	W       int
@@ -37,7 +37,7 @@ type ListItem struct {
 
 // Page used for folder list
 type List struct {
-	ParentUrl   htmlTpl.URL
+	ParentUrl   string
 	LinkPrev    string
 	LinkNext    string
 	ItemCount   string
@@ -46,7 +46,7 @@ type List struct {
 	DisplayMode string
 	Items       []ListItem
 	BreadCrumbs []BreadCrumb
-	QueryString htmlTpl.URL
+	QueryString string
 	Page
 }
 
@@ -63,8 +63,8 @@ type TwoColTable struct {
 type RssItem struct {
 	Title string
 	Type  string
-	Url   htmlTpl.URL
-	Thumb htmlTpl.URL
+	Url   string
+	Thumb string
 	Id    string
 	Mdate time.Time
 	Date  string
@@ -73,15 +73,15 @@ type RssItem struct {
 type RssPage struct {
 	FeedUrl   string
 	SiteTitle string
-	SiteUrl   htmlTpl.URL
+	SiteUrl   string
 	LastDate  string
 	Items     []RssItem
 }
 
 type ViewPage struct {
 	Page
-	MediaPath  htmlTpl.URL
-	Poster     htmlTpl.URL
+	MediaPath  string
+	Poster     string
 	LinkPrev   string
 	LinkNext   string
 	ParentUrl  string
