@@ -3,6 +3,18 @@ html, body
 	font-family: sans-serif;
 	color: black;
 	background: #EDEDED;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+body {
+    flex-grow: 1;
 }
 
 a
@@ -20,6 +32,10 @@ a:active, a:focus
 	background-color: #D1DDF0;
 	color: cornflowerblue;
 }
+
+nav { padding: 4px 8px 0 8px; }
+main { padding: 0 8px; }
+footer { padding: 0 8px 8px 4px; }
 
 nav .path a
 {
@@ -266,8 +282,6 @@ header nav h1
 	border-collapse: collapse;
 }
 
-.requiresJavascript { visibility: hidden; }
-
 #slideshowPrev, #slideshowNext, #slideshowParent {
     display: inline-block;
     position: absolute;
@@ -289,7 +303,14 @@ header nav h1
     width: 60%;
     text-align: center;
     color: gray;
-    text-shadow: 1px 1px 1px black;
+}
+
+#slideshowParent span {
+    display: inline-block;
+    background: rgb(75, 75, 75);
+    border-radius: 4px;
+    padding: 4px;
+    margin-top: 4px;
 }
 
 #slideshow
@@ -300,25 +321,36 @@ header nav h1
 	overflow: auto;
 	left: 0;
 	top: 0;
-	background-color: rgba(0, 0, 0, 0.8);
 	z-index: 10000;
+	pointer-events: none;
 }
 
 #slideshowContents
 {
-    width: 100%;
-    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+	height: 100vh;
+/*
+    margin: 0;
+    padding: 0;
+ */
     background-image: url(?static/loading.svg);
     background-repeat: no-repeat;
     background-position: center;
 }
 
-#slideshow img, #slideshow video, #slideshow audio
+/*
+#slideshowContents picture {
+    grid-row: 1;
+}
+ */
+
+#slideshowContents img, #slideshowContents video, #slideshowContents audio, #slideshowContents object
 {
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
-	object-position: 50% 50%;
+	max-width: 100%;
+	max-height: 100%;
 }
 
 .waiting { cursor: progress; }
@@ -331,14 +363,6 @@ header nav h1
 	left: 0;
 	width: 100vw;
 	height: 100vh;
-	pointer-events: none;
-}
-
-#slideshowOverlay a
-{
-	pointer-events: auto;
-	float: right;
-	padding: 0.8em 0.5em;
 }
 
 #slideshowOverlay img
@@ -348,10 +372,13 @@ header nav h1
 	object-position: center top;
 }
 
-#slideshowOverlay a:hover {
-    background: none;
-    color: #ff9600;
+#slideshow a
+{
+	pointer-events: all;
+	background: none;
 }
+
+#slideshowOverlay a:hover { color: #ff9600; }
 #slideshowOverlay a:active { color: #8000ff; }
 
 svg.icon {

@@ -264,7 +264,6 @@ func reverse(less func(i, j int) bool) func(i, j int) bool {
 
 // Route for lists of files
 func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
-	logger.Print(opts)
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -380,7 +379,6 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 
 // Serve html containers for media
 func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
-	logger.Print(opts)
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -419,7 +417,6 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	}
 
 	querystring := opts.QueryString()
-	logger.Print(querystring)
 
 	totalItems := 0
 
@@ -466,7 +463,6 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	// Get previous and next items according to the current sort order
 	var lastChild, nextChild templates.ListItem
 	for i, child := range children {
-		logger.Print(child.Url, template.URL(fullPath), child.Url == template.URL(fullPath))
 		if child.Url == template.URL(fullPath) {
 			if i == 0 {
 				// No previous child if we are the first one
@@ -487,10 +483,11 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		Page: templates.Page{
 			Title: fullPath,
 		},
-		MediaPath: template.URL(fullPath + "?display/direct"),
-		LinkPrev:  string(lastChild.Url),
-		LinkNext:  string(nextChild.Url),
-		ParentUrl: parentUrl + querystring,
+		MediaPath:  template.URL(fullPath + "?display/direct"),
+		LinkPrev:   string(lastChild.Url),
+		LinkNext:   string(nextChild.Url),
+		ParentUrl:  parentUrl + querystring,
+		ParentName: "../"+filepath.Base(parentUrl),
 	})
 	if err != nil {
 		fail500(w, err, r)
@@ -717,7 +714,6 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		fail404(w, r)
 		return
 	}
-	logger.Print(opts)
 	if stat.IsDir() {
 		listHandler(w, r, opts)
 	} else if q.Get("display") == config.QueryDisplayFile {

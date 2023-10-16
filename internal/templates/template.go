@@ -80,11 +80,12 @@ type RssPage struct {
 
 type ViewPage struct {
 	Page
-	MediaPath htmlTpl.URL
-	Poster    htmlTpl.URL
-	LinkPrev  string
-	LinkNext  string
-	ParentUrl string
+	MediaPath  htmlTpl.URL
+	Poster     htmlTpl.URL
+	LinkPrev   string
+	LinkNext   string
+	ParentUrl  string
+	ParentName string
 }
 
 var (

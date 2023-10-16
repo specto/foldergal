@@ -14,7 +14,7 @@
 
     {{ if .ParentUrl }}
     <a id="slideshowParent" href="{{ .ParentUrl }}">
-        {{ .ParentUrl }}
+        <span>{{ .ParentName }}</span>
     </a>
     {{ end }}
 
@@ -26,12 +26,14 @@
     </a>
     {{ end }}
     </div>
+    </div>
+
     <div id="slideshowContents">
 {{ end }}
 
 {{ define "slideshow_end" }}
     </div>
-    </div>
+
 {{ end }}
 
 {{ define "view_img" }}
@@ -76,8 +78,9 @@
 
     {{template "layout_start" .}}
     {{template "slideshow_start" .}}
-    PDF
-    <p>{{ .MediaPath }}</p>
+    <object data="{{ .MediaPath }}" width="100%" height="100%" type="application/pdf">
+    <p><a href="{{ .MediaPath }}">{{ .MediaPath }}</a></p>
+    </object>
     {{template "slideshow_end" .}}
     {{template "layout_end" .}}
 
