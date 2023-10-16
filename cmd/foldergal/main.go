@@ -164,7 +164,7 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Splits a url "path" to separate tokens
-func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
+func splitUrlToBreadCrumbs(pageUrl *url.URL, qs string) (crumbs []templates.BreadCrumb) {
 	deepcrumb := urlPrefix + "/"
 	currentUrl := strings.TrimPrefix(pageUrl.Path, urlPrefix)
 	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
@@ -173,7 +173,7 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL) (crumbs []templates.BreadCrumb) {
 			continue
 		}
 		crumbs = append(crumbs,
-			templates.BreadCrumb{Url: deepcrumb + name, Title: name})
+			templates.BreadCrumb{Url: deepcrumb + name + qs, Title: name})
 		deepcrumb += name + "/"
 	}
 	return
@@ -351,7 +351,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	}
 	sort.Slice(children, sortFunc)
 	pUrl, _ := url.Parse(folderPath)
-	crumbs := splitUrlToBreadCrumbs(pUrl)
+	crumbs := splitUrlToBreadCrumbs(pUrl, querystring)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
 	itemCount := ""
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
