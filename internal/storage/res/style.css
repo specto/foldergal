@@ -34,7 +34,7 @@ a:active, a:focus
 }
 
 nav { padding: 4px 8px 0 8px; }
-main { padding: 0 8px; }
+header, main { padding: 0 8px; }
 footer { padding: 0 8px 8px 4px; }
 
 nav .path a

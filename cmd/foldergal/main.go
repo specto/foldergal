@@ -204,7 +204,7 @@ func folderSize(startPath string) (totalSize int64) {
 }
 
 // Route for status report
-func statusHandler(w http.ResponseWriter, _ *http.Request) {
+func statusHandler(w http.ResponseWriter, r *http.Request) {
 	bToMb := func(b uint64) string {
 		return fmt.Sprintf("%v MiB", b/1024/1024)
 	}
@@ -237,7 +237,9 @@ func statusHandler(w http.ResponseWriter, _ *http.Request) {
 		},
 		Rows: rowData,
 	}
-	_ = templates.Html.ExecuteTemplate(w, "table", &page)
+	if err := templates.Html.ExecuteTemplate(w, "table", &page); err != nil {
+		fail500(w, err, r)
+	}
 }
 
 func reverse(less func(i, j int) bool) func(i, j int) bool {
@@ -466,12 +468,12 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	err = templates.Html.ExecuteTemplate(w, templateName, &templates.ViewPage{
 		Page: templates.Page{
 			Title: fullPath,
+			LinkPrev:   string(lastChild.Url),
+			LinkNext:   string(nextChild.Url),
+			ParentUrl:  parentUrl + querystring,
+			ParentName: "../"+filepath.Base(parentUrl),
 		},
 		MediaPath:  fullPath + "?display/direct",
-		LinkPrev:   string(lastChild.Url),
-		LinkNext:   string(nextChild.Url),
-		ParentUrl:  parentUrl + querystring,
-		ParentName: "../"+filepath.Base(parentUrl),
 	})
 	if err != nil {
 		fail500(w, err, r)
