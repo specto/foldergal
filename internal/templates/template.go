@@ -21,10 +21,10 @@ type Page struct {
 	Prefix       string
 	AppVersion   string
 	AppBuildTime string
-	LinkPrev   string
-	LinkNext   string
-	ParentUrl  string
-	ParentName string
+	LinkPrev     string
+	LinkNext     string
+	ParentUrl    string
+	ParentName   string
 	ShowOverlay  bool
 }
 
@@ -84,8 +84,8 @@ type RssPage struct {
 
 type ViewPage struct {
 	Page
-	MediaPath  string
-	Poster     string
+	MediaPath string
+	Poster    string
 }
 
 var (

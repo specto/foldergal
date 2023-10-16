@@ -467,13 +467,14 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 
 	err = templates.Html.ExecuteTemplate(w, templateName, &templates.ViewPage{
 		Page: templates.Page{
-			Title: fullPath,
+			Title:      fullPath,
+			Prefix:     urlPrefix,
 			LinkPrev:   string(lastChild.Url),
 			LinkNext:   string(nextChild.Url),
 			ParentUrl:  parentUrl + querystring,
-			ParentName: "../"+filepath.Base(parentUrl),
+			ParentName: "../" + filepath.Base(parentUrl),
 		},
-		MediaPath:  fullPath + "?display/direct",
+		MediaPath: fullPath + "?display/direct",
 	})
 	if err != nil {
 		fail500(w, err, r)
