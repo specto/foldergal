@@ -149,7 +149,6 @@ TODO
 
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [x] Generate audio file thumbnails 
-* [ ] In-browser notifications for new uploads
 * [ ] 100% test coverage
 * [ ] Add fuzz tests  
   <https://blog.fuzzbuzz.io/go-fuzzing-basics>
@@ -159,14 +158,14 @@ TODO
 * [ ] (maybe) Dynamic folder icons generated from the full folder path
 * [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
 * [~] Combine svg icons in a single file and `<use>` sprites 
-  Add dark theme support
+* [x] Add dark theme support
 * [ ] Fix misterious date bug 0001-01-01 on freebsd
 * [x] Rewrite embedded files using the `go:embed` directive available in go 1.16
-* [ ] Rewrite HTTP handlers using middleware e.g.  
+* [ ] Use context derived from http, Rewrite HTTP handlers using middleware e.g.  
   <https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/>
-* [ ] Exclude thumbs.db files
 * [ ] (maybe) Use webauthn for authentication  
   <https://github.com/duo-labs/webauthn>
 * [ ] Make sure thumbnail generation uses correct resizing
   <https://zuru.tech/blog/the-dangers-behind-image-resizing>
-* [ ] Use context derived from http
+* [ ] Hide loading background for media
+* [ ] Fix consistency of sort flags

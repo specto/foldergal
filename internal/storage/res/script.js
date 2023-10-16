@@ -62,13 +62,6 @@
         }
     }
 
-    /* Prevent default event handlers and cancel event bubbling */
-//     function callOnly(f, e, ...args) {
-//         e.preventDefault();
-//         e.stopPropagation();
-//         f(e, ...args);
-//     }
-
     function touchStartHandle (ev) {
         touchX = ev.changedTouches[0].screenX;
         touchY = ev.changedTouches[0].screenY;
@@ -79,11 +72,11 @@
     function touchEndHandle (ev) {
         let diffX = ev.changedTouches[0].screenX - touchX;
         let diffY = ev.changedTouches[0].screenY - touchY;
-        // Ignore vertical swipes
+        /* Ignore vertical swipes */
         if (Math.abs(diffY) > 60) {
             return true;
         }
-        // Ignore too small side swipes
+        /* Ignore too small side swipes */
         if (Math.abs(diffX) < 30) {
             return true;
         }
