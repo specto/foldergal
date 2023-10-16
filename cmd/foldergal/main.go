@@ -281,8 +281,10 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
-
 	querystring := opts.QueryString()
+	if parentUrl != "" {
+		parentUrl += querystring
+	}
 
 	children := make([]templates.ListItem, 0, len(contents))
 	for _, child := range contents {
@@ -343,6 +345,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	if folderPath != "/" && folderPath != "" && len(children) > 0 {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
+
 	err = templates.Html.ExecuteTemplate(w, "layout", &templates.List{
 		Page: templates.Page{
 			Title:        title,
@@ -354,7 +357,7 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		ItemCount:   itemCount,
 		SortedBy:    opts.Sort,
 		IsReversed:  opts.Order,
-		ParentUrl:   parentUrl + querystring,
+		ParentUrl:   parentUrl,
 		Items:       children,
 	})
 	if err != nil {
