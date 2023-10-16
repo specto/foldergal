@@ -404,6 +404,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 
 	querystring := opts.QueryString()
 
+	currentMediaPath := filepath.Join(urlPrefix, fullPath)
+
 	totalItems := 0
 
 	// Collect all children of parent folder
@@ -449,7 +451,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	// Get previous and next items according to the current sort order
 	var lastChild, nextChild templates.ListItem
 	for i, child := range children {
-		if child.Url == fullPath {
+		if child.Url == currentMediaPath {
 			if i == 0 {
 				// No previous child if we are the first one
 				lastChild = templates.ListItem{}
@@ -467,14 +469,14 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 
 	err = templates.Html.ExecuteTemplate(w, templateName, &templates.ViewPage{
 		Page: templates.Page{
-			Title:      fullPath,
+			Title:      currentMediaPath,
 			Prefix:     urlPrefix,
 			LinkPrev:   string(lastChild.Url),
 			LinkNext:   string(nextChild.Url),
 			ParentUrl:  parentUrl + querystring,
 			ParentName: "../" + filepath.Base(parentUrl),
 		},
-		MediaPath: fullPath + "?display/direct",
+		MediaPath: currentMediaPath + "?display/direct",
 	})
 	if err != nil {
 		fail500(w, err, r)
