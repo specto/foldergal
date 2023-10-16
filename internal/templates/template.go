@@ -85,7 +85,6 @@ type RssPage struct {
 type ViewPage struct {
 	Page
 	MediaPath string
-	Poster    string
 }
 
 var (

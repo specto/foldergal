@@ -473,7 +473,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 			Prefix:     urlPrefix,
 			LinkPrev:   string(lastChild.Url),
 			LinkNext:   string(nextChild.Url),
-			ParentUrl:  parentUrl + querystring,
+			ParentUrl:  parentUrl + querystring + "#" + filepath.Base(currentMediaPath),
 			ParentName: "../" + filepath.Base(parentUrl),
 		},
 		MediaPath: currentMediaPath + "?display/direct",
