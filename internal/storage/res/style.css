@@ -338,6 +338,10 @@ header nav h1
     background-position: center;
 }
 
+#slideshowContents.loaded {
+    background-image: none;
+}
+
 #slideshowContents picture { height: 100%; }
 
 #slideshowContents img, #slideshowContents video, #slideshowContents audio, #slideshowContents object

@@ -1,21 +1,22 @@
 "use strict";
-(function (global) {
+(function (w) {
+    const HideToolbarAfter = 3000;
     let toolbarHideTimeout;
     let touchX = 0;
     let touchY = 0;
 
+    function hideToolbar() {
+        document.getElementById("slideshowOverlay").style.display = "none";
+    }
+
     function pingToolbar() {
-        document.querySelector("#slideshowOverlay").style.display = "block";
-        global.clearTimeout(toolbarHideTimeout);
-        toolbarHideTimeout = global.setTimeout(function hideToolbar() {
-            document.querySelector("#slideshowOverlay").style.display = "none";
-        }, 3000);
+        document.getElementById("slideshowOverlay").style.display = "block";
+        w.clearTimeout(toolbarHideTimeout);
+        toolbarHideTimeout = w.setTimeout(hideToolbar, HideToolbarAfter);
     }
 
     function prevSlide() {
-        const prev = function findPrev(current) {
-            return document.querySelector("#slideshowPrev");
-        }();
+        const prev = document.getElementById("slideshowPrev");
         if (prev) {
             prev.click();
         }
@@ -23,9 +24,7 @@
     }
 
     function nextSlide() {
-        const next = function findNext(current) {
-            return document.querySelector("#slideshowNext");
-        }();
+        const next = document.getElementById("slideshowNext");
         if (next) {
             next.click();
         }
@@ -34,11 +33,6 @@
 
     function keyHandle(ev) {
         switch (ev.code) {
-        case "Backspace":
-        case "Delete":
-        case "KeyQ":
-        case "Escape":
-            return cancelSlide();
         case "PageUp":
         case "ArrowUp":
         case "ArrowLeft":
@@ -89,12 +83,15 @@
         return false;
     }
 
-    global.addEventListener("load", function init() {
-        global.addEventListener("keydown", keyHandle);
-        global.addEventListener("touchstart", touchStartHandle);
-        global.addEventListener("touchend", touchEndHandle);
+    w.addEventListener("DOMContentLoaded", function init() {
+        w.addEventListener("keydown", keyHandle);
+        w.addEventListener("touchstart", touchStartHandle);
+        w.addEventListener("touchend", touchEndHandle);
         /* Mobile browsers seem to react to mousemove on touch */
         document.getElementById("slideshowContents").addEventListener("mousemove", pingToolbar);
-        document.querySelector("#slideshowOverlay").style.display = "none";
+        hideToolbar();
+    });
+    w.addEventListener("load", function onloadInit() {
+        document.getElementById("slideshowContents").classList.add("loaded");
     });
 }(window));
