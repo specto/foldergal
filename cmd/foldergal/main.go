@@ -165,7 +165,7 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL, qs string) (crumbs []templates.Brea
 
 // Counts recursively all valid media files in startPath
 func mediaCount(startPath string) (totalCount int64) {
-	filepath.WalkDir(startPath,
+	_ = filepath.WalkDir(startPath,
 		func(path string, entry os.DirEntry, err error) error {
 			if !entry.IsDir() && gallery.IsValidMedia(path) {
 				totalCount += 1
@@ -177,7 +177,7 @@ func mediaCount(startPath string) (totalCount int64) {
 
 // Retrieves the byte size of media files in startPath
 func folderMediaSize(startPath string) (totalSize int64) {
-	filepath.WalkDir(startPath,
+	_ = filepath.WalkDir(startPath,
 		func(path string, entry os.DirEntry, err error) error {
 			if !entry.IsDir() && gallery.IsValidMedia(path) {
 				if info, err1 := entry.Info(); err1 == nil {

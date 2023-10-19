@@ -167,5 +167,5 @@ TODO
   <https://github.com/duo-labs/webauthn>
 * [ ] Make sure thumbnail generation uses correct resizing
   <https://zuru.tech/blog/the-dangers-behind-image-resizing>
-* [ ] Hide loading background for media
+* [x] Hide loading background for media
 * [ ] Fix consistency of sort flags
