@@ -154,6 +154,21 @@ func Test_splitUrlToBreadCrumbs(t *testing.T) {
 	}
 }
 
+func Test_mediaCount(t *testing.T) {
+	var expected int64 = 5
+	if result := mediaCount("./cmd/foldergal/testdata"); expected != result {
+		t.Fatalf("mediaCount got: %v, expected: %v", result, expected)
+	}
+}
+
+
+func Test_folderMediaSize(t *testing.T) {
+	var expected int64 = 48821
+	if result := folderMediaSize("./cmd/foldergal/testdata"); expected != result {
+		t.Fatalf("folderMediaSize got: %v, expected: %v", result, expected)
+	}
+}
+
 func Test_fileExists(t *testing.T) {
 	tests := []struct {
 		path string
@@ -280,6 +295,11 @@ var parseTests = []parseTest{
 	},
 	{
 		query: "%A/1",
+		out:   Values{},
+		ok:    false,
+	},
+	{
+		query: "%A",
 		out:   Values{},
 		ok:    false,
 	},

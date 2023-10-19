@@ -164,42 +164,28 @@ func splitUrlToBreadCrumbs(pageUrl *url.URL, qs string) (crumbs []templates.Brea
 }
 
 // Counts recursively all valid media files in startPath
-func fileCount(startPath string) (totalCount int64) {
-	err := filepath.WalkDir(startPath,
+func mediaCount(startPath string) (totalCount int64) {
+	filepath.WalkDir(startPath,
 		func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
 			if !entry.IsDir() && gallery.IsValidMedia(path) {
 				totalCount += 1
 			}
 			return nil
 		})
-	if err != nil {
-		logger.Print(err)
-	}
 	return
 }
 
-// Retrieves the byte size of all files in startPath
-func folderSize(startPath string) (totalSize int64) {
-	err := filepath.WalkDir(startPath,
+// Retrieves the byte size of media files in startPath
+func folderMediaSize(startPath string) (totalSize int64) {
+	filepath.WalkDir(startPath,
 		func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if !entry.IsDir() {
-				info, err := entry.Info()
-				if err != nil {
-					return err
+			if !entry.IsDir() && gallery.IsValidMedia(path) {
+				if info, err1 := entry.Info(); err1 == nil {
+					totalSize += info.Size()
 				}
-				totalSize += info.Size()
 			}
 			return nil
 		})
-	if err != nil {
-		logger.Print(err)
-	}
 	return
 }
 
@@ -212,9 +198,9 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&m)
 
 	rowData := [][2]string{
-		{"Total Files:", fmt.Sprintf("%v", uint64(fileCount(config.Global.Root)))},
-		{"Media Folder Size:", bToMb(uint64(folderSize(config.Global.Root)))},
-		{"Thumbnail Folder Size:", bToMb(uint64(folderSize(config.Global.Cache)))},
+		{"Total Media Files:", fmt.Sprintf("%v", uint64(mediaCount(config.Global.Root)))},
+		{"Media Folder Size:", bToMb(uint64(folderMediaSize(config.Global.Root)))},
+		{"Thumbnail Folder Size:", bToMb(uint64(folderMediaSize(config.Global.Cache)))},
 		{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)},
 		{"Public Url:", config.Global.PublicUrl},
 		{"Prefix:", config.Global.Prefix},
