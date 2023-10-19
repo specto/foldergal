@@ -187,6 +187,24 @@ func Test_fileExists(t *testing.T) {
 	}
 }
 
+func Test_reverse(t *testing.T) {
+	type intStruct struct{x, y int}
+	tests := []struct {
+		in intStruct
+		want bool
+	}{
+		{in: intStruct{1, 2}, want: true},
+	}
+	reversed := reverse(func (a, b int) bool {
+		return a > b
+	})
+	for _, tc := range tests {
+		if result := reversed(tc.in.x, tc.in.y); result != tc.want {
+			t.Fatalf("reverse(%v) got: %v, want %v", tc.in, result, tc.want)
+		}
+	}
+}
+
 type Values url.Values
 
 type parseTest struct {

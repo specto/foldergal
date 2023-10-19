@@ -29,6 +29,7 @@ $(DEST_DIR)/$(PRODUCT): $(SOURCES)
 clean: $(DEST_DIR) ## Clean all build artifacts
 	go clean
 	rm -rf $(DEST_DIR)/*
+	rm cover.html
 
 .PHONY: run
 run: build ## Run with current config
@@ -88,7 +89,7 @@ test: lint ## Run go tests
 	govulncheck ./...
 	gosec ./...
 
-.PHONY: coverage	
+.PHONY: coverage
 coverage: ## Generate test coverage
 	go test -coverprofile cover.out ./...
 	go tool cover -html=cover.out -o cover.html
