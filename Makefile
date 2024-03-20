@@ -22,14 +22,13 @@ $(DEST_DIR):
 	test -d $@ || mkdir $@
 
 $(DEST_DIR)/$(PRODUCT): $(SOURCES)
-	go generate
+	go generate -v ./...
 	go build -v $(FLAGS) -o $@ $^
 
 .PHONY: clean
 clean: $(DEST_DIR) ## Clean all build artifacts
-	go clean
+	go clean -r -cache
 	rm -rf $(DEST_DIR)/*
-	rm cover.html
 
 .PHONY: run
 run: build ## Run with current config
@@ -39,25 +38,26 @@ run: build ## Run with current config
 release: $(DEST_DIR) lint $(PRODUCT_FILES) ## Build all release binaries
 
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-intel: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-arm: $(SOURCES)
-	go generate
+	go generate -v ./...
+	echo go build -v $(FLAGS) -o $@ $^
 	GOOS=darwin GOARCH=arm64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION).exe: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-linux: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-freebsd: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-pi: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@ $^
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-openwrt: $(SOURCES)
-	go generate
+	go generate -v ./...
 	GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v $(FLAGS) -o $@ $^
 
 .PHONY: rerun
@@ -82,23 +82,21 @@ $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 
 .PHONY: test
 test: lint ## Run go tests
-	go test -coverprofile cover.out ./...
-	go tool cover -func=cover.out
-	rm cover.out
-	go vet -composites=false ./...
-	govulncheck ./...
-	gosec ./...
+	go test -cover ./...
 
 .PHONY: coverage
-coverage: ## Generate test coverage
+coverage: ## Show test coverage as html
 	go test -coverprofile cover.out ./...
-	go tool cover -html=cover.out -o cover.html
+	go tool cover -html=cover.out
 	rm cover.out
 
 .PHONY: lint
-lint: ## Run go-critic lint
+lint: ## Run lint
 	gocritic check -enableAll ./...
 	staticcheck ./...
+	go vet -composites=false ./...
+	govulncheck ./...
+	gosec ./...
 
 .PHONY: benchmark
 benchmark: ## Run go benchmarks
@@ -115,16 +113,8 @@ format: ## Format all go code
 update: ## Update go modules
 	go get -u ./...
 
-.PHONY: tags
-tags: ## Create tags for all go code
-	uctags **/*.go
-
-.PHONY: version
-version: ## Show current version
-	@echo $(VERSION)
-
-.PHONY: echo
-echo:
+.PHONY: info
+info: ## Show some info e.g. version
 	@echo VERSION: $(VERSION)
 	@echo PLATFORMS: $(PLATFORMS)
 	@echo SRC_DIR: $(SRC_DIR)
