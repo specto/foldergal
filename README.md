@@ -169,3 +169,8 @@ TODO
   <https://zuru.tech/blog/the-dangers-behind-image-resizing>
 * [x] Hide loading background for media
 * [ ] Fix consistency of sort flags
+* [ ] Implement Adaptive Video - Support Multi Bitrate HLS   
+  Serve pre-generated bundles of video files. 
+  Provide JS fallback for browsers not supporting HLS.
+  - <https://medium.com/@peer5/creating-a-production-ready-multi-bitrate-hls-vod-stream-dff1e2f1612c>
+  - fallback script <https://github.com/video-dev/hls.js>
