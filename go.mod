@@ -1,6 +1,6 @@
 module specto.org/projects/foldergal
 
-go 1.22
+go 1.23.1
 
 require (
 	github.com/charithe/timedbuf v0.0.0-20160717160936-e4a8ee453eb4
@@ -12,7 +12,7 @@ require (
 
 require (
 	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/image v0.15.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/image v0.20.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 )

@@ -191,22 +191,23 @@ func folderMediaSize(startPath string) (totalSize int64) {
 
 // Route for status report
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	bToMb := func(b uint64) string {
-		return fmt.Sprintf("%v MiB", b/1024/1024)
-	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
+	fileCount := mediaCount(config.Global.Root)
+	folderSize := folderMediaSize(config.Global.Root)
+	thumbSize:= folderMediaSize(config.Global.Cache)
+
 	rowData := [][2]string{
-		{"Total Media Files:", fmt.Sprintf("%v", uint64(mediaCount(config.Global.Root)))},
-		{"Media Folder Size:", bToMb(uint64(folderMediaSize(config.Global.Root)))},
-		{"Thumbnail Folder Size:", bToMb(uint64(folderMediaSize(config.Global.Cache)))},
+		{"Total Media Files:", fmt.Sprint(fileCount)},
+		{"Media Folder Size:", fmt.Sprintf("%v MiB", folderSize/1024/1024)},
+		{"Thumbnail Folder Size:", fmt.Sprintf("%v MiB", thumbSize/1024/1024)},
 		{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)},
 		{"Public Url:", config.Global.PublicUrl},
 		{"Prefix:", config.Global.Prefix},
 		{"-", ""},
-		{"Alloc Memory:", bToMb(m.Alloc)},
-		{"Sys Memory:", bToMb(m.Sys)},
+		{"Alloc Memory:", fmt.Sprintf("%v MiB", m.Alloc/1024/1024)},
+		{"Sys Memory:", fmt.Sprintf("%v MiB", m.Sys/1024/1024)},
 		{"Goroutines:", fmt.Sprint(runtime.NumGoroutine())},
 		{"-", ""},
 		{"App Version:", BuildVersion},

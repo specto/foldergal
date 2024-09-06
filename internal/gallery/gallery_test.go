@@ -13,8 +13,8 @@ type generator struct {
 	src *rand.Rand
 }
 
-func (g *generator) NextInt(max int) int {
-	return g.src.Intn(max)
+func (g *generator) NextInt(maximum int) int {
+	return g.src.Intn(maximum)
 }
 
 // Gets random random-length alphanumeric string.
