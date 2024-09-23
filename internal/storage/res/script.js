@@ -1,5 +1,5 @@
 "use strict";
-(function (w) {
+(function(w) {
     const HideToolbarAfter = 3000;
     let toolbarHideTimeout;
     let touchX = 0;
@@ -33,22 +33,22 @@
 
     function keyHandle(ev) {
         switch (ev.code) {
-        case "PageUp":
-        case "ArrowUp":
-        case "ArrowLeft":
-            ev.preventDefault();
-            return prevSlide();
-        case "PageDown":
-        case "ArrowDown":
-        case "ArrowRight":
-            ev.preventDefault();
-            return nextSlide();
-        case "Space":
-            const videoElem = document.querySelector("#slideshow video");
-            if (videoElem) { /* space key should pause video */
+            case "PageUp":
+            case "ArrowUp":
+            case "ArrowLeft":
                 ev.preventDefault();
-                return videoElem.paused ? videoElem.play() : videoElem.pause();
-            } /* not a video so we continue our takeover... */
+                return prevSlide();
+            case "PageDown":
+            case "ArrowDown":
+            case "ArrowRight":
+                ev.preventDefault();
+                return nextSlide();
+            case "Space":
+                const videoElem = document.querySelector("#slideshow video");
+                if (videoElem) { /* space key should pause video */
+                    ev.preventDefault();
+                    return videoElem.paused ? videoElem.play() : videoElem.pause();
+                } /* not a video so we continue our takeover... */
             case "Tab":
             case "Enter":
                 ev.preventDefault();
@@ -56,14 +56,14 @@
         }
     }
 
-    function touchStartHandle (ev) {
+    function touchStartHandle(ev) {
         touchX = ev.changedTouches[0].screenX;
         touchY = ev.changedTouches[0].screenY;
         ev.preventDefault();
         return false;
     }
 
-    function touchEndHandle (ev) {
+    function touchEndHandle(ev) {
         let diffX = ev.changedTouches[0].screenX - touchX;
         let diffY = ev.changedTouches[0].screenY - touchY;
         /* Ignore vertical swipes */

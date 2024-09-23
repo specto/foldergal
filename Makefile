@@ -81,7 +81,7 @@ $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 	cd $(RES_DIR); convert favicon.png -define icon:auto-resize=64,48,32,16 favicon.ico
 
 .PHONY: test
-test: lint ## Run go tests
+test: ## Run go tests
 	go test -cover ./...
 
 .PHONY: coverage
@@ -103,7 +103,7 @@ benchmark: ## Run go benchmarks
 	go test -bench=. ./...
 
 .PHONY: all
-all: test release upx zip ## Test, build and compress all release binaries
+all: lint test release upx zip ## Test, build and compress all release binaries
 
 .PHONY: format
 format: ## Format all go code
