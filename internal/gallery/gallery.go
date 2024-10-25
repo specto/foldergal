@@ -17,11 +17,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"specto.org/projects/foldergal/internal/config"
-	"specto.org/projects/foldergal/internal/storage"
 	"strconv"
 	"strings"
 	"time"
+
+	"specto.org/projects/foldergal/internal/config"
+	"specto.org/projects/foldergal/internal/storage"
 
 	"github.com/disintegration/imaging"
 	"github.com/spf13/afero"
@@ -153,7 +154,7 @@ func (f *imageFile) thumbGenerate() (err error) {
 		file afero.File
 		img  image.Image
 	)
-	file, err = storage.Root.Open(f.mediaFile.fullPath)
+	file, err = storage.Root.Open(f.fullPath)
 	if err != nil {
 		return
 	}
@@ -177,16 +178,16 @@ func (f *imageFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
+	_, err = storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
-	_ = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, buf.Bytes(), os.ModePerm)
-	f.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	_ = afero.WriteFile(storage.Cache, f.thumbPath, buf.Bytes(), os.ModePerm)
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	return
 }
 
@@ -212,7 +213,7 @@ func (f *svgFile) thumbGenerate() (err error) {
 		file     afero.File
 		contents []byte
 	)
-	file, err = storage.Root.Open(f.mediaFile.fullPath)
+	file, err = storage.Root.Open(f.fullPath)
 	if err != nil {
 		return
 	}
@@ -221,21 +222,21 @@ func (f *svgFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	err = storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
+	err = storage.Cache.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
+	_, err = storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
-	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, contents, os.ModePerm)
+	err = afero.WriteFile(storage.Cache, f.thumbPath, contents, os.ModePerm)
 	if err != nil {
 		return
 	}
 	// Since we just copy SVGs the Thumb File is the same as the original
-	f.thumbPath = f.mediaFile.fullPath
-	f.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	f.thumbPath = f.fullPath
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	return
 }
 
@@ -263,7 +264,7 @@ func (f *audioFile) Thumb() (afero.File, error) {
 	if config.Global.Ffmpeg == "" {
 		return nil, ErrThumbNotPossible
 	}
-	return storage.Cache.Open(f.mediaFile.thumbPath)
+	return storage.Cache.Open(f.thumbPath)
 }
 
 func (f *audioFile) thumbExists() bool {
@@ -272,7 +273,7 @@ func (f *audioFile) thumbExists() bool {
 	}
 	var err error
 	// Ensure we refresh Thumb stat
-	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	return err == nil
 }
 
@@ -280,7 +281,7 @@ func (f *audioFile) thumbGenerate() error {
 	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
 		return nil
 	}
-	audioFile := filepath.Join(config.Global.Root, f.mediaFile.fullPath)
+	audioFile := filepath.Join(config.Global.Root, f.fullPath)
 	var thumbData []byte
 
 	// Check for cover art
@@ -310,25 +311,25 @@ func (f *audioFile) thumbGenerate() error {
 			"-f", "image2pipe", "-") // #nosec Executable path is provided by config
 		outThumb, _ := thumbCmd.Output()
 		if len(outThumb) == 0 { // Failed thumbnail
-			return errors.New("failed to generate thumbnail: " + f.mediaFile.thumbPath)
+			return errors.New("failed to generate thumbnail: " + f.thumbPath)
 		}
 		thumbData = outThumb
 	}
 	// Create all folders needed
-	err := storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
+	err := storage.Cache.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return err
 	}
-	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
+	_, err = storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return err
 	}
 	// Save thumbnail
-	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, thumbData, os.ModePerm)
+	err = afero.WriteFile(storage.Cache, f.thumbPath, thumbData, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	if err != nil {
 		return err
 	}
@@ -359,7 +360,7 @@ func (f *videoFile) Thumb() (afero.File, error) {
 	if config.Global.Ffmpeg == "" {
 		return nil, ErrThumbNotPossible
 	}
-	return storage.Cache.Open(f.mediaFile.thumbPath)
+	return storage.Cache.Open(f.thumbPath)
 }
 
 func (f *videoFile) thumbExists() bool {
@@ -368,7 +369,7 @@ func (f *videoFile) thumbExists() bool {
 	}
 	var err error
 	// Ensure we refresh Thumb stat
-	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	return err == nil
 }
 
@@ -378,7 +379,7 @@ func (f *videoFile) thumbGenerate() error {
 	if config.Global.Ffmpeg == "" { // No ffmpeg no thumbnail
 		return nil
 	}
-	movieFile := filepath.Join(config.Global.Root, f.mediaFile.fullPath)
+	movieFile := filepath.Join(config.Global.Root, f.fullPath)
 
 	// Get the duration of the movie
 	cmd := exec.Command(config.Global.Ffmpeg,
@@ -388,7 +389,7 @@ func (f *videoFile) thumbGenerate() error {
 
 	match := reDuration.FindSubmatch(out)
 	if len(match) < 2 {
-		return errors.New("cannot find video duration: " + f.mediaFile.fullPath)
+		return errors.New("cannot find video duration: " + f.fullPath)
 	}
 	// Target the first third of the movie
 	targetTime := toTimeCode(fromTimeCode(string(match[1])) / 3)
@@ -405,22 +406,22 @@ func (f *videoFile) thumbGenerate() error {
 		"-f", "image2pipe", "-") // #nosec Executable path is provided by config
 	outThumb, _ := thumbCmd.Output()
 	if len(outThumb) == 0 { // Failed thumbnail
-		return errors.New("failed to generate thumbnail: " + f.mediaFile.thumbPath)
+		return errors.New("failed to generate thumbnail: " + f.thumbPath)
 	}
-	err := storage.Cache.MkdirAll(filepath.Dir(f.mediaFile.thumbPath), os.ModePerm)
+	err := storage.Cache.MkdirAll(filepath.Dir(f.thumbPath), os.ModePerm)
 	if err != nil {
 		return err
 	}
-	_, err = storage.Cache.Create(f.mediaFile.thumbPath)
+	_, err = storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return err
 	}
 	// Save thumbnail
-	err = afero.WriteFile(storage.Cache, f.mediaFile.thumbPath, outThumb, os.ModePerm)
+	err = afero.WriteFile(storage.Cache, f.thumbPath, outThumb, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	f.mediaFile.thumbInfo, err = storage.Cache.Stat(f.mediaFile.thumbPath)
+	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	if err != nil {
 		return err
 	}

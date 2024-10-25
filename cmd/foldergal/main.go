@@ -70,17 +70,13 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-// Get a subpath to a path
+// Cleans a path so it does not go up (..) nor does it start with root (/)
 func sanitizePath(p string) string {
-	base := "."
-	if filepath.IsLocal(p) {
-		return filepath.Clean(p)
-	}
-	result := filepath.Join(base, filepath.Clean(filepath.Base(p)))
-	if result == ".." {
-		return "."
-	}
-	return result
+	clean := filepath.Clean(p)
+	noSubdirs := strings.ReplaceAll(clean, ".."+string(filepath.Separator), "")
+	noRoot := strings.TrimPrefix(noSubdirs, string(filepath.Separator))
+	noUp := strings.TrimPrefix(noRoot, "..")
+	return filepath.Clean(noUp)
 }
 
 // Route for image previews of media files
@@ -196,7 +192,12 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 	fileCount := mediaCount(config.Global.Root)
 	folderSize := folderMediaSize(config.Global.Root)
-	thumbSize:= folderMediaSize(config.Global.Cache)
+	thumbSize := folderMediaSize(config.Global.Cache)
+	cacheExpires := time.Duration(
+		config.Global.CacheExpiresAfter).String()
+	if config.Global.CacheExpiresAfter == 0 {
+		cacheExpires = "cache is disabled"
+	}
 
 	rowData := [][2]string{
 		{"Total Media Files:", fmt.Sprint(fileCount)},
@@ -205,6 +206,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 		{"Folders Watched:", fmt.Sprint(gallery.WatchedFolders)},
 		{"Public Url:", config.Global.PublicUrl},
 		{"Prefix:", config.Global.Prefix},
+		{"Cache Expires After:", cacheExpires},
 		{"-", ""},
 		{"Alloc Memory:", fmt.Sprintf("%v MiB", m.Alloc/1024/1024)},
 		{"Sys Memory:", fmt.Sprintf("%v MiB", m.Sys/1024/1024)},

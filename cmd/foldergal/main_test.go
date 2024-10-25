@@ -102,13 +102,16 @@ func Test_sanitizePath(t *testing.T) {
 		path string
 		want string
 	}{
-		{`/windows/system32`, `system32`},
-		{`../apath/like:this`, "like:this"},
-		{"internal/storage/res", "internal/storage/res"},
+		{`/windows/system32/`, `windows/system32`},
+		{`../apath/like:this`, "apath/like:this"},
+		{"internal/../storage/res", "storage/res"},
 		{"", "."},
+		{"/", "."},
+		{"..", "."},
 		{"./../../../z", "z"},
 		{"./../../../", "."},
 		{"a/../../../b", "b"},
+		{"./path", "path"},
 	}
 
 	for _, tc := range tests {
