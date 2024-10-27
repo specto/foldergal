@@ -47,6 +47,7 @@ var (
 	rssFreshness     = 2 * 168 * time.Hour // Two weeks
 	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
 	faultyDate, _    = time.Parse("2006-01-02", "0001-01-02")
+	headerTimeout	 = 3 * time.Second
 )
 
 func fail404(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +64,13 @@ func fail404(w http.ResponseWriter, r *http.Request) {
 		Message: r.URL.Path,
 	}
 	_ = templates.Html.ExecuteTemplate(w, "error", &page)
+}
+
+func infoF(format string, args ...any) {
+	logger.Printf(format, args...)
+	if !config.Global.Quiet {
+		log.Printf(format, args...)
+	}
 }
 
 func fail500(w http.ResponseWriter, err error, _ *http.Request) {
@@ -706,9 +714,10 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func realInit() {
+func initGlobalsAndFlags() {
 	startTime = time.Now()
 	var errTime error
+	// Static files are timestamped with the build time of the binary
 	BuildTime, errTime = time.Parse(time.RFC3339, BuildTimestamp)
 	if errTime != nil {
 		BuildTime = time.Now()
@@ -733,41 +742,59 @@ func realInit() {
 	}
 
 	// Command line arguments, they override env
-	flag.StringVar(&config.Global.Host, "host", config.Global.Host, "host address to bind to")
-	flag.IntVar(&config.Global.Port, "port", config.Global.Port, "port to run at")
-	flag.StringVar(&config.Global.Home, "home", config.Global.Home, "home folder e.g. to keep thumbnails")
-	flag.StringVar(&config.Global.Root, "root", config.Global.Root, "root folder to serve files from")
+	flag.StringVar(&config.Global.Host, "host", config.Global.Host,
+		"host address to bind to")
+	flag.IntVar(&config.Global.Port, "port", config.Global.Port,
+		"port to run at")
+	flag.StringVar(&config.Global.Home, "home", config.Global.Home,
+		"home folder e.g. to keep thumbnails")
+	flag.StringVar(&config.Global.Root, "root", config.Global.Root,
+		"root folder to serve files from")
 	flag.StringVar(&config.Global.Prefix, "prefix", config.Global.Prefix,
 		"path prefix as in http://localhost/PREFIX/other/stuff")
-	flag.StringVar(&config.Global.TlsCrt, "crt", config.Global.TlsCrt, "certificate File for TLS")
-	flag.StringVar(&config.Global.TlsKey, "key", config.Global.TlsKey, "key file for TLS")
-	flag.BoolVar(&config.Global.Http2, "http2", config.Global.Http2, "enable HTTP/2 (only with TLS)")
-	flag.BoolVar(&config.Global.Quiet, "quiet", config.Global.Quiet, "don't print to console")
+	flag.StringVar(&config.Global.TlsCrt, "crt", config.Global.TlsCrt,
+		"certificate File for TLS")
+	flag.StringVar(&config.Global.TlsKey, "key", config.Global.TlsKey,
+		"key file for TLS")
+	flag.BoolVar(&config.Global.Http2, "http2", config.Global.Http2,
+		"enable HTTP/2 (only with TLS)")
+	flag.BoolVar(&config.Global.Quiet, "quiet", config.Global.Quiet,
+		"don't print to console")
 	flag.DurationVar((*time.Duration)(&config.Global.CacheExpiresAfter),
 		"cache-expires-after", time.Duration(config.Global.CacheExpiresAfter),
 		"duration to keep cached resources in memory")
 	flag.DurationVar((*time.Duration)(&config.Global.NotifyAfter),
 		"notify-after", time.Duration(config.Global.NotifyAfter),
 		"duration to delay notifications and combine them in one")
-	flag.StringVar(&config.Global.DiscordWebhook, "discord-webhook", config.Global.DiscordWebhook,
+	flag.StringVar(&config.Global.DiscordWebhook,
+		"discord-webhook", config.Global.DiscordWebhook,
 		"webhook URL to receive notifications when new media appears")
-	flag.StringVar(&config.Global.DiscordName, "discord-name", config.Global.DiscordName,
+	flag.StringVar(&config.Global.DiscordName,
+		"discord-name", config.Global.DiscordName,
 		"name to appear on sent notifications")
-	flag.StringVar(&config.Global.PublicHost, "pub-host", config.Global.PublicHost,
+	flag.StringVar(&config.Global.PublicHost,
+		"pub-host", config.Global.PublicHost,
 		"the public name for the machine")
-	flag.IntVar(&config.Global.ThumbWidth, "thumb-width", config.Global.ThumbWidth, "width for thumbnails")
-	flag.IntVar(&config.Global.ThumbHeight, "thumb-height", config.Global.ThumbHeight, "height for thumbnails")
-	flag.StringVar(&config.Global.ConfigFile, "config", config.Global.ConfigFile,
+	flag.IntVar(&config.Global.ThumbWidth,
+		"thumb-width", config.Global.ThumbWidth, "width for thumbnails")
+	flag.IntVar(&config.Global.ThumbHeight,
+		"thumb-height", config.Global.ThumbHeight, "height for thumbnails")
+	flag.StringVar(&config.Global.ConfigFile,
+		"config", config.Global.ConfigFile,
 		"json file to get all the parameters from")
 
-	showVersion := flag.Bool("version", false, "show program version and build time")
-
-	// ??? Move below to main
+	flag.Bool("version", false, "show program version and build time")
 
 	flag.Parse()
+}
 
-	if *showVersion {
-		fmt.Printf("foldergal %v, built on %v\n", BuildVersion, BuildTime.In(time.Local))
+func main() {
+	initGlobalsAndFlags()
+
+	// Check for version flag
+	if flag.Lookup("version").Value.(flag.Getter).Get().(bool) {
+		fmt.Printf("foldergal %v, built on %v\n",
+			BuildVersion, BuildTime.In(time.Local))
 		os.Exit(0)
 	}
 
@@ -780,10 +807,16 @@ func realInit() {
 	config.Global.Home, _ = filepath.Abs(config.Global.Home)
 	config.Global.Root, _ = filepath.Abs(config.Global.Root)
 
+	// Set up time location
+	if config.Global.TimeZone == "" {
+		config.Global.TimeZone = "Local"
+	}
+	var err error
 	config.Global.TimeLocation, err = time.LoadLocation(config.Global.TimeZone)
 	if err != nil {
 		log.Fatal(err)
 	}
+	time.Local = config.Global.TimeLocation
 
 	// Set up log file
 	logFile := filepath.Join(config.Global.Home, "foldergal.log")
@@ -795,18 +828,19 @@ func realInit() {
 	}
 	config.Global.Log = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
 	logger = config.Global.Log
+
+	infoF("-- Starting v:%v --", BuildVersion)
 	if !config.Global.Quiet {
-		log.Printf("Logging to %s", logFile)
+		log.Printf("Logging to: %s", logFile)
 	}
+	infoF("Time location is: %s (%s)",
+		config.Global.TimeLocation.String(), config.Global.TimeZone)
 
 	// Set root media folder
 	if exists, err := os.Stat(config.Global.Root); os.IsNotExist(err) || !exists.IsDir() {
 		log.Fatalf("Root folder does not exist: %v", config.Global.Root)
 	}
-	logger.Printf("Root folder is: %s", config.Global.Root)
-	if !config.Global.Quiet {
-		log.Printf("Serving files from: %v", config.Global.Root)
-	}
+	infoF("Root folder is: %s", config.Global.Root)
 	baseRoot := afero.NewReadOnlyFs(
 		afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root))
 	if config.Global.CacheExpiresAfter == 0 {
@@ -824,10 +858,7 @@ func realInit() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if !config.Global.Quiet {
-		log.Printf("Cache folder is: %s\n", config.Global.Cache)
-	}
-	logger.Printf("Cache folder is: %s", config.Global.Cache)
+	infoF("Cache folder is: %s", config.Global.Cache)
 	if config.Global.CacheExpiresAfter == 0 {
 		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache)
 	} else {
@@ -835,13 +866,9 @@ func realInit() {
 			afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache),
 			afero.NewMemMapFs(),
 			time.Duration(config.Global.CacheExpiresAfter))
-		logger.Printf("Cache in-memory expiration after %v",
+		infoF("Cache in-memory expiration after: %v",
 			time.Duration(config.Global.CacheExpiresAfter))
 	}
-}
-
-func main() {
-	realInit()
 
 	// Routing
 	httpmux := http.NewServeMux()
@@ -850,9 +877,10 @@ func main() {
 		httpmux.Handle(urlPrefix,
 			http.StripPrefix(urlPrefix, http.HandlerFunc(HttpHandler)))
 	}
-	httpmux.Handle("/favicon.ico", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		staticHandler("res/favicon.ico", w, r)
-	}))
+	httpmux.Handle("/favicon.ico",
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			staticHandler("res/favicon.ico", w, r)
+		}))
 	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
@@ -862,7 +890,7 @@ func main() {
 	}
 	if ffmpegPath, err := exec.LookPath(ffmpegPath); err == nil {
 		config.Global.Ffmpeg = ffmpegPath
-		logger.Printf("Found ffmpeg at: %v", ffmpegPath)
+		infoF("Found ffmpeg at: %v", ffmpegPath)
 	} else {
 		config.Global.Ffmpeg = ""
 	}
@@ -871,7 +899,7 @@ func main() {
 	useTls := false
 	if fileExists(config.Global.TlsCrt) && fileExists(config.Global.TlsKey) {
 		useTls = true
-		logger.Printf("Using certificate: %s and key: %s",
+		infoF("Using certificate: %s and key: %s",
 			config.Global.TlsCrt, config.Global.TlsKey)
 	}
 	if config.Global.DiscordWebhook != "" { // Start filesystem watcher
@@ -884,11 +912,22 @@ func main() {
 		}
 	}()
 	if config.Global.PublicHost != "" {
-		config.Global.PublicUrl = strings.Trim(config.Global.PublicHost, "/") + urlPrefix + "/"
+		config.Global.PublicUrl = strings.Trim(config.Global.PublicHost, "/") +
+			urlPrefix + "/"
 	} else {
 		config.Global.PublicUrl = bind + urlPrefix + "/"
 	}
 
+	if useTls {
+		config.Global.PublicUrl = "https://" + config.Global.PublicUrl
+	} else {
+		config.Global.PublicUrl = "http://" + config.Global.PublicUrl
+	}
+	logger.Printf("Running server at: %v", config.Global.PublicUrl)
+	if !config.Global.Quiet {
+		log.Printf("Running server at: %v\nPress ^C to stop...\n",
+			config.Global.PublicUrl)
+	}
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
@@ -908,27 +947,17 @@ func main() {
 			tlsConfig.NextProtos = []string{"http/1.1"}
 		}
 		srv := &http.Server{
-			ReadHeaderTimeout: 30 * time.Second,
+			ReadHeaderTimeout: headerTimeout,
 			Addr:              bind,
 			Handler:           httpmux,
 			TLSConfig:         tlsConfig,
 		}
-		config.Global.PublicUrl = "https://" + config.Global.PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)
-		if !config.Global.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.Global.PublicUrl)
-		}
 		srvErr = srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
 	} else { // Normal start
 		srv := &http.Server{
-			ReadHeaderTimeout: 30 * time.Second,
+			ReadHeaderTimeout: headerTimeout,
 			Addr:              bind,
 			Handler:           httpmux,
-		}
-		config.Global.PublicUrl = "http://" + config.Global.PublicUrl
-		logger.Printf("Running v:%v at %v", BuildVersion, config.Global.PublicUrl)
-		if !config.Global.Quiet {
-			log.Printf("Running v:%v at %v\nPress ^C to stop...\n", BuildVersion, config.Global.PublicUrl)
 		}
 		srvErr = srv.ListenAndServe()
 	}

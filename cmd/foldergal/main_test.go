@@ -86,7 +86,7 @@ func Test_fail404(t *testing.T) {
 }
 
 func Test_fail500(t *testing.T) {
-	realInit()
+	initGlobalsAndFlags()
 	t.Run("returns 500", func(t *testing.T) {
 		request, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 		response := httptest.NewRecorder()
