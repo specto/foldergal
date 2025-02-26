@@ -57,6 +57,9 @@
     }
 
     function touchStartHandle(ev) {
+        if (ev.targetTouches.length > 1) {
+            return // Leave multitouch default behaviour unchanged
+        }
         touchX = ev.changedTouches[0].screenX;
         touchY = ev.changedTouches[0].screenY;
         ev.preventDefault();
@@ -64,6 +67,9 @@
     }
 
     function touchEndHandle(ev) {
+        if (ev.targetTouches.length > 1) {
+            return
+        }
         let diffX = ev.changedTouches[0].screenX - touchX;
         let diffY = ev.changedTouches[0].screenY - touchY;
         /* Ignore vertical swipes */
