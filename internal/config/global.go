@@ -99,73 +99,47 @@ func (d *JsonDuration) UnmarshalJSON(b []byte) error {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func fromEnv(envName string, parseVal func(string) any) any {
+func fromEnv[T comparable](envName string, parseVal func(string) T) T {
 	if env, ok := os.LookupEnv(EnvPrefix + envName); ok {
 		return parseVal(env)
 	}
-	return nil
+	return parseVal("")
 }
 
 // Gets a string from env with fallback to default value
 func strFromEnv(envName, defaultVal string) string {
-	s := fromEnv(envName, func(s string) any {
+	if s := fromEnv(envName, func(s string) string { return s }); s != "" {
 		return s
-	})
-	switch v := s.(type) {
-	case string:
-		return v
-	default:
-		return defaultVal
 	}
+	return defaultVal
 }
 
 // Gets a boolean from env with fallback to default value
 func boolFromEnv(envName string, defaultVal bool) bool {
-	b := fromEnv(envName, func(s string) any {
-		b, err := strconv.ParseBool(s)
-		if err != nil {
-			return nil
+	return fromEnv(envName, func(s string) bool {
+		if b, err := strconv.ParseBool(s); err == nil {
+			return b
 		}
-		return b
-	})
-	switch v := b.(type) {
-	case bool:
-		return v
-	default:
 		return defaultVal
-	}
+	})
 }
 
 // Gets a (json)Duration from env with fallback to default value
 func durationFromEnv(envName string, defaultVal JsonDuration) JsonDuration {
-	d := fromEnv(envName, func(s string) any {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			return nil
+	return fromEnv(envName, func(s string) JsonDuration {
+		if d, err := time.ParseDuration(s); err == nil {
+			return JsonDuration(d)
 		}
-		return JsonDuration(d)
-	})
-	switch v := d.(type) {
-	case JsonDuration:
-		return v
-	default:
 		return defaultVal
-	}
+	})
 }
 
 // Gets an integer from env with fallback to default value
 func intFromEnv(envName string, defaultVal int) int {
-	i := fromEnv(envName, func(s string) any {
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			return nil
+	return fromEnv(envName, func(s string) int {
+		if i, err := strconv.Atoi(s); err == nil {
+			return i
 		}
-		return i
-	})
-	switch v := i.(type) {
-	case int:
-		return v
-	default:
 		return defaultVal
-	}
+	})
 }

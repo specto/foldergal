@@ -77,6 +77,12 @@ func TestBoolFromEnv(t *testing.T) {
 	if res := boolFromEnv(key, val); res != val {
 		t.Errorf("Expected %v, got %v", val, res)
 	}
+
+	_ = os.Setenv(EnvPrefix+key, "invalid2")
+	val = false
+	if res := boolFromEnv(key, val); res != val {
+		t.Errorf("Expected %v, got %v", val, res)
+	}
 }
 
 func TestIntFromEnv(t *testing.T) {
