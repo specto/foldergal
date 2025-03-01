@@ -66,8 +66,8 @@
     <ul>
         {{ if .ParentUrl }}
             <li>
-                <a tabindex="0" class="folder" href="{{- .ParentUrl -}}">
                     <span title="{{ .ParentUrl }}{{ $.QueryString }}">
+                <a id="parentFolder" tabindex="1" class="folder" href="{{- .ParentUrl -}}">
                     <svg class="icon iconParent">
                         <use xlink:href="{{ .Prefix }}/?static/ui.svg#iconParent"></use>
                     </svg>

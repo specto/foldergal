@@ -6,53 +6,90 @@
     let touchY = 0;
 
     function hideToolbar() {
-        document.getElementById("slideshowOverlay").style.display = "none";
+        const overlay = document.getElementById("slideshowOverlay");
+        if (overlay) {
+            overlay.style.display = "none";
+        }
     }
 
     function pingToolbar() {
-        document.getElementById("slideshowOverlay").style.display = "block";
-        w.clearTimeout(toolbarHideTimeout);
-        toolbarHideTimeout = w.setTimeout(hideToolbar, HideToolbarAfter);
+        const overlay = document.getElementById("slideshowOverlay");
+        if (overlay) {
+            overlay.style.display = "block";
+            w.clearTimeout(toolbarHideTimeout);
+            toolbarHideTimeout = w.setTimeout(hideToolbar, HideToolbarAfter);
+        }
     }
 
     function prevSlide() {
         const prev = document.getElementById("slideshowPrev");
         if (prev) {
             prev.click();
+            return false;
         }
-        return false;
+        return true;
     }
 
     function nextSlide() {
         const next = document.getElementById("slideshowNext");
         if (next) {
             next.click();
+            return false;
         }
-        return false;
+        return true;
+    }
+    function parentSlide() {
+        let parent = document.getElementById("slideshowParent");
+        if (parent) {
+            parent.click();
+            return false;
+        }
+        parent = document.getElementById("parentFolder");
+        if (parent) {
+            parent.click();
+            return false;
+        }
+        return true;
     }
 
     function keyHandle(ev) {
+        const videoElem = document.querySelector("#slideshowContents video");
         switch (ev.code) {
             case "PageUp":
             case "ArrowUp":
             case "ArrowLeft":
                 ev.preventDefault();
+                if (videoElem && videoElem.currentTime > 1) { /* Skip back 10s */
+                    videoElem.currentTime -= 10
+                    return false;
+                }
                 return prevSlide();
             case "PageDown":
             case "ArrowDown":
             case "ArrowRight":
                 ev.preventDefault();
+                if (videoElem && !videoElem.ended) { /* Skip ahead 10s while playing */
+                    videoElem.currentTime += 10
+                    return false;
+                }
                 return nextSlide();
             case "Space":
-                const videoElem = document.querySelector("#slideshow video");
-                if (videoElem) { /* space key should pause video */
+                if (videoElem) { /* Play/pause with space */
                     ev.preventDefault();
-                    return videoElem.paused ? videoElem.play() : videoElem.pause();
-                } /* not a video so we continue our takeover... */
+                    if (videoElem.paused) {
+                        videoElem.play();
+                    } else {
+                        videoElem.pause();
+                    }
+                    return false;
+                }
             case "Tab":
             case "Enter":
                 ev.preventDefault();
                 return ev.shiftKey ? prevSlide() : nextSlide();
+            case "Escape":
+            case "Backspace":
+                return parentSlide();
         }
     }
 
@@ -90,14 +127,20 @@
     }
 
     w.addEventListener("DOMContentLoaded", function init() {
+        const slideshow = document.getElementById("slideshowContents");
         w.addEventListener("keydown", keyHandle);
-        w.addEventListener("touchstart", touchStartHandle);
-        w.addEventListener("touchend", touchEndHandle);
-        /* Mobile browsers seem to react to mousemove on touch */
-        document.getElementById("slideshowContents").addEventListener("mousemove", pingToolbar);
+        if (slideshow) {
+            w.addEventListener("touchstart", touchStartHandle);
+            w.addEventListener("touchend", touchEndHandle);
+            /* Mobile browsers seem to react to mousemove on touch */
+            slideshow.addEventListener("mousemove", pingToolbar);
+        }
         hideToolbar();
     });
     w.addEventListener("load", function onloadInit() {
-        document.getElementById("slideshowContents").classList.add("loaded");
+        const slideshow = document.getElementById("slideshowContents");
+        if (slideshow) {
+            slideshow.classList.add("loaded");
+        }
     });
 }(window));
