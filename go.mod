@@ -1,6 +1,6 @@
 module specto.org/projects/foldergal
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/charithe/timedbuf v0.0.0-20241209145701-0faa62e2b61c

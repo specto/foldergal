@@ -102,10 +102,7 @@ func notify(items []any) {
 		// because the discord api docs says
 		// only 10 embeds are allowed per message
 		for i := 0; i < totalEmbeds; i += maxEmbeds {
-			bound := i + maxEmbeds
-			if bound > totalEmbeds {
-				bound = totalEmbeds
-			}
+			bound := min(i + maxEmbeds, totalEmbeds)
 			jsonData.Content = "New media in " + config.Global.PublicUrl
 			jsonData.Embeds = embeds[i:bound]
 			sendDiscord(jsonData)

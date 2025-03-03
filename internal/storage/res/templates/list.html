@@ -21,42 +21,42 @@
 				<span>{{ .ItemCount }}&gt;</span>
             </h1>
             <div class="toolbar">
-				<span class="title">order by:</span>
+				<span class="title">order:</span>
 				<span class="buttons"><a {{ if not .IsReversed -}}
 					class="current"
-				{{- end }} href="?order/asc
-			{{- if eq .SortedBy "name" -}}
-                /sort/name
+				{{- end }} title="ascending" href="?o/a
+			{{- if eq .SortedBy "n" -}}
+                /s/n
             {{- else -}}
-                /sort/date
+                /s/d
             {{- end -}}
-                ">asc</a><a {{ if .IsReversed -}}
+                ">&#8595;</a><a {{ if .IsReversed -}}
 					class="current"
-				{{- end }} href="?order/desc
-			{{- if eq .SortedBy "name" -}}
-                /sort/name
+				{{- end }} title="descending" href="?o/z
+			{{- if eq .SortedBy "n" -}}
+                /s/n
             {{- else -}}
-                /sort/date
+                /s/d
             {{- end -}}
-                ">desc</a></span>
+                ">&#8593;</a></span>
 			</div>
 			<div class="toolbar">
 				<span class="title">sort by:</span>
-				<span class="buttons"><a {{ if eq .SortedBy "name" -}}
+				<span class="buttons"><a {{ if eq .SortedBy "n" -}}
 					class="current"
-				{{- end }} href="?sort/name
+				{{- end }} title="name" href="?s/n
 			{{- if .IsReversed -}}
-			    /order/desc
+			    /o/z
 			{{- else -}}
-			    /order/asc
+			    /o/a
 			{{- end -}}
-				">name</a><a {{ if eq .SortedBy "date" -}}
+				">name</a><a {{ if eq .SortedBy "d" -}}
 					class="current"
-				{{- end }} href="?sort/date
+				{{- end }} title="date and time" href="?s/d
             {{- if .IsReversed -}}
-			    /order/desc
+			    /o/z
 			{{- else -}}
-			    /order/asc
+			    /o/a
 			{{- end -}}
 				">date</a></span>
             </div>
@@ -66,8 +66,8 @@
     <ul>
         {{ if .ParentUrl }}
             <li>
-                    <span title="{{ .ParentUrl }}{{ $.QueryString }}">
                 <a id="parentFolder" tabindex="1" class="folder" href="{{- .ParentUrl -}}">
+                    <span title="{{ .ParentUrl }}">
                     <svg class="icon iconParent">
                         <use xlink:href="{{ .Prefix }}/?static/ui.svg#iconParent"></use>
                     </svg>
@@ -76,7 +76,7 @@
         {{ end }}
         {{ range .Items }}
             <li class="{{ .Class }}"><a id="{{ .Id }}" tabindex="1"
-            href="{{- .Url -}}{{- $.QueryString -}}"
+            href="{{- .Url -}}"
             title="{{ .Name }} [{{ .ModTime | formatDate }}]">
                 <span>
                     {{ if eq .Class "folder" }}

@@ -28,29 +28,38 @@ func TestRequestSettings(t *testing.T) {
 		t.Error("Allowing invalid json")
 	}
 
-	fromValues := RequestSettingsFromQuery(url.Values{
-		"sort":    []string{"name"},
-		"display": []string{"direct"},
-	})
-	if expected, result := "?display/direct/order/asc/sort/name", fromValues.QueryString(); result != expected {
-		t.Error("Bad query string:", result, "expected:", expected)
-	}
-
-	fromValues = RequestSettingsFromQuery(url.Values{
-		"order": []string{"asc"},
-	})
-	if expected, result := "?order/asc", fromValues.QueryString(); result != expected {
-		t.Error("Bad query string:", result, "expected:", expected)
-	}
-
-	fromValues = RequestSettingsFromQuery(url.Values{
-		"order": []string{"desc"},
-	})
-	if expected, result := "", fromValues.QueryString(); result != expected {
-		t.Error("Expected empty query string:", result, "expected:", expected)
-	}
-
 	if queryParam(-1).String() != "" {
 		t.Error("WTF queryParam?!")
+	}
+}
+
+func TestQueryRequestSettings(t *testing.T) {
+	tests := []struct {
+		input url.Values
+		want  string
+	}{
+		{url.Values{
+			"s":    []string{"n"},
+			"display": []string{"direct"},
+		}, "?display/direct/o/a/s/n"},
+		{url.Values{
+			"o": []string{"a"},
+		}, "?o/a/s/t"},
+		{url.Values{
+			"o": []string{"d"},
+		}, "?o/d/s/t"},
+		{url.Values{
+			"s": []string{"t"},
+		}, "?o/d/s/t"},
+		{url.Values{
+			"s": []string{"n"},
+		}, "?o/a/s/n"},
+	}
+
+	for _, tc := range tests {
+		query := RequestSettingsFromQuery(tc.input)
+		if result := query.QueryString(); result != tc.want {
+			t.Fatalf("got %v, want %v", result, tc.want)
+		}
 	}
 }

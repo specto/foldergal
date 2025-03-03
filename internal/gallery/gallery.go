@@ -461,8 +461,7 @@ func (f *pdfFile) thumbGenerate() error {
 
 // Checks if any /path/./starts/with/.dot/somewhere
 func ContainsDotFile(name string) bool {
-	parts := strings.Split(name, "/")
-	for _, part := range parts {
+	for part := range strings.SplitSeq(name, "/") {
 		if strings.HasPrefix(part, ".") {
 			return true
 		}

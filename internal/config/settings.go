@@ -18,19 +18,19 @@ const (
 	QueryDisplayShow    = "slideshow"
 	QueryDisplayFile    = "direct"
 	QueryDisplayDefault = QueryDisplayShow
-	QueryOrderAsc       = "asc"
-	QueryOrderDesc      = "desc"
+	QueryOrderAsc       = "a"
+	QueryOrderDesc      = "z"
 	QueryOrderDefault   = QueryOrderDesc
-	QuerySortName       = "name"
-	QuerySortDate       = "date"
+	QuerySortName       = "n"
+	QuerySortDate       = "d"
 	QuerySortDefault    = QuerySortDate
 )
 
 var (
 	QueryParams = map[queryParam]string{
 		QueryDisplay: "display",
-		QueryOrder:   "order",
-		QuerySort:    "sort",
+		QueryOrder:   "o",
+		QuerySort:    "s",
 	}
 )
 
@@ -41,8 +41,8 @@ func (s queryParam) String() string {
 }
 
 type RequestSettings struct {
-	Sort    string `json:"sort"`
-	Order   bool   `json:"order"`
+	Sort    string `json:"s"`
+	Order   bool   `json:"o"`
 	Display string `json:"display"`
 }
 
@@ -68,14 +68,16 @@ func (cs *RequestSettings) QueryString() string {
 		val := fmt.Sprintf("%s/%s", QueryParams[QueryDisplay], cs.Display)
 		qs = append(qs, val)
 	}
-	if !cs.Order && QueryOrderDesc == QueryOrderDefault {
-		val := fmt.Sprintf("%s/%s", QueryParams[QueryOrder], QueryOrderAsc)
-		qs = append(qs, val)
+	var orderString string
+	if cs.Order { // true - desc, false - asc
+		orderString = QueryOrderDesc
+	} else {
+		orderString = QueryOrderAsc
 	}
-	if cs.Sort != QuerySortDefault {
-		val := fmt.Sprintf("%s/%s", QueryParams[QuerySort], cs.Sort)
-		qs = append(qs, val)
-	}
+	qs = append(qs,
+		fmt.Sprintf("%s/%s", QueryParams[QueryOrder], orderString),
+		fmt.Sprintf("%s/%s", QueryParams[QuerySort], cs.Sort),
+	)
 	result, _ := url.PathUnescape(strings.Join(qs, "/"))
 	if result == "" {
 		return result

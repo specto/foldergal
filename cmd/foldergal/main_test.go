@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -85,17 +84,6 @@ func Test_fail404(t *testing.T) {
 	})
 }
 
-func Test_fail500(t *testing.T) {
-	initGlobalsAndFlags()
-	t.Run("returns 500", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
-		response := httptest.NewRecorder()
-		e := errors.New("this sucks")
-		fail500(response, e, request)
-		assertStatus(t, response.Code, http.StatusInternalServerError)
-	})
-}
-
 func Test_sanitizePath(t *testing.T) {
 
 	tests := []struct {
@@ -133,25 +121,25 @@ func Test_splitUrlToBreadCrumbs(t *testing.T) {
 	}{
 		{toUrl("http://example.com/what/is/this"),
 			[]templates.BreadCrumb{
-				{Url: "/", Title: defaultTitle},
+				{Url: "/?some/data", Title: defaultTitle},
 				{Url: "/what?some/data", Title: "what"},
 				{Url: "/what/is?some/data", Title: "is"},
 				{Url: "/what/is/this?some/data", Title: "this"},
 			}},
 		{toUrl(""),
 			[]templates.BreadCrumb{
-				{Url: "/", Title: defaultTitle},
+				{Url: "/?some/data", Title: defaultTitle},
 			}},
 		{toUrl("some text ."),
 			[]templates.BreadCrumb{
-				{Url: "/", Title: defaultTitle},
+				{Url: "/?some/data", Title: defaultTitle},
 				{Url: "/some text .?some/data", Title: "some text ."},
 			}},
 	}
 	for _, tc := range tests {
 		result := splitUrlToBreadCrumbs(tc.input, "?some/data")
 		if !reflect.DeepEqual(result, tc.want) {
-			t.Fatalf("splitUrlToBreadCrumbs(%v)\n%v\n===\n%v",
+			t.Fatalf("splitUrlToBreadCrumbs(%v), got:\n%v\n=== want:\n%v",
 				tc.input, result, tc.want)
 		}
 	}

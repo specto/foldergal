@@ -88,6 +88,7 @@ func TestIsValidMedia(t *testing.T) {
 		isvalid  bool
 	}{
 		{"bla.jpg", true},
+		{"bla.JPEG", true},
 		{"bla.png", true},
 		{"bla.mp4", true},
 		{"bla.mp3", true},

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -28,7 +29,11 @@ import (
 	"github.com/spf13/afero"
 )
 
-// Verifies if file exists and is not a folder
+type ctxKey string
+
+const reqSettings ctxKey = "reqSettings"
+
+// Verify if a file exists and is not a folder
 func fileExists(filename string) bool {
 	if file, err := os.Stat(filename); os.IsNotExist(err) || file.IsDir() {
 		return false
@@ -46,8 +51,7 @@ var (
 	urlPrefix        string
 	rssFreshness     = 2 * 168 * time.Hour // Two weeks
 	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
-	faultyDate, _    = time.Parse("2006-01-02", "0001-01-02")
-	headerTimeout	 = 3 * time.Second
+	headerTimeout    = 3 * time.Second
 )
 
 func fail404(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +95,7 @@ func sanitizePath(p string) string {
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	var (
 		err         error
-		f           gallery.Media
+		file        gallery.Media
 		contentType = "image/jpeg"
 		fullPath    = strings.TrimPrefix(r.URL.Path, urlPrefix)
 		// All thumbnails are jpegs... most of the time
@@ -101,18 +105,18 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(mediaType, "image/svg"):
 		contentType = mediaType
-		f, err = gallery.NewSvg(fullPath)
+		file, err = gallery.NewSvg(fullPath)
 	case strings.HasPrefix(mediaType, "image/"):
-		f, err = gallery.NewImage(fullPath, thumbPath)
+		file, err = gallery.NewImage(fullPath, thumbPath)
 	case strings.HasPrefix(mediaType, "audio/"):
 		contentType = "image/svg+xml"
-		f, err = gallery.NewAudio(fullPath, thumbPath)
+		file, err = gallery.NewAudio(fullPath, thumbPath)
 	case strings.HasPrefix(mediaType, "video/"):
 		contentType = "image/svg+xml"
-		f, err = gallery.NewVideo(fullPath, thumbPath)
+		file, err = gallery.NewVideo(fullPath, thumbPath)
 	case strings.HasPrefix(mediaType, "application/pdf"):
 		contentType = "image/svg+xml"
-		f, err = gallery.NewPdf(fullPath, thumbPath)
+		file, err = gallery.NewPdf(fullPath, thumbPath)
 	default: // Unrecognized mime type
 		w.WriteHeader(http.StatusNotFound)
 		staticHandler("res/broken.svg", w, r)
@@ -123,12 +127,11 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		staticHandler("res/broken.svg", w, r)
 		return
 	}
-	err = gallery.GenerateThumb(f)
-	if err != nil {
+	if err := gallery.GenerateThumb(file); err != nil {
 		fail500(w, err, r)
 		return
 	}
-	thumb, err := f.Thumb()
+	thumb, err := file.Thumb()
 	if err != nil {
 		if errors.Is(err, gallery.ErrThumbNotPossible) {
 			switch {
@@ -145,18 +148,18 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		staticHandler("res/broken.svg", w, r)
 		return
 	}
-	if !strings.HasSuffix(f.ThumbName(), ".jpg") {
+	if !strings.HasSuffix(file.ThumbName(), ".jpg") {
 		w.Header().Set("Content-Type", contentType)
 	}
-	http.ServeContent(w, r, f.ThumbPath(), f.ThumbModTime(), thumb)
+	http.ServeContent(w, r, file.ThumbPath(), file.ThumbModTime(), thumb)
 }
 
 // Splits a url "path" to separate tokens
 func splitUrlToBreadCrumbs(pageUrl *url.URL, qs string) (crumbs []templates.BreadCrumb) {
 	deepcrumb := urlPrefix + "/"
 	currentUrl := strings.TrimPrefix(pageUrl.Path, urlPrefix)
-	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb, Title: "#:\\"})
-	for _, name := range strings.Split(currentUrl, "/") {
+	crumbs = append(crumbs, templates.BreadCrumb{Url: deepcrumb + qs, Title: "#:\\"})
+	for name := range strings.SplitSeq(currentUrl, "/") {
 		if name == "" {
 			continue
 		}
@@ -201,8 +204,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	fileCount := mediaCount(config.Global.Root)
 	folderSize := folderMediaSize(config.Global.Root)
 	thumbSize := folderMediaSize(config.Global.Cache)
-	cacheExpires := time.Duration(
-		config.Global.CacheExpiresAfter).String()
+	cacheExpires := time.Duration(config.Global.CacheExpiresAfter).String()
 	if config.Global.CacheExpiresAfter == 0 {
 		cacheExpires = "cache is disabled"
 	}
@@ -239,14 +241,8 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func reverse(less func(i, j int) bool) func(i, j int) bool {
-	return func(i, j int) bool {
-		return !less(i, j)
-	}
-}
-
 // Route for lists of files
-func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
+func listHandler(w http.ResponseWriter, r *http.Request) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -278,8 +274,9 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	} else if config.Global.PublicHost != "" {
 		title = config.Global.PublicHost
 	}
+	opts := r.Context().Value(reqSettings).(config.RequestSettings)
 	querystring := opts.QueryString()
-	if parentUrl != "" {
+	if parentUrl != "" { // parentUrl is empty when visiting the root folder
 		parentUrl += querystring
 	}
 
@@ -303,11 +300,6 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 				class += " nothumb"
 			}
 		}
-		if child.ModTime().Before(faultyDate) {
-			// TODO: find the reason for afero bad dates and remove this fix
-			logger.Printf("Invalid date detected for %s", childPath)
-			child, _ = storage.Root.Stat(filepath.Join(folderPath, child.Name()))
-		}
 		children = append(children, templates.ListItem{
 			Id:      gallery.EscapePath(child.Name()),
 			ModTime: child.ModTime(),
@@ -319,22 +311,8 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 			H:       config.Global.ThumbHeight,
 		})
 	}
-	var sortFunc func(i, j int) bool
-	if opts.Sort == "date" {
-		sortFunc = func(i, j int) bool {
-			return children[i].ModTime.Before(children[j].ModTime)
-		}
-	} else { // Sort by name
-		sortFunc = func(i, j int) bool {
-			return sortorder.NaturalLess(
-				strings.ToLower(children[i].Name),
-				strings.ToLower(children[j].Name))
-		}
-	}
-	if opts.Order {
-		sortFunc = reverse(sortFunc)
-	}
-	sort.Slice(children, sortFunc)
+	logger.Printf("opts %+v", opts)
+	sort.Slice(children, itemSorter(children, opts.Sort, opts.Order))
 	pUrl, _ := url.Parse(folderPath)
 	crumbs := splitUrlToBreadCrumbs(pUrl, querystring)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
@@ -363,8 +341,36 @@ func listHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 	}
 }
 
+type LessFunc func(i, j int) bool
+
+func reverse(less LessFunc) LessFunc {
+	return func(i, j int) bool { return !less(i, j) }
+}
+
+func itemSorter(li []templates.ListItem, field string, rev bool) LessFunc {
+	var sorter LessFunc
+	switch field {
+	case config.QuerySortDate:
+		sorter = func(i, j int) bool {
+			return li[i].ModTime.Before(li[j].ModTime)
+		}
+	case config.QuerySortName:
+		sorter = func(first, second int) bool {
+			return sortorder.NaturalLess(
+				strings.ToLower(li[first].Name),
+				strings.ToLower(li[second].Name))
+		}
+	default:
+		sorter = func(_, _ int) bool { return true }
+	}
+	if rev {
+		return reverse(sorter)
+	}
+	return sorter
+}
+
 // Serve html containers for media
-func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSettings) {
+func viewHandler(w http.ResponseWriter, r *http.Request) {
 	if gallery.ContainsDotFile(r.URL.Path) {
 		fail404(w, r)
 		return
@@ -401,7 +407,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		fail500(w, err, r)
 		return
 	}
-
+	opts := r.Context().Value(reqSettings).(config.RequestSettings)
 	querystring := opts.QueryString()
 
 	currentMediaPath := filepath.Join(urlPrefix, fullPath)
@@ -431,22 +437,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, opts config.RequestSett
 		})
 	}
 
-	var sortFunc func(i, j int) bool
-	if opts.Sort == "date" {
-		sortFunc = func(i, j int) bool {
-			return children[i].ModTime.Before(children[j].ModTime)
-		}
-	} else { // Sort by name
-		sortFunc = func(i, j int) bool {
-			return sortorder.NaturalLess(
-				strings.ToLower(children[i].Name),
-				strings.ToLower(children[j].Name))
-		}
-	}
-	if opts.Order {
-		sortFunc = reverse(sortFunc)
-	}
-	sort.Slice(children, sortFunc)
+	sort.Slice(children, itemSorter(children, opts.Sort, opts.Order))
 
 	// Get previous and next items according to the current sort order
 	var lastChild, nextChild templates.ListItem
@@ -670,7 +661,6 @@ func parseQuery(q string) (m url.Values, err error) {
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	fullPath := strings.TrimPrefix(r.URL.Path, urlPrefix)
 	q, _ := parseQuery(r.URL.RawQuery)
-	opts := config.RequestSettingsFromQuery(q)
 
 	// We use query string parameters for internal resources. Isn't that novel!
 	switch {
@@ -705,13 +695,23 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case stat.IsDir():
-		listHandler(w, r, opts)
+		listHandler(w, r)
 	case q.Get("display") == config.QueryDisplayFile:
 		// This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	default:
-		viewHandler(w, r, opts)
+		viewHandler(w, r)
 	}
+}
+
+func sortHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q, _ := parseQuery(r.URL.RawQuery)
+		rSettings := config.RequestSettingsFromQuery(q)
+		sortCtx := context.WithValue(r.Context(), reqSettings, rSettings)
+		next.ServeHTTP(w, r.WithContext(sortCtx))
+		// persist sort?
+	})
 }
 
 func initGlobalsAndFlags() {
@@ -875,13 +875,13 @@ func main() {
 	if config.Global.Prefix != "" {
 		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Global.Prefix, "/"))
 		httpmux.Handle(urlPrefix,
-			http.StripPrefix(urlPrefix, http.HandlerFunc(HttpHandler)))
+			http.StripPrefix(urlPrefix, sortHandler(http.HandlerFunc(HttpHandler))))
 	}
 	httpmux.Handle("/favicon.ico",
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			staticHandler("res/favicon.ico", w, r)
 		}))
-	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
+	httpmux.Handle("/", sortHandler(http.HandlerFunc(HttpHandler)))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
 	ffmpegPath := config.Global.Ffmpeg
