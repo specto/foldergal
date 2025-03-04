@@ -311,7 +311,6 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			H:       config.Global.ThumbHeight,
 		})
 	}
-	logger.Printf("opts %+v", opts)
 	sort.Slice(children,
 		itemSorter(children, opts.Sort, opts.Order == config.QueryOrderDesc))
 	pUrl, _ := url.Parse(folderPath)
