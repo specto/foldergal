@@ -22,43 +22,33 @@
             </h1>
             <div class="toolbar">
 				<span class="title">order:</span>
-				<span class="buttons"><a {{ if not .IsReversed -}}
+				<span class="buttons">
+				{{- if .LinkOrderAsc -}}
+				<a {{ if not .IsReversed -}}
 					class="current"
-				{{- end }} title="ascending" href="?o/a
-			{{- if eq .SortedBy "n" -}}
-                /s/n
-            {{- else -}}
-                /s/d
-            {{- end -}}
-                ">&#8595;</a><a {{ if .IsReversed -}}
+				{{- end }} title="ascending" href="{{ .LinkOrderAsc }}">&#8595;</a>
+				{{- end -}}
+				{{- if .LinkOrderDesc -}}
+				<a {{ if .IsReversed -}}
 					class="current"
-				{{- end }} title="descending" href="?o/z
-			{{- if eq .SortedBy "n" -}}
-                /s/n
-            {{- else -}}
-                /s/d
-            {{- end -}}
-                ">&#8593;</a></span>
+				{{- end }} title="descending" href="{{ .LinkOrderDesc }}">&#8593;</a>
+				{{- end -}}
+				</span>
 			</div>
 			<div class="toolbar">
 				<span class="title">sort by:</span>
-				<span class="buttons"><a {{ if eq .SortedBy "n" -}}
+				<span class="buttons">
+				{{- if .LinkSortName -}}
+				<a {{ if .IsSortedByName -}}
 					class="current"
-				{{- end }} title="name" href="?s/n
-			{{- if .IsReversed -}}
-			    /o/z
-			{{- else -}}
-			    /o/a
-			{{- end -}}
-				">name</a><a {{ if eq .SortedBy "d" -}}
+				{{- end }} title="name" href="{{ .LinkSortName }}">name</a>
+				{{- end -}}
+				{{- if .LinkSortDate -}}
+				<a {{ if not .IsSortedByName -}}
 					class="current"
-				{{- end }} title="date and time" href="?s/d
-            {{- if .IsReversed -}}
-			    /o/z
-			{{- else -}}
-			    /o/a
-			{{- end -}}
-				">date</a></span>
+				{{- end }} title="date and time" href="{{ .LinkSortDate }}">date</a>
+				{{- end -}}
+				</span>
             </div>
         </nav>
     </header>

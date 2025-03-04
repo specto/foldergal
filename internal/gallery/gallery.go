@@ -28,11 +28,13 @@ import (
 	"github.com/spf13/afero"
 )
 
+type MediaClass string
+
 const (
-	MediaImage = "image"
-	MediaAudio = "audio"
-	MediaVideo = "video"
-	MediaPdf   = "pdf"
+	MediaImage MediaClass = "image"
+	MediaAudio MediaClass = "audio"
+	MediaVideo MediaClass = "video"
+	MediaPdf   MediaClass = "pdf"
 )
 
 var (
@@ -64,7 +66,8 @@ func GenerateThumb(m Media) error {
 	return nil
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type mediaFile struct {
 	fullPath  string
 	fileInfo  os.FileInfo
@@ -132,7 +135,8 @@ func (f *mediaFile) FileModTime() time.Time {
 	return f.fileInfo.ModTime()
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type imageFile struct {
 	mediaFile
 }
@@ -191,7 +195,8 @@ func (f *imageFile) thumbGenerate() (err error) {
 	return
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type svgFile struct {
 	mediaFile
 }
@@ -240,7 +245,8 @@ func (f *svgFile) thumbGenerate() (err error) {
 	return
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type audioFile struct {
 	mediaFile
 }
@@ -336,7 +342,8 @@ func (f *audioFile) thumbGenerate() error {
 	return nil
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type videoFile struct {
 	mediaFile
 }
@@ -428,7 +435,8 @@ func (f *videoFile) thumbGenerate() error {
 	return nil
 }
 
-// //////////////////////////////////////////////////////////////////////////////
+// MARK -
+
 type pdfFile struct {
 	mediaFile
 }
@@ -457,7 +465,7 @@ func (f *pdfFile) thumbGenerate() error {
 	return nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
+// MARK -
 
 // Checks if any /path/./starts/with/.dot/somewhere
 func ContainsDotFile(name string) bool {
@@ -470,7 +478,6 @@ func ContainsDotFile(name string) bool {
 }
 
 // Escapes a path with URL escape codes while keeping slashes unchanged
-// TODO: look for built-in functions in stdlib for escaping a path
 func EscapePath(s string) (r string) {
 	parts := strings.Split(s, "/")
 	eparts := make([]string, 0, len(parts))
@@ -481,7 +488,7 @@ func EscapePath(s string) (r string) {
 }
 
 // Finds the type of a file
-func GetMediaClass(name string) string {
+func GetMediaClass(name string) MediaClass {
 	// NOTE: on unix this uses specific files
 	//   /etc/mime.types
 	//   /etc/apache2/mime.types

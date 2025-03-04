@@ -138,7 +138,7 @@ func TestGetMediaClass(t *testing.T) {
 		{"/some/path/file.pdf", "pdf"},
 		{"doc.docx", ""},
 	} {
-		if res := GetMediaClass(v.filepath); res != v.mediatype {
+		if res := GetMediaClass(v.filepath); res != MediaClass(v.mediatype) {
 			t.Errorf("Tested %#q: expected %v, got %v", v.filepath, v.mediatype, res)
 		}
 	}

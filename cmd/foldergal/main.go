@@ -295,7 +295,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		class := "folder"
 		if !child.IsDir() {
 			thumb = gallery.EscapePath(filepath.Join(urlPrefix, folderPath, child.Name())) + "?thumb"
-			class = mediaClass
+			class = string(mediaClass)
 			if config.Global.Ffmpeg == "" {
 				class += " nothumb"
 			}
@@ -312,7 +312,8 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	logger.Printf("opts %+v", opts)
-	sort.Slice(children, itemSorter(children, opts.Sort, opts.Order))
+	sort.Slice(children,
+		itemSorter(children, opts.Sort, opts.Order == config.QueryOrderDesc))
 	pUrl, _ := url.Parse(folderPath)
 	crumbs := splitUrlToBreadCrumbs(pUrl, querystring)
 	w.Header().Set("Date", folderInfo.ModTime().UTC().Format(http.TimeFormat))
@@ -328,12 +329,16 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			AppVersion:   BuildVersion,
 			AppBuildTime: BuildTimestamp,
 		},
-		BreadCrumbs: crumbs,
-		ItemCount:   itemCount,
-		SortedBy:    opts.Sort,
-		IsReversed:  opts.Order,
-		ParentUrl:   parentUrl,
-		Items:       children,
+		BreadCrumbs:    crumbs,
+		ItemCount:      itemCount,
+		IsSortedByName: opts.Sort == config.QuerySortName,
+		IsReversed:     opts.Order == config.QueryOrderDesc,
+		LinkOrderAsc:   opts.WithOrder(config.QueryOrderAsc).QueryFull(),
+		LinkOrderDesc:  opts.WithOrder(config.QueryOrderDesc).QueryFull(),
+		LinkSortName:   opts.WithSort(config.QuerySortName).QueryFull(),
+		LinkSortDate:   opts.WithSort(config.QuerySortDate).QueryFull(),
+		ParentUrl:      parentUrl,
+		Items:          children,
 	})
 	if err != nil {
 		fail500(w, err, r)
@@ -347,7 +352,7 @@ func reverse(less LessFunc) LessFunc {
 	return func(i, j int) bool { return !less(i, j) }
 }
 
-func itemSorter(li []templates.ListItem, field string, rev bool) LessFunc {
+func itemSorter(li []templates.ListItem, field config.QTypeSort, rev bool) LessFunc {
 	var sorter LessFunc
 	switch field {
 	case config.QuerySortDate:
@@ -437,7 +442,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	sort.Slice(children, itemSorter(children, opts.Sort, opts.Order))
+	sort.Slice(children,
+		itemSorter(children, opts.Sort, opts.Order == config.QueryOrderDesc))
 
 	// Get previous and next items according to the current sort order
 	var lastChild, nextChild templates.ListItem
@@ -467,7 +473,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 			ParentUrl:  parentUrl + querystring + "#" + filepath.Base(currentMediaPath),
 			ParentName: "../" + filepath.Base(parentUrl),
 		},
-		MediaPath: currentMediaPath + "?display/direct",
+		MediaPath: fmt.Sprintf("%s?%s/%s",
+			currentMediaPath, config.QKeyDisplay, config.QueryDisplayFile),
 	})
 	if err != nil {
 		fail500(w, err, r)
@@ -552,7 +559,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 				if info, err := entry.Info(); err == nil {
 					urlStr := pathToUrl(walkPath)
 					rssItems = append(rssItems, templates.RssItem{
-						Type:  gallery.GetMediaClass(walkPath),
+						Type:  string(gallery.GetMediaClass(walkPath)),
 						Title: filepath.Base(walkPath),
 						Url:   urlStr,
 						Thumb: urlStr + "?thumb",
@@ -645,7 +652,7 @@ func parseQuery(q string) (m url.Values, err error) {
 	return m, err
 }
 
-// A secondary router.
+// HttpHandler does the main routing of requests.
 //
 // Since we are mapping URLs to filesystem resources we cannot use any names
 // for our internal resources.
@@ -696,7 +703,7 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case stat.IsDir():
 		listHandler(w, r)
-	case q.Get("display") == config.QueryDisplayFile:
+	case q.Get(config.QKeyDisplay.String()) == string(config.QueryDisplayFile):
 		// This is a media file and we should serve it in all it's glory
 		fileHandler(w, r)
 	default:
@@ -704,13 +711,12 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sortHandler(next http.Handler) http.Handler {
+func paramHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q, _ := parseQuery(r.URL.RawQuery)
 		rSettings := config.RequestSettingsFromQuery(q)
 		sortCtx := context.WithValue(r.Context(), reqSettings, rSettings)
 		next.ServeHTTP(w, r.WithContext(sortCtx))
-		// persist sort?
 	})
 }
 
@@ -875,13 +881,13 @@ func main() {
 	if config.Global.Prefix != "" {
 		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Global.Prefix, "/"))
 		httpmux.Handle(urlPrefix,
-			http.StripPrefix(urlPrefix, sortHandler(http.HandlerFunc(HttpHandler))))
+			http.StripPrefix(urlPrefix, paramHandler(http.HandlerFunc(HttpHandler))))
 	}
 	httpmux.Handle("/favicon.ico",
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			staticHandler("res/favicon.ico", w, r)
 		}))
-	httpmux.Handle("/", sortHandler(http.HandlerFunc(HttpHandler)))
+	httpmux.Handle("/", paramHandler(http.HandlerFunc(HttpHandler)))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
 
 	ffmpegPath := config.Global.Ffmpeg

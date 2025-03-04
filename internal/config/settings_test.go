@@ -7,7 +7,7 @@ import (
 )
 
 func TestRequestSettings(t *testing.T) {
-	a := RequestSettings{Sort: "bla", Order: false, Display: "foo"}
+	a := RequestSettings{Sort: "bla", Order: QueryOrderDesc, Display: "foo"}
 	aStr, err := a.Marshal()
 	if err != nil {
 		t.Error(err)
@@ -33,32 +33,78 @@ func TestRequestSettings(t *testing.T) {
 	}
 }
 
-func TestQueryRequestSettings(t *testing.T) {
+func TestQueryString(t *testing.T) {
 	tests := []struct {
 		input url.Values
 		want  string
 	}{
 		{url.Values{
-			"s":    []string{"n"},
-			"display": []string{"direct"},
-		}, "?display/direct/o/a/s/n"},
+			QKeySort.String():    []string{string(QuerySortName)},
+			QKeyDisplay.String(): []string{string(QueryDisplayFile)},
+		}, "?y/f/s/n"},
 		{url.Values{
-			"o": []string{"a"},
-		}, "?o/a/s/t"},
+			QKeyOrder.String(): []string{string(QueryOrderAsc)},
+		}, "?o/a"},
 		{url.Values{
-			"o": []string{"d"},
-		}, "?o/d/s/t"},
+			QKeyOrder.String(): []string{string(QueryOrderDesc)},
+			QKeySort.String():  []string{string(QuerySortDate)},
+		}, ""},
 		{url.Values{
-			"s": []string{"t"},
-		}, "?o/d/s/t"},
+			QKeySort.String(): []string{string(QuerySortName)},
+		}, "?s/n"},
 		{url.Values{
-			"s": []string{"n"},
-		}, "?o/a/s/n"},
+			QKeyOrder.String(): []string{string(QueryOrderAsc)},
+			QKeySort.String():  []string{string(QuerySortName)},
+		}, "?s/n"},
+		{url.Values{
+			QKeyOrder.String(): []string{string(QueryOrderDesc)},
+			QKeySort.String():  []string{string(QuerySortName)},
+		}, "?o/z/s/n"},
+		{url.Values{
+			QKeyOrder.String(): []string{"invalid"},
+			"nonexisting":      []string{"invalid"},
+		}, ""},
 	}
 
 	for _, tc := range tests {
 		query := RequestSettingsFromQuery(tc.input)
 		if result := query.QueryString(); result != tc.want {
+			t.Fatalf("got %v, want %v", result, tc.want)
+		}
+	}
+}
+
+func TestQueryFull(t *testing.T) {
+	tests := []struct {
+		input url.Values
+		want  string
+	}{
+		{url.Values{
+			QKeySort.String():    []string{string(QuerySortName)},
+			QKeyDisplay.String(): []string{string(QueryDisplayFile)},
+		}, "?y/f/o/a/s/n"},
+		{url.Values{
+			QKeyDisplay.String(): []string{string(QueryDisplayShow)},
+		}, "?y/w/o/z/s/d"},
+		{url.Values{
+			QKeyOrder.String(): []string{string(QueryOrderAsc)},
+		}, "?y/w/o/a/s/d"},
+		{url.Values{
+			QKeyOrder.String(): []string{string(QueryOrderDesc)},
+		}, "?y/w/o/z/s/d"},
+		{url.Values{
+			QKeyOrder.String(): []string{string(QueryOrderAsc)},
+			QKeySort.String():  []string{string(QuerySortName)},
+		}, "?y/w/o/a/s/n"},
+		{url.Values{
+			QKeyOrder.String(): []string{string(QueryOrderDesc)},
+			QKeySort.String():  []string{string(QuerySortName)},
+		}, "?y/w/o/z/s/n"},
+	}
+
+	for _, tc := range tests {
+		query := RequestSettingsFromQuery(tc.input)
+		if result := query.QueryFull(); result != tc.want {
 			t.Fatalf("got %v, want %v", result, tc.want)
 		}
 	}

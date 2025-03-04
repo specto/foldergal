@@ -41,16 +41,19 @@ type ListItem struct {
 
 // Page used for folder list
 type List struct {
-	ParentUrl   string
-	LinkPrev    string
-	LinkNext    string
-	ItemCount   string
-	SortedBy    string
-	IsReversed  bool
-	DisplayMode string
-	Items       []ListItem
-	BreadCrumbs []BreadCrumb
-	QueryString string
+	ParentUrl      string
+	LinkPrev       string
+	LinkNext       string
+	LinkOrderAsc   string
+	LinkOrderDesc  string
+	LinkSortName   string
+	LinkSortDate   string
+	ItemCount      string
+	IsSortedByName bool
+	IsReversed     bool
+	DisplayMode    string
+	Items          []ListItem
+	BreadCrumbs    []BreadCrumb
 	Page
 }
 
