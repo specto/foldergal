@@ -27,11 +27,11 @@ func (g *generator) NextString() (str string) {
 	numpos := g.src.Intn(strlen + 1)
 	// Generate the number
 	var num string
-	for i := 0; i < numlen; i++ {
+	for range numlen {
 		num += strconv.Itoa(g.src.Intn(10))
 	}
 	// Put it all together
-	for i := 0; i < strlen+1; i++ {
+	for i := range strlen + 1 {
 		if i == numpos {
 			str += num
 		} else {
@@ -105,7 +105,7 @@ func TestIsValidMedia(t *testing.T) {
 func BenchmarkStdStringLess(b *testing.B) {
 	set := randomStringArray(1)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for j := range set[0] {
 			k := (j + 1) % len(set[0])
 			_ = set[0][j] < set[0][k]
@@ -116,7 +116,7 @@ func BenchmarkStdStringLess(b *testing.B) {
 func BenchmarkEscapePath(b *testing.B) {
 	set := randomStringArray(1)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for j := range set[0] {
 			_ = EscapePath(set[0][j])
 		}

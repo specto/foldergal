@@ -100,7 +100,7 @@ lint: ## Run lint
 
 .PHONY: benchmark
 benchmark: ## Run go benchmarks
-	go test -bench=. ./...
+	go test -bench=. -short ./...
 
 .PHONY: all
 all: lint test release upx zip ## Test, build and compress all release binaries
