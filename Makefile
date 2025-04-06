@@ -22,7 +22,6 @@ $(DEST_DIR):
 	test -d $@ || mkdir $@
 
 $(DEST_DIR)/$(PRODUCT): $(SOURCES)
-	go generate -v ./...
 	go build -v $(FLAGS) -o $@ $^
 
 .PHONY: clean
@@ -38,26 +37,24 @@ run: build ## Run with current config
 release: $(DEST_DIR) lint $(PRODUCT_FILES) ## Build all release binaries
 
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-intel: $(SOURCES)
-	go generate -v ./...
 	GOOS=darwin GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-mac-arm: $(SOURCES)
-	go generate -v ./...
-	echo go build -v $(FLAGS) -o $@ $^
 	GOOS=darwin GOARCH=arm64 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION).exe: $(SOURCES)
-	go generate -v ./...
 	GOOS=windows GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-linux: $(SOURCES)
-	go generate -v ./...
 	GOOS=linux GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-freebsd: $(SOURCES)
-	go generate -v ./...
 	GOOS=freebsd GOARCH=amd64 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-pi: $(SOURCES)
-	go generate -v ./...
 	GOOS=linux GOARCH=arm GOARM=7 go build -v $(FLAGS) -o $@ $^
+
 $(DEST_DIR)/$(PRODUCT)-$(VERSION)-openwrt: $(SOURCES)
-	go generate -v ./...
 	GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v $(FLAGS) -o $@ $^
 
 .PHONY: rerun

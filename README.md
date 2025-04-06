@@ -3,31 +3,38 @@ Web Gallery from a Folder
 
 A web server that displays folders of images, video and audio.
 
-Simple browsing of media files as web pages. Read only - no editing or uploading.
-Limited only to the folder you want.
 
-Produces a standalone executable. The only optional external 
-dependency is `ffmpeg` for video thumbnails.
+Features
+---
 
-Optional support for TLS and http2.
-
-Javascript is not needed to browse the web gallery. 
-However some javascript is used when the overlay media on page feature is on.
-
-Can work even on openwrt routers. But thumbnail generation is very slow there.
-
-Has RSS/atom feed.
-
-Optional Discord webhook for new uploads.
+* __Limited scope__ - serves only media files from one folder 
+  (images, audio, video and PDFs)
+* __No editing__, no uploading - everything is read only
+* __Usable with HTTP only__ - all javascript is optional
+* __Portable__ - a single executable to run for a single website, available for 
+  all major systems
+* __Thumbnail generation__ - a frame from video files and full waveform for audio
+  (requires ffmpeg installed)
+* __Simple look__ - with light & dark theme support based on browser preferences
+* __Content sorting__ - by file date or name
+* __Shortcuts__ for navigation - (when using client JS) next/previous with keyboard 
+  and touch swipe
+* __RSS/atom feed__
+* __Discord web-hook__ - notifications for new uploads
+* __Cache in memory__ - (optional) to avoid reading from disk 
+  when peaks in traffic happen
+* Optional __TLS and http2__ - can be to exposed directly to the world
+  as well as working behind a proxy server
 
 ![](screenshot.png "Foldergal Screenshot")
+
 
 Usage
 ---
 
 TLDR;
-1. Run in terminal something like
-   `./foldergal-binary --root /path/to/serve/files/from --home /tmp/foldergal`
+1. Run in terminal
+   `./foldergal --root /path/to/serve/files/from --home /tmp/foldergal`
 2. Visit http://localhost:8080
 
 ### Configuration
@@ -72,53 +79,41 @@ They will override the env variables.
   * `foldergal.log`
   * `_foldergal_cache/` (created automatically)
   
-You can put config.json and tls certificates there but you will still have 
+You can put config.json and TLS certificates there but you will still have 
 to point the executable to them.
+
 
 Limitations and known issues
 ---
 
-Privacy warning: all media is served as is, to the byte. 
+Privacy notice: all media files are served directly. 
 This means that no EXIF or other metadata is removed from your files.
 
 Http2 works only with TLS, which works only if you provide certificate files.
 
-You should clean the "home" folder manually after using the application.
-The thumnail cache and the log file remain on your disk.
+The application writes thumbnails and log in the "home" folder. 
+You should clean it manually if needed.
 
-In the rare case that you shared a folder from one volume (windows drive) and
-later shared a folder with the same name but from different volume
+In the rare case that you used a folder from one mounted volume (windows drive) 
+and later used a folder with the same name but from different volume
 you might see some erroneous thumbnails.
 
 If you see an error stating "too many open files" you should set a larger 
-file descriptor limit. Like running `ulimit -n 100000` in the current terminal.
+file descriptor limit. Like running `ulimit -n 100000`.
 
 
 Developer notes
 ---
 
-1. `go generate`
-1. `go build`
-1. ... run
+Just run with `go run ./cmd/foldergal/main.go`
 
-Use the [Makefile]().
+Use the [Makefile](Makefile).
 
-Foldergal uses go modules.
 
-Tested with go version 1.15.
-
-When building use these flags to set the build time and version:
-```
-go build -ldflags="-X 'main.BuildTimestamp=TIME' -X 'main.BuildVersion=VERSION'"
-```
-Where TIME must be an RFC3339 string.
-
-Package fsnotify requires `go get -u golang.org/x/sys/...`
-
-Setting up service on Freebsd
+Setting up as a service on FreeBSD
 ---
 
-1. copy somewehere the executable e.g. `/usr/local/bin/foldergal`
+1. copy the executable somewhere e.g. `/usr/local/bin/foldergal`
 1. create a user to run the service e.g. `foldergaluser`
 1. create the folder `/var/run/foldergal` and make the service user it's owner
 1. create a file `/usr/local/etc/rc.d/foldergal` make sure it is executable
@@ -128,10 +123,6 @@ Setting up service on Freebsd
 1. `service foldergal start`
 1. you can check the logs in `FOLDERGAL_HOME` foldergal.log
 
-Important: in order for file type detection to work you will need to have 
-`/etc/mime-types` which freebsd does not have. 
-One solution is to install apache and symlink to it's mime.types.
-Ugly, yes, but foldergal will not see your videos otherwise.
 
 Service on Debian
 --
@@ -144,7 +135,8 @@ After `sudo systemctl daemon-reload` you can `sudo service foldergal start`.
 
 To enable auto-start: `sudo systemctl enable foldergal`
 
-TODO
+
+TODO List
 ---
 
 * [x] Generate audio file thumbnails 
@@ -154,7 +146,7 @@ TODO
 * [x] Add dark theme support
 * [x] Rewrite embedded files using the `go:embed` directive available in go 1.16
 * [x] Fix consistency of sort flags
-* [/] Combine svg icons in a single file and `<use>` sprites 
+* [/] Combine SVG icons in a single file and `<use>` sprites 
 * [ ] Generate pdf thumbnails (imagemagick?)
 * [ ] 100% test coverage
 * [ ] Add fuzz tests  
@@ -162,15 +154,17 @@ TODO
 * [ ] (maybe) Implement README.md parsing in folders (using https://github.com/yuin/goldmark)
 * [ ] (maybe) Dynamic folder icons generated from the full folder path
 * [ ] (maybe) Rework http server startup https://bojanz.github.io/increasing-http-server-boilerplate-go/
-* [ ] Fix misterious date bug 0001-01-01 on freebsd
-* [ ] Use context derived from http, Rewrite HTTP handlers using middleware e.g.  
-  <https://eli.thegreenplace.net/2021/life-of-an-http-request-in-a-go-server/>
-* [ ] (maybe) Use webauthn for authentication  
-  <https://github.com/duo-labs/webauthn>
+* [ ] Fix mysterious date bug 0001-01-01 on freebsd
 * [ ] Make sure thumbnail generation uses correct resizing
   <https://zuru.tech/blog/the-dangers-behind-image-resizing>
 * [ ] Implement Adaptive Video (Multi Bitrate HLS)  
   Serve pre-generated bundles of video files. 
   Provide JS fallback for browsers not supporting HLS.
+  - <https://github.com/bluenviron/gohlslib>
   - <https://medium.com/@peer5/creating-a-production-ready-multi-bitrate-hls-vod-stream-dff1e2f1612c>
   - fallback script <https://github.com/video-dev/hls.js>
+* [ ] Use session without client javascript (JWT HttpOnly)
+* [ ] (maybe) Use webauthn for authentication  
+  <https://github.com/duo-labs/webauthn>
+* [ ] Introduce folder metadata files
+* [ ] Password protected folders (described in folder metadata and authenticated in session)
