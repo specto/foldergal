@@ -67,7 +67,7 @@ type TwoColTable struct {
 	Rows [][2]string
 }
 
-type RssItem struct {
+type FeedItem struct {
 	Title string
 	Type  string
 	Url   string
@@ -77,12 +77,12 @@ type RssItem struct {
 	Date  string
 }
 
-type RssPage struct {
+type FeedPage struct {
 	FeedUrl   string
 	SiteTitle string
 	SiteUrl   string
 	LastDate  string
-	Items     []RssItem
+	Items     []FeedItem
 }
 
 type ViewPage struct {
@@ -91,7 +91,7 @@ type ViewPage struct {
 }
 
 var (
-	Rss  *textTpl.Template
+	Feed  *textTpl.Template
 	Html *htmlTpl.Template
 )
 
@@ -151,7 +151,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	Rss, err = parseTextTemplates("res/rss.xml")
+	Feed, err = parseTextTemplates("res/feed.xml")
 
 	if err != nil {
 		panic(err)

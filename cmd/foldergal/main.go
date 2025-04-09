@@ -32,6 +32,12 @@ import (
 type ctxKey string
 
 const reqSettings ctxKey = "reqSettings"
+type feed string
+
+const (
+	feedRss  feed = "rss"
+	feedAtom feed = "atom"
+)
 
 // Verify if a file exists and is not a folder
 func fileExists(filename string) bool {
@@ -42,16 +48,16 @@ func fileExists(filename string) bool {
 }
 
 var (
-	logger           *log.Logger
-	cacheFolderName  = "_foldergal_cache"
-	BuildVersion     = "dev"
-	BuildTimestamp   = "now"
-	BuildTime        time.Time
-	startTime        time.Time
-	urlPrefix        string
-	rssFreshness     = 2 * 168 * time.Hour // Two weeks
-	rssNotFreshCount = 20                  // entries to show in RSS if not fresh
-	headerTimeout    = 3 * time.Second
+	logger            *log.Logger
+	cacheFolderName   = "_foldergal_cache"
+	BuildVersion      = "dev"
+	BuildTimestamp    = "now"
+	BuildTime         time.Time
+	startTime         time.Time
+	urlPrefix         string
+	feedFreshness     = 2 * 168 * time.Hour // Two weeks
+	feedNotFreshCount = 20                  // entries to show in RSS if not fresh
+	headerTimeout     = 3 * time.Second
 )
 
 func fail404(w http.ResponseWriter, r *http.Request) {
@@ -522,14 +528,12 @@ func staticHandler(resFile string, w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, filepath.Base(resFile), BuildTime, f)
 }
 
-// Route for RSS/Atom
-func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
+// Route for RSS/Atom feed
+func feedHandler(feedType feed, w http.ResponseWriter, r *http.Request) {
 	loc, _ := time.LoadLocation("UTC")
 
-	typeRss := "atom"
 	var formatTime func(time.Time) string
-	if t == "rss" {
-		typeRss = "rss"
+	if feedType == feedRss {
 		w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
 		formatTime = func(t time.Time) string {
 			return t.In(loc).Format(http.TimeFormat)
@@ -547,7 +551,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 			strings.TrimPrefix(p, config.Global.Root+"/"))
 	}
 
-	var rssItems []templates.RssItem
+	var feedItems []templates.FeedItem
 	err := filepath.WalkDir(config.Global.Root,
 		func(walkPath string, entry os.DirEntry, err error) error {
 			if err != nil {
@@ -557,7 +561,7 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 				gallery.IsValidMedia(walkPath) {
 				if info, err := entry.Info(); err == nil {
 					urlStr := pathToUrl(walkPath)
-					rssItems = append(rssItems, templates.RssItem{
+					feedItems = append(feedItems, templates.FeedItem{
 						Type:  string(gallery.GetMediaClass(walkPath)),
 						Title: filepath.Base(walkPath),
 						Url:   urlStr,
@@ -575,15 +579,15 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 		logger.Print(err)
 	}
 
-	sort.Slice(rssItems, func(i, j int) bool {
-		return rssItems[i].Mdate.After(rssItems[j].Mdate)
+	sort.Slice(feedItems, func(i, j int) bool {
+		return feedItems[i].Mdate.After(feedItems[j].Mdate)
 	})
 
 	// Filter latest entries
-	var latestItems []templates.RssItem
-	freshPeriod := time.Now().Add(-rssFreshness) // negative duration to subtract
-	for _, entry := range rssItems {
-		if entry.Mdate.After(freshPeriod) || len(latestItems) < rssNotFreshCount {
+	var latestItems []templates.FeedItem
+	freshPeriod := time.Now().Add(-feedFreshness) // negative duration to subtract
+	for _, entry := range feedItems {
+		if entry.Mdate.After(freshPeriod) || len(latestItems) < feedNotFreshCount {
 			latestItems = append(latestItems, entry)
 		}
 	}
@@ -595,14 +599,15 @@ func rssHandler(t string, w http.ResponseWriter, r *http.Request) {
 	lastDateStr := formatTime(lastDate)
 	w.Header().Set("Last-modified", lastDateStr)
 
-	rss := templates.RssPage{
-		FeedUrl:   config.Global.PublicUrl + "feed?" + typeRss,
+	feedTpl := templates.FeedPage{
+		FeedUrl:   config.Global.PublicUrl + "feed?" + string(feedType),
 		SiteTitle: config.Global.PublicHost,
 		SiteUrl:   config.Global.PublicUrl,
 		LastDate:  lastDateStr,
 		Items:     latestItems,
 	}
-	if err := templates.Rss.ExecuteTemplate(w, typeRss, &rss); err != nil {
+	err = templates.Feed.ExecuteTemplate(w, string(feedType), &feedTpl)
+	if err != nil {
 		fail500(w, err, r)
 	}
 }
@@ -684,10 +689,10 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
 		staticHandler("res/"+staticResource, w, r)
 		return
 	case q.Has("rss"):
-		rssHandler("rss", w, r)
+		feedHandler(feedRss, w, r)
 		return
 	case q.Has("atom"):
-		rssHandler("atom", w, r)
+		feedHandler(feedAtom, w, r)
 		return
 	case q.Has("error"):
 		fail404(w, r)
