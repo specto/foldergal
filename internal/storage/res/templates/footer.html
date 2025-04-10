@@ -1,10 +1,17 @@
-{{define "footer"}}
-<footer>
-    <a href="{{ .Prefix }}/feed?rss" title="RSS feed">
-    <svg viewBox="0 -256 1792 1792" style="width: 16px; height: 18px;">
-        <use xlink:href="{{ .Prefix }}/?static/ui.svg#buttonFeed"></use>
-    </svg>
-    RSS</a>
-    <a href="{{ .Prefix }}/?status" title="System info">foldergal v:{{ .AppVersion }}</a>
-</footer>
-{{end}}
+{{define "footer" }}
+    <footer>
+        <a href="{{ .Prefix }}/feed?rss" title="RSS feed">
+        {{- /* no-new-lines */ -}}
+        <svg viewBox="0 -256 1792 1792" class="feedIcon">
+        {{- /* no-new-lines */ -}}
+            <use xlink:href="{{ .Prefix }}/?static/ui.svg#buttonFeed"></use>
+        {{- /* no-new-lines */ -}}
+        </svg>
+        {{- /* no-new-lines */ -}}
+        RSS</a>
+        <a href="{{ .Prefix }}/?status" title="System info">foldergal v:{{ .AppVersion }}</a>
+        {{- if .Copyright }}
+        <p>{{ .Copyright }}</p>
+        {{- end }}
+    </footer>
+{{ end }}

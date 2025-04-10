@@ -101,6 +101,10 @@ you might see some erroneous thumbnails.
 If you see an error stating "too many open files" you should set a larger 
 file descriptor limit. Like running `ulimit -n 100000`.
 
+Password protection is not implemented. Basic http authentication can be 
+used with a proxy server to protect separate folders as well the whole gallery.
+Over HTTPS it should be decently secure.
+
 
 Developer notes
 ---
@@ -163,8 +167,7 @@ TODO List
   - <https://github.com/bluenviron/gohlslib>
   - <https://medium.com/@peer5/creating-a-production-ready-multi-bitrate-hls-vod-stream-dff1e2f1612c>
   - fallback script <https://github.com/video-dev/hls.js>
-* [ ] Use session without client javascript (JWT HttpOnly)
 * [ ] (maybe) Use webauthn for authentication  
-  <https://github.com/duo-labs/webauthn>
+  <https://github.com/go-webauthn/webauthn>
 * [ ] Introduce folder metadata files
-* [ ] Password protected folders (described in folder metadata and authenticated in session)
+  

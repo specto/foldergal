@@ -31,12 +31,32 @@ import (
 
 type ctxKey string
 
-const reqSettings ctxKey = "reqSettings"
+const (
+	reqSettings    ctxKey = "reqSettings"
+	folderSettings ctxKey = "folderSettings"
+)
+
 type feed string
 
 const (
 	feedRss  feed = "rss"
 	feedAtom feed = "atom"
+)
+
+var (
+	BuildVersion   = "dev"
+	BuildTimestamp = "now"
+	BuildTime      time.Time
+)
+
+var (
+	logger            *log.Logger
+	cacheFolderName   = "_foldergal_cache"
+	startTime         time.Time
+	urlPrefix         string
+	feedFreshness     = 2 * 168 * time.Hour // Two weeks
+	feedNotFreshCount = 20                  // entries to show in RSS if not fresh
+	headerTimeout     = 3 * time.Second
 )
 
 // Verify if a file exists and is not a folder
@@ -46,19 +66,6 @@ func fileExists(filename string) bool {
 	}
 	return true
 }
-
-var (
-	logger            *log.Logger
-	cacheFolderName   = "_foldergal_cache"
-	BuildVersion      = "dev"
-	BuildTimestamp    = "now"
-	BuildTime         time.Time
-	startTime         time.Time
-	urlPrefix         string
-	feedFreshness     = 2 * 168 * time.Hour // Two weeks
-	feedNotFreshCount = 20                  // entries to show in RSS if not fresh
-	headerTimeout     = 3 * time.Second
-)
 
 func fail404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -327,7 +334,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		itemCount = fmt.Sprintf("%v ", len(children))
 	}
 
-	err = templates.Html.ExecuteTemplate(w, "layout", &templates.List{
+	listTpl := templates.List{
 		Page: templates.Page{
 			Title:        title,
 			Prefix:       urlPrefix,
@@ -344,7 +351,17 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		LinkSortDate:   opts.WithSort(config.QuerySortDate).QueryFull(),
 		ParentUrl:      parentUrl,
 		Items:          children,
-	})
+		Copyright:      config.Global.Copyright,
+	}
+
+	metaCtx := r.Context().Value(folderSettings)
+	if metaCtx != nil {
+		meta := metaCtx.(config.FolderSettings)
+		listTpl.Description = meta.Description
+		listTpl.Copyright = meta.Copyright
+	}
+
+	err = templates.Html.ExecuteTemplate(w, "layout", &listTpl)
 	if err != nil {
 		fail500(w, err, r)
 		return
@@ -724,10 +741,29 @@ func paramHandler(next http.Handler) http.Handler {
 	})
 }
 
+func metadataHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metafile := strings.TrimPrefix(r.URL.Path, urlPrefix)
+		if !config.HasFolderSettings(metafile) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		fs, err := config.ReadFolderSettings(metafile)
+		if err != nil {
+			logger.Printf("metadata error: %v\n", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+		logger.Printf("metadata: %+v\n", fs)
+		metaCtx := context.WithValue(r.Context(), folderSettings, fs)
+		next.ServeHTTP(w, r.WithContext(metaCtx))
+	})
+}
+
 func initGlobalsAndFlags() {
 	startTime = time.Now()
 	var errTime error
-	// Static files are timestamped with the build time of the binary
+	// NOTE: Embedded static files use the build time of the binary for timestamp
 	BuildTime, errTime = time.Parse(time.RFC3339, BuildTimestamp)
 	if errTime != nil {
 		BuildTime = time.Now()
@@ -751,13 +787,13 @@ func initGlobalsAndFlags() {
 		flag.PrintDefaults()
 	}
 
-	// Command line arguments, they override env
+	// NOTE: Command line arguments override env
 	flag.StringVar(&config.Global.Host, "host", config.Global.Host,
 		"host address to bind to")
 	flag.IntVar(&config.Global.Port, "port", config.Global.Port,
 		"port to run at")
 	flag.StringVar(&config.Global.Home, "home", config.Global.Home,
-		"home folder e.g. to keep thumbnails")
+		"folder used to keep thumbnails")
 	flag.StringVar(&config.Global.Root, "root", config.Global.Root,
 		"root folder to serve files from")
 	flag.StringVar(&config.Global.Prefix, "prefix", config.Global.Prefix,
@@ -792,6 +828,9 @@ func initGlobalsAndFlags() {
 	flag.StringVar(&config.Global.ConfigFile,
 		"config", config.Global.ConfigFile,
 		"json file to get all the parameters from")
+	flag.StringVar(&config.Global.Copyright,
+		"copyright", config.Global.Copyright,
+		"text to appear at the bottom of every page")
 
 	flag.Bool("version", false, "show program version and build time")
 
@@ -808,7 +847,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Configuration file variables override all others
+	// NOTE: Variables from ConfigFile override all other from env or command line
 	if config.Global.ConfigFile != "" {
 		if err := config.Global.FromJson(config.Global.ConfigFile); err != nil {
 			log.Fatalf("error: invalid config %v", err)
@@ -885,14 +924,17 @@ func main() {
 	if config.Global.Prefix != "" {
 		urlPrefix = fmt.Sprintf("/%s", strings.Trim(config.Global.Prefix, "/"))
 		httpmux.Handle(urlPrefix,
-			http.StripPrefix(urlPrefix, paramHandler(http.HandlerFunc(HttpHandler))))
+			http.StripPrefix(urlPrefix, http.HandlerFunc(HttpHandler)))
 	}
 	httpmux.Handle("/favicon.ico",
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			staticHandler("res/favicon.ico", w, r)
 		}))
-	httpmux.Handle("/", paramHandler(http.HandlerFunc(HttpHandler)))
+	httpmux.Handle("/", http.HandlerFunc(HttpHandler))
 	bind := fmt.Sprintf("%s:%d", config.Global.Host, config.Global.Port)
+
+	paramMux := paramHandler(httpmux)
+	metaMux := metadataHandler(paramMux)
 
 	ffmpegPath := config.Global.Ffmpeg
 	if config.Global.Ffmpeg == "" {
@@ -959,7 +1001,7 @@ func main() {
 		srv := &http.Server{
 			ReadHeaderTimeout: headerTimeout,
 			Addr:              bind,
-			Handler:           httpmux,
+			Handler:           metaMux,
 			TLSConfig:         tlsConfig,
 		}
 		srvErr = srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
@@ -967,7 +1009,7 @@ func main() {
 		srv := &http.Server{
 			ReadHeaderTimeout: headerTimeout,
 			Addr:              bind,
-			Handler:           httpmux,
+			Handler:           metaMux,
 		}
 		srvErr = srv.ListenAndServe()
 	}

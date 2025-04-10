@@ -1,7 +1,7 @@
 SRC_DIR = "."
 SOURCES := $(shell find $(SRC_DIR) -type f -name 'main.go')
 DEST_DIR = dist
-RES_DIR = res
+RES_DIR = internal/storage/res
 PRODUCT = foldergal
 # Get version from last tag
 VERSION := $(shell git describe --always --tags --dirty=-dev | sed 's/release\///')
@@ -76,6 +76,9 @@ $(RES_DIR)/favicon.png: $(RES_DIR)/favicon.svg
 
 $(RES_DIR)/favicon.ico: $(RES_DIR)/favicon.png
 	cd $(RES_DIR); convert favicon.png -define icon:auto-resize=64,48,32,16 favicon.ico
+
+.PHONY: favicon
+favicon: $(RES_DIR)/favicon.ico  ## Generate favicon.ico from SVG
 
 .PHONY: test
 test: ## Run go tests

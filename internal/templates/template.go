@@ -4,10 +4,11 @@ import (
 	"fmt"
 	htmlTpl "html/template"
 	"io"
-	"specto.org/projects/foldergal/internal/config"
-	"specto.org/projects/foldergal/internal/storage"
 	textTpl "text/template"
 	"time"
+
+	"specto.org/projects/foldergal/internal/config"
+	"specto.org/projects/foldergal/internal/storage"
 )
 
 type BreadCrumb struct {
@@ -29,11 +30,11 @@ type Page struct {
 }
 
 type ListItem struct {
+	ModTime time.Time
 	Id      string
 	Url     string
 	Name    string
 	Thumb   string
-	ModTime time.Time
 	Class   string
 	W       int
 	H       int
@@ -41,6 +42,11 @@ type ListItem struct {
 
 // Page used for folder list
 type List struct {
+	Items       []ListItem
+	BreadCrumbs []BreadCrumb
+	Page
+	Description    string
+	Copyright      string
 	ParentUrl      string
 	LinkPrev       string
 	LinkNext       string
@@ -49,12 +55,9 @@ type List struct {
 	LinkSortName   string
 	LinkSortDate   string
 	ItemCount      string
+	DisplayMode    string
 	IsSortedByName bool
 	IsReversed     bool
-	DisplayMode    string
-	Items          []ListItem
-	BreadCrumbs    []BreadCrumb
-	Page
 }
 
 type ErrorPage struct {
@@ -73,16 +76,16 @@ type FeedItem struct {
 	Url   string
 	Thumb string
 	Id    string
-	Mdate time.Time
 	Date  string
+	Mdate time.Time
 }
 
 type FeedPage struct {
+	Items     []FeedItem
 	FeedUrl   string
 	SiteTitle string
 	SiteUrl   string
 	LastDate  string
-	Items     []FeedItem
 }
 
 type ViewPage struct {
@@ -91,7 +94,7 @@ type ViewPage struct {
 }
 
 var (
-	Feed  *textTpl.Template
+	Feed *textTpl.Template
 	Html *htmlTpl.Template
 )
 
@@ -151,8 +154,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	Feed, err = parseTextTemplates("res/feed.xml")
 
+	Feed, err = parseTextTemplates("res/feed.xml")
 	if err != nil {
 		panic(err)
 	}

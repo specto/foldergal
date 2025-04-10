@@ -1,17 +1,16 @@
 {{ define "head" }}
-    {{ if .LinkNext }}
+    {{- if .LinkNext }}
     <link rel="next" href="{{ .LinkNext }}" />
-    {{ end }}
-    {{ if .LinkPrev }}
+    {{ end -}}
+    {{- if .LinkPrev }}
     <link rel="prev" href="{{ .LinkPrev }}" />
-    {{ end }}
-    {{ if .ParentUrl }}
+    {{ end -}}
+    {{- if .ParentUrl }}
     <link rel="index" href="{{ .ParentUrl }}" />
-    {{ end }}
+    {{ end -}}
     <link rel="stylesheet" type="text/css" href="{{ .Prefix }}/?static/style.css" />
-{{ end }}
+{{- end -}}
 {{ define "body" }}
-
     <header>
         <nav>
             <h1 class="path">
@@ -53,34 +52,31 @@
         </nav>
     </header>
     <main>
-    <ul>
-        {{ if .ParentUrl }}
-            <li>
-                <a id="parentFolder" tabindex="1" class="folder" href="{{- .ParentUrl -}}">
-                    <span title="{{ .ParentUrl }}">
-                    <svg class="icon iconParent">
-                        <use xlink:href="{{ .Prefix }}/?static/ui.svg#iconParent"></use>
-                    </svg>
-                    </span>
-                </a></li>
-        {{ end }}
-        {{ range .Items }}
+        {{ if .Description -}}
+        <p>{{ .Description }}</p>
+        {{ end -}}
+        <ul>
+        {{ if .ParentUrl -}}
+            <li><a id="parentFolder" tabindex="1" class="folder" 
+            href="{{- .ParentUrl -}}">
+                <span title="{{ .ParentUrl }}"><svg class="icon iconParent">
+                    <use xlink:href="{{ .Prefix }}/?static/ui.svg#iconParent"></use>
+                </svg></span></a></li>
+        {{ end -}}
+        {{ range .Items -}}
             <li class="{{ .Class }}"><a id="{{ .Id }}" tabindex="1"
-            href="{{- .Url -}}"
-            title="{{ .Name }} [{{ .ModTime | formatDate }}]">
+            href="{{- .Url -}}" title="{{ .Name }} [{{ .ModTime | formatDate }}]">
                 <span>
-                    {{ if eq .Class "folder" }}
+                    {{ if eq .Class "folder" -}}
                     <svg class="icon iconFolder">
                         <use xlink:href="{{ .Thumb }}"></use>
                     </svg>
-
-                    {{ else if .Thumb -}}
+                    {{- else if .Thumb -}}
                         <img src="{{ .Thumb }}" alt="{{ .Name }}" />
                     {{- end }}
-
                     <span class="title"><b>{{- .Name -}}</b></span>
                 </span></a></li>
-        {{ end }}
-    </ul>
+        {{ end -}}
+        </ul>
     </main>
 {{ end }}

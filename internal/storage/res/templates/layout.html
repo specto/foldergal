@@ -1,4 +1,4 @@
-{{ define "layout_start" }}
+{{ define "layout_start" -}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,15 +17,13 @@
 <body>
 {{ end }}
 
-{{ define "layout_end" }}
+{{ define "layout_end" -}}
 </body>
 </html>
 {{ end }}
-
-
-{{ define "layout" }}
-    {{template "layout_start" .}}
-    {{template "body" .}}
-    {{template "footer" .}}
-    {{template "layout_end" .}}
-{{end}}
+{{- define "layout" -}}
+    {{- template "layout_start" . -}}
+    {{- template "body" . -}}
+    {{- template "footer" . -}}
+    {{- template "layout_end" . -}}
+{{- end -}}

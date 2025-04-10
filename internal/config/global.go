@@ -17,28 +17,29 @@ var (
 
 type Configuration struct {
 	Host              string
-	Port              int
 	Home              string
 	Root              string
 	Cache             string `json:"-"`
 	Prefix            string
 	TlsCrt            string
 	TlsKey            string
-	Http2             bool
 	CacheExpiresAfter JsonDuration
 	NotifyAfter       JsonDuration
 	DiscordName       string
 	DiscordWebhook    string
 	PublicHost        string
-	Quiet             bool
+	Copyright         string
 	Ffmpeg            string
 	ConfigFile        string `json:"-"`
 	PublicUrl         string `json:"-"`
-	ThumbWidth        int
-	ThumbHeight       int
 	TimeZone          string
 	TimeLocation      *time.Location `json:"-"`
 	Log               *log.Logger    `json:"-"`
+	Port              int
+	ThumbWidth        int
+	ThumbHeight       int
+	Quiet             bool
+	Http2             bool
 }
 
 // Loads configuration from json file
@@ -73,6 +74,7 @@ func (c *Configuration) LoadEnv(execFolder string) {
 	c.ConfigFile = strFromEnv("CONFIG", "")
 	c.ThumbWidth = intFromEnv("THUMB_W", 400)
 	c.ThumbHeight = intFromEnv("THUMB_H", 400)
+	c.Copyright = strFromEnv("COPYRIGHT", "")
 }
 
 type JsonDuration time.Duration

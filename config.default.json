@@ -9,6 +9,7 @@
     "tlsKey": "",
     "http2": false,
     "cacheExpiresAfter": "0",
+    "copyright": "",
     "notifyAfter": "30s",
     "discordWebhook": "",
     "discordName": "Gallery",
