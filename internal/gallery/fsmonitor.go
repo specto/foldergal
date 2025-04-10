@@ -81,10 +81,10 @@ func notify(items []any) {
 				Description: slashes.ReplaceAllString(filepath.ToSlash(
 					filepath.Dir(path)), " • "),
 				Url: config.Global.PublicUrl +
-					EscapePath(filepath.ToSlash(filepath.Dir(path))) +
+					EscapePath(filepath.Dir(path)) +
 					"#" + EscapePath(filepath.Base(sItem)),
 				Image: discordImage{Url: config.Global.PublicUrl +
-					EscapePath(filepath.ToSlash(path)) + "?thumb"},
+					EscapePath(path) + "?thumb"},
 			}
 		}
 	}

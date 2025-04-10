@@ -13,11 +13,13 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"specto.org/projects/foldergal/internal/config"
@@ -51,12 +53,13 @@ var (
 
 var (
 	logger            *log.Logger
-	cacheFolderName   = "_foldergal_cache"
+	cacheFolderName   = "foldergal_cache"
 	startTime         time.Time
 	urlPrefix         string
 	feedFreshness     = 2 * 168 * time.Hour // Two weeks
 	feedNotFreshCount = 20                  // entries to show in RSS if not fresh
 	headerTimeout     = 3 * time.Second
+	shutdownTimeout   = 10 * time.Second
 )
 
 // Verify if a file exists and is not a folder
@@ -97,11 +100,11 @@ func fail500(w http.ResponseWriter, err error, _ *http.Request) {
 
 // Cleans a path so it does not go up (..) nor does it start with root (/)
 func sanitizePath(p string) string {
-	clean := filepath.Clean(p)
-	noSubdirs := strings.ReplaceAll(clean, ".."+string(filepath.Separator), "")
-	noRoot := strings.TrimPrefix(noSubdirs, string(filepath.Separator))
+	clean := filepath.ToSlash(filepath.Clean(p))
+	noSubdirs := strings.ReplaceAll(clean, "../", "")
+	noRoot := strings.TrimPrefix(noSubdirs, "/")
 	noUp := strings.TrimPrefix(noRoot, "..")
-	return filepath.Clean(noUp)
+	return filepath.ToSlash(filepath.Clean(noUp))
 }
 
 // Route for image previews of media files
@@ -161,6 +164,8 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 		staticHandler("res/broken.svg", w, r)
 		return
 	}
+	defer thumb.Close()
+
 	if !strings.HasSuffix(file.ThumbName(), ".jpg") {
 		w.Header().Set("Content-Type", contentType)
 	}
@@ -303,7 +308,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
-		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
+		childPath = gallery.EscapePath(childPath)
 		thumb := urlPrefix + "/?static/ui.svg#iconFolder"
 		class := "folder"
 		if !child.IsDir() {
@@ -437,7 +442,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	opts := r.Context().Value(reqSettings).(config.RequestSettings)
 	querystring := opts.QueryString()
 
-	currentMediaPath := filepath.Join(urlPrefix, fullPath)
+	escCurrentMediaPath := gallery.EscapePath(filepath.Join(urlPrefix, fullPath))
+	currentMediaPath, _ := url.PathUnescape(escCurrentMediaPath)
 
 	totalItems := 0
 
@@ -452,7 +458,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		childPath := filepath.Join(urlPrefix, folderPath, child.Name())
-		childPath = gallery.EscapePath(filepath.ToSlash(childPath))
+		childPath = gallery.EscapePath(childPath)
 
 		// Get total count of items in parent folder
 		totalItems += 1
@@ -486,17 +492,23 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		lastChild = child
 	}
 
+	var parentName string
+	if parentUrl == "/" {
+		parentName = "../"
+	} else {
+		parentName = "../" + filepath.Base(parentUrl)
+	}
 	err = templates.Html.ExecuteTemplate(w, templateName, &templates.ViewPage{
 		Page: templates.Page{
-			Title:      currentMediaPath,
+			Title:      escCurrentMediaPath,
 			Prefix:     urlPrefix,
 			LinkPrev:   string(lastChild.Url),
 			LinkNext:   string(nextChild.Url),
-			ParentUrl:  parentUrl + querystring + "#" + filepath.Base(currentMediaPath),
-			ParentName: "../" + filepath.Base(parentUrl),
+			ParentUrl:  parentUrl + querystring + "#" + filepath.Base(escCurrentMediaPath),
+			ParentName: parentName,
 		},
 		MediaPath: fmt.Sprintf("%s?%s/%s",
-			currentMediaPath, config.QKeyDisplay, config.QueryDisplayFile),
+			escCurrentMediaPath, config.QKeyDisplay, config.QueryDisplayFile),
 	})
 	if err != nil {
 		fail500(w, err, r)
@@ -530,19 +542,20 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		fail500(w, err, r)
 		return
 	}
+	defer contents.Close()
 
 	http.ServeContent(w, r, fullPath, media.FileModTime(), contents)
 }
 
 // Delivers file contents for static resources
 func staticHandler(resFile string, w http.ResponseWriter, r *http.Request) {
-	f, err := storage.InternalHttp.Open(resFile)
+	staticFile, err := storage.InternalHttp.Open(resFile)
 	if err != nil {
 		fail404(w, r)
 		return
 	}
-	defer f.Close()
-	http.ServeContent(w, r, filepath.Base(resFile), BuildTime, f)
+	defer staticFile.Close()
+	http.ServeContent(w, r, filepath.Base(resFile), BuildTime, staticFile)
 }
 
 // Route for RSS/Atom feed
@@ -760,7 +773,7 @@ func metadataHandler(next http.Handler) http.Handler {
 	})
 }
 
-func initGlobalsAndFlags() {
+func initGlobalsAndFlags() error {
 	startTime = time.Now()
 	var errTime error
 	// NOTE: Embedded static files use the build time of the binary for timestamp
@@ -772,18 +785,16 @@ func initGlobalsAndFlags() {
 	// Get current execution folder
 	execFolder, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Environment variables
 	config.Global.LoadEnv(execFolder)
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\tNotice: most command line arguments\n")
-		fmt.Fprintf(os.Stderr, "\tare avalable as environment variables, \n")
-		fmt.Fprintf(os.Stderr, "\te.g. %sPORT=8080\n\n", config.EnvPrefix)
-
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] [FOLDER]\n", filepath.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "\tFOLDER overrides \"--root\".\n\n")
+		fmt.Printf("Options:\n")
 		flag.PrintDefaults()
 	}
 
@@ -793,14 +804,14 @@ func initGlobalsAndFlags() {
 	flag.IntVar(&config.Global.Port, "port", config.Global.Port,
 		"port to run at")
 	flag.StringVar(&config.Global.Home, "home", config.Global.Home,
-		"folder used to keep thumbnails")
+		"folder used to keep thumbnails (by default a temporary folder is created and auto-removed on exit)")
 	flag.StringVar(&config.Global.Root, "root", config.Global.Root,
 		"root folder to serve files from")
 	flag.StringVar(&config.Global.Prefix, "prefix", config.Global.Prefix,
 		"path prefix as in http://localhost/PREFIX/other/stuff")
-	flag.StringVar(&config.Global.TlsCrt, "crt", config.Global.TlsCrt,
-		"certificate File for TLS")
-	flag.StringVar(&config.Global.TlsKey, "key", config.Global.TlsKey,
+	flag.StringVar(&config.Global.TlsCrt, "tls-crt", config.Global.TlsCrt,
+		"certificate file for TLS")
+	flag.StringVar(&config.Global.TlsKey, "tls-key", config.Global.TlsKey,
 		"key file for TLS")
 	flag.BoolVar(&config.Global.Http2, "http2", config.Global.Http2,
 		"enable HTTP/2 (only with TLS)")
@@ -835,25 +846,62 @@ func initGlobalsAndFlags() {
 	flag.Bool("version", false, "show program version and build time")
 
 	flag.Parse()
+
+	rootArg := flag.Arg(0)
+	if rootArg != "" {
+		config.Global.Root = rootArg
+	}
+	return nil
 }
 
 func main() {
-	initGlobalsAndFlags()
+	exitCode := 0
+	defer os.Exit(exitCode)
+
+	if err := initGlobalsAndFlags(); err != nil {
+		log.Println(err)
+		exitCode = 1
+		return
+	}
 
 	// Check for version flag
 	if flag.Lookup("version").Value.(flag.Getter).Get().(bool) {
 		fmt.Printf("foldergal %v, built on %v\n",
 			BuildVersion, BuildTime.In(time.Local))
-		os.Exit(0)
+		exitCode = 1
+		return
 	}
 
 	// NOTE: Variables from ConfigFile override all other from env or command line
 	if config.Global.ConfigFile != "" {
 		if err := config.Global.FromJson(config.Global.ConfigFile); err != nil {
-			log.Fatalf("error: invalid config %v", err)
+			log.Printf("error: invalid config %v", err)
+			exitCode = 1
+			return
 		}
 	}
-	config.Global.Home, _ = filepath.Abs(config.Global.Home)
+	if config.Global.Home == "" {
+		if !config.Global.Quiet {
+			log.Println("Creating temporary home folder...")
+		}
+		tempDir, err := os.MkdirTemp("", "foldergal")
+		if err != nil {
+			log.Println(err)
+			exitCode = 1
+			return
+		}
+		defer func() {
+			if !config.Global.Quiet {
+				log.Println("Removing temporary home folder...")
+			}
+			if err := os.RemoveAll(tempDir); err != nil {
+				log.Println(err)
+			}
+		}()
+		config.Global.Home = tempDir
+	} else {
+		config.Global.Home, _ = filepath.Abs(config.Global.Home)
+	}
 	config.Global.Root, _ = filepath.Abs(config.Global.Root)
 
 	// Set up time location
@@ -863,7 +911,9 @@ func main() {
 	var err error
 	config.Global.TimeLocation, err = time.LoadLocation(config.Global.TimeZone)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		exitCode = 1
+		return
 	}
 	time.Local = config.Global.TimeLocation
 
@@ -872,24 +922,31 @@ func main() {
 	logging, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0o0644) // #nosec Permit everybody to read the log file
 	if err != nil {
-		log.Print("Error: Log File cannot be created.")
-		log.Fatal(err)
+		log.Printf("Log file cannot be created: %v", err)
+		exitCode = 1
+		return
 	}
+	defer logging.Close()
+
 	config.Global.Log = log.New(logging, "foldergal: ", log.Lshortfile|log.LstdFlags)
 	logger = config.Global.Log
 
 	infoF("-- Starting v:%v --", BuildVersion)
 	if !config.Global.Quiet {
-		log.Printf("Logging to: %s", logFile)
+		log.Printf("Log file: %s", logFile)
 	}
-	infoF("Time location is: %s (%s)",
-		config.Global.TimeLocation.String(), config.Global.TimeZone)
+	if config.Global.TimeZone != "Local" {
+		infoF("Time zone: %s (%s)",
+			config.Global.TimeLocation.String(), config.Global.TimeZone)
+	}
 
 	// Set root media folder
 	if exists, err := os.Stat(config.Global.Root); os.IsNotExist(err) || !exists.IsDir() {
-		log.Fatalf("Root folder does not exist: %v", config.Global.Root)
+		log.Printf("Root folder does not exist: %v", config.Global.Root)
+		exitCode = 1
+		return
 	}
-	infoF("Root folder is: %s", config.Global.Root)
+	infoF("Root folder: %s", config.Global.Root)
 	baseRoot := afero.NewReadOnlyFs(
 		afero.NewBasePathFs(afero.NewOsFs(), config.Global.Root))
 	if config.Global.CacheExpiresAfter == 0 {
@@ -905,9 +962,11 @@ func main() {
 	config.Global.Cache = filepath.Join(config.Global.Home, cacheFolderName)
 	err = os.MkdirAll(config.Global.Cache, 0o0750)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		exitCode = 1
+		return
 	}
-	infoF("Cache folder is: %s", config.Global.Cache)
+	infoF("Cache folder: %s", config.Global.Cache)
 	if config.Global.CacheExpiresAfter == 0 {
 		storage.Cache = afero.NewBasePathFs(afero.NewOsFs(), config.Global.Cache)
 	} else {
@@ -942,7 +1001,7 @@ func main() {
 	}
 	if ffmpegPath, err := exec.LookPath(ffmpegPath); err == nil {
 		config.Global.Ffmpeg = ffmpegPath
-		infoF("Found ffmpeg at: %v", ffmpegPath)
+		infoF("FFmpeg found at: %v", ffmpegPath)
 	} else {
 		config.Global.Ffmpeg = ""
 	}
@@ -951,18 +1010,13 @@ func main() {
 	useTls := false
 	if fileExists(config.Global.TlsCrt) && fileExists(config.Global.TlsKey) {
 		useTls = true
-		infoF("Using certificate: %s and key: %s",
+		infoF("TLS certificate: %s, key: %s",
 			config.Global.TlsCrt, config.Global.TlsKey)
 	}
 	if config.Global.DiscordWebhook != "" { // Start filesystem watcher
 		go gallery.StartFsWatcher()
 	}
-	var srvErr error
-	defer func() {
-		if srvErr != nil {
-			log.Fatal(srvErr)
-		}
-	}()
+
 	if config.Global.PublicHost != "" {
 		config.Global.PublicUrl = strings.Trim(config.Global.PublicHost, "/") +
 			urlPrefix + "/"
@@ -979,6 +1033,15 @@ func main() {
 	if !config.Global.Quiet {
 		log.Printf("Running server at: %v\nPress ^C to stop...\n",
 			config.Global.PublicUrl)
+	}
+
+	exitChan := make(chan os.Signal, 1)
+	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
+
+	srv := &http.Server{
+		ReadHeaderTimeout: headerTimeout,
+		Addr:              bind,
+		Handler:           metaMux,
 	}
 	if useTls { // Prepare the TLS
 		tlsConfig := &tls.Config{
@@ -998,19 +1061,34 @@ func main() {
 		} else {
 			tlsConfig.NextProtos = []string{"http/1.1"}
 		}
-		srv := &http.Server{
-			ReadHeaderTimeout: headerTimeout,
-			Addr:              bind,
-			Handler:           metaMux,
-			TLSConfig:         tlsConfig,
-		}
-		srvErr = srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
+		srv.TLSConfig = tlsConfig
+		go func() {
+			err := srv.ListenAndServeTLS(config.Global.TlsCrt, config.Global.TlsKey)
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Println(err)
+				exitChan <- os.Interrupt
+			}
+		}()
 	} else { // Normal start
-		srv := &http.Server{
-			ReadHeaderTimeout: headerTimeout,
-			Addr:              bind,
-			Handler:           metaMux,
-		}
-		srvErr = srv.ListenAndServe()
+		go func() {
+			if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				log.Println(err)
+				exitChan <- os.Interrupt
+			}
+		}()
+	}
+
+	// Graceful shutdown
+	// see: https://dev.to/mokiat/proper-http-shutdown-in-go-3fji
+	<-exitChan
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(
+		context.Background(), shutdownTimeout)
+	defer cancelShutdown()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server shutdown error: %v", err)
+		_ = srv.Close()
+		exitCode = 1
 	}
 }

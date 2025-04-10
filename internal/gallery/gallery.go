@@ -186,10 +186,11 @@ func (f *imageFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.thumbPath)
+	newFile, err := storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
+	defer newFile.Close()
 	_ = afero.WriteFile(storage.Cache, f.thumbPath, buf.Bytes(), os.ModePerm)
 	f.thumbInfo, err = storage.Cache.Stat(f.thumbPath)
 	return
@@ -231,10 +232,11 @@ func (f *svgFile) thumbGenerate() (err error) {
 	if err != nil {
 		return
 	}
-	_, err = storage.Cache.Create(f.thumbPath)
+	newFile, err := storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return
 	}
+	defer newFile.Close()
 	err = afero.WriteFile(storage.Cache, f.thumbPath, contents, os.ModePerm)
 	if err != nil {
 		return
@@ -326,10 +328,11 @@ func (f *audioFile) thumbGenerate() error {
 	if err != nil {
 		return err
 	}
-	_, err = storage.Cache.Create(f.thumbPath)
+	newFile, err := storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return err
 	}
+	defer newFile.Close()
 	// Save thumbnail
 	err = afero.WriteFile(storage.Cache, f.thumbPath, thumbData, os.ModePerm)
 	if err != nil {
@@ -419,10 +422,11 @@ func (f *videoFile) thumbGenerate() error {
 	if err != nil {
 		return err
 	}
-	_, err = storage.Cache.Create(f.thumbPath)
+	newFile, err := storage.Cache.Create(f.thumbPath)
 	if err != nil {
 		return err
 	}
+	defer newFile.Close()
 	// Save thumbnail
 	err = afero.WriteFile(storage.Cache, f.thumbPath, outThumb, os.ModePerm)
 	if err != nil {
@@ -477,9 +481,9 @@ func ContainsDotFile(name string) bool {
 	return false
 }
 
-// Escapes a path with URL escape codes while keeping slashes unchanged
-func EscapePath(s string) (r string) {
-	parts := strings.Split(s, "/")
+// Escapes a path with URL escape codes while normalizing separator to slashes
+func EscapePath(localpath string) string {
+	parts := strings.Split(filepath.ToSlash(localpath), "/")
 	eparts := make([]string, 0, len(parts))
 	for _, part := range parts {
 		eparts = append(eparts, url.PathEscape(part))

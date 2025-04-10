@@ -49,7 +49,7 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 	if file, err = os.Open(filepath.Clean(configFile)); err != nil {
 		return
 	}
-	defer func() { _ = file.Close() }()
+	defer file.Close()
 	decoder := json.NewDecoder(file)
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&c)
@@ -59,7 +59,7 @@ func (c *Configuration) FromJson(configFile string) (err error) {
 func (c *Configuration) LoadEnv(execFolder string) {
 	c.Host = strFromEnv("HOST", "localhost")
 	c.Port = intFromEnv("PORT", 8080)
-	c.Home = strFromEnv("HOME", execFolder)
+	c.Home = strFromEnv("HOME", "")
 	c.Root = strFromEnv("ROOT", execFolder)
 	c.Prefix = strFromEnv("PREFIX", "")
 	c.TlsCrt = strFromEnv("TLS_CRT", "")
@@ -72,8 +72,8 @@ func (c *Configuration) LoadEnv(execFolder string) {
 	c.PublicHost = strFromEnv("PUBLIC_HOST", "")
 	c.Quiet = boolFromEnv("QUIET", false)
 	c.ConfigFile = strFromEnv("CONFIG", "")
-	c.ThumbWidth = intFromEnv("THUMB_W", 400)
-	c.ThumbHeight = intFromEnv("THUMB_H", 400)
+	c.ThumbWidth = intFromEnv("THUMB_WIDTH", 400)
+	c.ThumbHeight = intFromEnv("THUMB_HEIGHT", 400)
 	c.Copyright = strFromEnv("COPYRIGHT", "")
 }
 

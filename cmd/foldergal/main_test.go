@@ -350,4 +350,3 @@ func Test_parseQuery(t *testing.T) {
 	}
 }
 
-// TODO Find a way to test fatal errors in main?
