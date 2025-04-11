@@ -4,10 +4,10 @@ go 1.24.0
 
 require (
 	github.com/charithe/timedbuf v0.0.0-20241209145701-0faa62e2b61c
-	github.com/disintegration/imaging v1.6.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/fvbommel/sortorder v1.1.0
 	github.com/goccy/go-yaml v1.17.1
+	github.com/kovidgoyal/imaging v1.6.4
 	github.com/spf13/afero v1.14.0
 )
 

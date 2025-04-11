@@ -24,7 +24,7 @@ import (
 	"specto.org/projects/foldergal/internal/config"
 	"specto.org/projects/foldergal/internal/storage"
 
-	"github.com/disintegration/imaging"
+	"github.com/kovidgoyal/imaging"
 	"github.com/spf13/afero"
 )
 
